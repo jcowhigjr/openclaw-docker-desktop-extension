@@ -367,6 +367,10 @@ export function App() {
       setError('Enter an Anthropic API key first.');
       return;
     }
+    if (/[\r\n]/.test(key)) {
+      setError('Anthropic API key must not contain newline characters.');
+      return;
+    }
 
     setBusy(true);
     setError('');
@@ -384,6 +388,8 @@ export function App() {
 
       appendDebug('writing Anthropic API key to /home/node/.openclaw/.env');
       await ddClient.docker.cli.exec('exec', [
+        '-e',
+        'OPENCLAW_ANTHROPIC_API_KEY',
         '-u',
         'node',
         container.id,
@@ -391,12 +397,14 @@ export function App() {
         '-e',
         `
 const fs = require("fs");
+const dir = "/home/node/.openclaw";
 const path = "/home/node/.openclaw/.env";
 const key = process.env.OPENCLAW_ANTHROPIC_API_KEY || "";
 if (!key) {
   process.stderr.write("Anthropic API key was not provided to the container process.\\n");
   process.exit(1);
 }
+fs.mkdirSync(dir, { recursive: true });
 const lines = fs.existsSync(path)
   ? fs.readFileSync(path, "utf8").split(/\\r?\\n/)
   : [];
@@ -512,6 +520,30 @@ fs.chmodSync(path, 0o600);
         <Card>
           <CardContent>
             <Stack spacing={2}>
+              <Typography variant="h5">Provider Auth</Typography>
+              <TextField
+                label="Anthropic API Key"
+                type="password"
+                value={anthropicApiKey}
+                fullWidth
+                autoComplete="off"
+                onChange={(event) => setAnthropicApiKey(event.target.value)}
+                helperText="First-run step. Write-only. Saved into /home/node/.openclaw/.env in the persistent Docker volume, then the service is restarted."
+              />
+              <Button
+                variant="outlined"
+                onClick={() => void saveAnthropicKey()}
+                disabled={busy || !anthropicApiKey.trim()}
+              >
+                Save Anthropic Key
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Stack spacing={2}>
               <Typography variant="h5">Connection</Typography>
               <TextField label="Browser URL" value={openUrl} fullWidth InputProps={{ readOnly: true }} />
               <TextField label="WebSocket URL" value={wsUrl} fullWidth InputProps={{ readOnly: true }} />
@@ -567,30 +599,6 @@ fs.chmodSync(path, 0o600);
                 }}
               >
                 Save Settings
-              </Button>
-            </Stack>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent>
-            <Stack spacing={2}>
-              <Typography variant="h5">Provider Auth</Typography>
-              <TextField
-                label="Anthropic API Key"
-                type="password"
-                value={anthropicApiKey}
-                fullWidth
-                autoComplete="off"
-                onChange={(event) => setAnthropicApiKey(event.target.value)}
-                helperText="Write-only. Saved into /home/node/.openclaw/.env in the persistent Docker volume, then the service is restarted."
-              />
-              <Button
-                variant="outlined"
-                onClick={() => void saveAnthropicKey()}
-                disabled={busy || !anthropicApiKey.trim()}
-              >
-                Save Anthropic Key
               </Button>
             </Stack>
           </CardContent>
