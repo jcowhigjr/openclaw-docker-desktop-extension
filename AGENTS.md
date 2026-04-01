@@ -48,6 +48,7 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 - Prefer small PRs tied to one issue.
 - Use `Closes #<issue>` only when the PR fully satisfies the issue.
 - Use `Contributes to #<issue>` when the work is partial.
+- When the user explicitly confirms a working state, create a versioned git tag before proceeding with new exploratory changes.
 - Merge when all are true:
   - checks are green
   - scope matches the issue
@@ -79,4 +80,3 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
   - Docker image build for runtime or packaging changes
   - PR checks before merge
 - If verification is partial, say exactly what ran and what did not.
-
