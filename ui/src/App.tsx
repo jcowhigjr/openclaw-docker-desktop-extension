@@ -377,10 +377,15 @@ export function App() {
         throw new Error('Start OpenClaw before configuring provider credentials.');
       }
 
+      if (container.state !== 'running') {
+        appendDebug(`container ${container.id} is in state "${container.state}", starting it before writing Anthropic API key`);
+        await ddClient.docker.cli.exec('start', [container.id]);
+      }
+
       appendDebug('writing Anthropic API key to /home/node/.openclaw/.env');
       await ddClient.docker.cli.exec('exec', [
-        '-e',
-        `OPENCLAW_ANTHROPIC_API_KEY=${key}`,
+        '-u',
+        'node',
         container.id,
         'node',
         '-e',
@@ -388,6 +393,10 @@ export function App() {
 const fs = require("fs");
 const path = "/home/node/.openclaw/.env";
 const key = process.env.OPENCLAW_ANTHROPIC_API_KEY || "";
+if (!key) {
+  process.stderr.write("Anthropic API key was not provided to the container process.\\n");
+  process.exit(1);
+}
 const lines = fs.existsSync(path)
   ? fs.readFileSync(path, "utf8").split(/\\r?\\n/)
   : [];
@@ -396,7 +405,11 @@ filtered.push("ANTHROPIC_API_KEY=" + key);
 fs.writeFileSync(path, filtered.join("\\n") + "\\n", { mode: 0o600 });
 fs.chmodSync(path, 0o600);
         `.trim(),
-      ]);
+      ], {
+        env: {
+          OPENCLAW_ANTHROPIC_API_KEY: key,
+        },
+      });
 
       appendDebug('restarting service after Anthropic key update');
       setAnthropicApiKey('');
