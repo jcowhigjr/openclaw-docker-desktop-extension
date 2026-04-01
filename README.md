@@ -22,6 +22,10 @@ Then:
 
 If Docker Desktop blocks local extensions, enable local or non-Marketplace extension installs first.
 
+## What the extension looks like
+
+![OpenClaw Docker Desktop extension screenshot](docs/assets/openclaw-extension-dashboard.png)
+
 ## What this project is
 
 OpenClaw normally expects its gateway listener to work from inside the container. On Docker Desktop for macOS, that can leave the Control UI unreachable from the host even when the process is healthy.
@@ -99,7 +103,6 @@ This means the credential survives container restarts and rebuilds, but is remov
 - Gateway token autofill is not fully reliable yet. If the token field is blank in the extension UI, open the Control UI and paste the token manually.
 - The runtime can spend a short warm-up period in `starting` even after the host health check is already passing.
 - Anthropic provider auth currently supports the local `.env` persistence path first. It does not yet manage richer OpenClaw auth-profile workflows in the UI.
-- README screenshot capture is still pending while the extension flow stabilizes.
 
 ## Troubleshooting
 

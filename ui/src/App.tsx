@@ -44,6 +44,15 @@ type RefreshResult = {
   ready: boolean;
 };
 
+type DemoState = {
+  config: ExtensionConfig;
+  phase: ContainerPhase;
+  statusText: string;
+  token: string;
+  message: string;
+  debugLog: string;
+};
+
 const STORAGE_KEY = 'openclaw-docker-extension-config';
 const CONTAINER_NAME = 'openclaw-docker-extension-service';
 const VOLUME_NAME = 'openclaw-docker-extension-home';
@@ -94,17 +103,44 @@ function statusTone(phase: ContainerPhase): 'success' | 'warning' | 'error' | 'd
   }
 }
 
+function loadDemoState(): DemoState | null {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('demo') !== '1') {
+    return null;
+  }
+
+  return {
+    config: {
+      image: DEFAULT_RUNTIME_IMAGE,
+      port: 18789,
+      autoStart: false,
+    },
+    phase: 'running',
+    statusText: 'OpenClaw is ready',
+    token: 'oc_demo_12789_localhost',
+    message: '',
+    debugLog: [
+      'demo mode enabled',
+      'container state: running',
+      'healthz check: ok',
+      'token loaded from /home/node/.openclaw/openclaw.json',
+    ].join('\n'),
+  };
+}
+
 export function App() {
-  const ddClient = useMemo(() => getDDClient(), []);
-  const [config, setConfig] = useState<ExtensionConfig>(loadConfig);
-  const [phase, setPhase] = useState<ContainerPhase>('missing');
-  const [statusText, setStatusText] = useState('No OpenClaw container yet');
-  const [token, setToken] = useState('');
+  const demoState = useMemo(() => loadDemoState(), []);
+  const isDemo = demoState !== null;
+  const ddClient = useMemo(() => (isDemo ? null : getDDClient()), [isDemo]);
+  const [config, setConfig] = useState<ExtensionConfig>(() => demoState?.config ?? loadConfig());
+  const [phase, setPhase] = useState<ContainerPhase>(demoState?.phase ?? 'missing');
+  const [statusText, setStatusText] = useState(demoState?.statusText ?? 'No OpenClaw container yet');
+  const [token, setToken] = useState(demoState?.token ?? '');
   const [anthropicApiKey, setAnthropicApiKey] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(demoState?.message ?? '');
   const [error, setError] = useState('');
-  const [debugLog, setDebugLog] = useState('');
+  const [debugLog, setDebugLog] = useState(demoState?.debugLog ?? '');
 
   const persistConfig = useCallback((next: ExtensionConfig) => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -119,6 +155,10 @@ export function App() {
   }, []);
 
   const findContainer = useCallback(async (): Promise<ContainerSnapshot | null> => {
+    if (!ddClient) {
+      return null;
+    }
+
     const containers = (await ddClient.docker.listContainers({
       all: true,
       filters: {
@@ -157,6 +197,10 @@ export function App() {
   }, []);
 
   const readToken = useCallback(async (containerId: string) => {
+    if (!ddClient) {
+      return;
+    }
+
     try {
       const result = (await ddClient.docker.cli.exec('exec', [
         containerId,
@@ -230,6 +274,10 @@ export function App() {
   }, [appendDebug, refresh]);
 
   const createOrStart = useCallback(async () => {
+    if (!ddClient) {
+      return;
+    }
+
     setBusy(true);
     setError('');
     setMessage('');
@@ -292,6 +340,10 @@ export function App() {
   }, [appendDebug, asText, config.image, config.port, ddClient, findContainer, runAndPoll]);
 
   const stop = useCallback(async () => {
+    if (!ddClient) {
+      return;
+    }
+
     setBusy(true);
     setError('');
     try {
@@ -310,6 +362,10 @@ export function App() {
   }, [appendDebug, ddClient, findContainer, refresh]);
 
   const restart = useCallback(async () => {
+    if (!ddClient) {
+      return;
+    }
+
     setBusy(true);
     setError('');
     try {
@@ -330,6 +386,10 @@ export function App() {
   }, [appendDebug, createOrStart, ddClient, findContainer, runAndPoll]);
 
   const remove = useCallback(async () => {
+    if (!ddClient) {
+      return;
+    }
+
     setBusy(true);
     setError('');
     setMessage('');
@@ -350,6 +410,10 @@ export function App() {
   }, [appendDebug, ddClient, findContainer, refresh]);
 
   const openBrowser = useCallback(async () => {
+    if (!ddClient) {
+      return;
+    }
+
     await Promise.resolve(ddClient.host.openExternal(openUrl));
   }, [ddClient, openUrl]);
 
@@ -362,6 +426,10 @@ export function App() {
   }, [token]);
 
   const saveAnthropicKey = useCallback(async () => {
+    if (!ddClient) {
+      return;
+    }
+
     const key = anthropicApiKey.trim();
     if (!key) {
       setError('Enter an Anthropic API key first.');
@@ -434,14 +502,22 @@ fs.chmodSync(path, 0o600);
   }, [anthropicApiKey, appendDebug, ddClient, findContainer, runAndPoll]);
 
   useEffect(() => {
+    if (isDemo) {
+      return;
+    }
+
     void refresh();
-  }, [refresh]);
+  }, [isDemo, refresh]);
 
   useEffect(() => {
+    if (isDemo) {
+      return;
+    }
+
     if (config.autoStart && phase === 'missing' && !busy) {
       void createOrStart();
     }
-  }, [busy, config.autoStart, createOrStart, phase]);
+  }, [busy, config.autoStart, createOrStart, isDemo, phase]);
 
   return (
     <Box sx={{ p: 3, maxWidth: 1100, mx: 'auto' }}>
@@ -475,7 +551,7 @@ fs.chmodSync(path, 0o600);
                   variant="contained"
                   startIcon={<PlayArrowIcon />}
                   onClick={() => void createOrStart()}
-                  disabled={busy}
+                  disabled={busy || isDemo}
                 >
                   Start
                 </Button>
@@ -483,7 +559,7 @@ fs.chmodSync(path, 0o600);
                   variant="outlined"
                   startIcon={<RefreshIcon />}
                   onClick={() => void restart()}
-                  disabled={busy}
+                  disabled={busy || isDemo}
                 >
                   Restart
                 </Button>
@@ -491,7 +567,7 @@ fs.chmodSync(path, 0o600);
                   variant="outlined"
                   startIcon={<StopIcon />}
                   onClick={() => void stop()}
-                  disabled={busy}
+                  disabled={busy || isDemo}
                 >
                   Stop
                 </Button>
@@ -499,7 +575,7 @@ fs.chmodSync(path, 0o600);
                   variant="outlined"
                   color="error"
                   onClick={() => void remove()}
-                  disabled={busy}
+                  disabled={busy || isDemo}
                 >
                   Remove Container
                 </Button>
@@ -508,7 +584,7 @@ fs.chmodSync(path, 0o600);
                   color="secondary"
                   startIcon={<LaunchIcon />}
                   onClick={() => void openBrowser()}
-                  disabled={busy || phase !== 'running'}
+                  disabled={busy || isDemo || phase !== 'running'}
                 >
                   Open Control UI
                 </Button>
@@ -533,7 +609,7 @@ fs.chmodSync(path, 0o600);
               <Button
                 variant="outlined"
                 onClick={() => void saveAnthropicKey()}
-                disabled={busy || !anthropicApiKey.trim()}
+                disabled={busy || isDemo || !anthropicApiKey.trim()}
               >
                 Save Anthropic Key
               </Button>
@@ -559,7 +635,7 @@ fs.chmodSync(path, 0o600);
                   variant="outlined"
                   startIcon={<ContentCopyIcon />}
                   onClick={() => void copyToken()}
-                  disabled={!token}
+                  disabled={isDemo || !token}
                 >
                   Copy
                 </Button>
@@ -594,9 +670,13 @@ fs.chmodSync(path, 0o600);
               <Button
                 variant="outlined"
                 onClick={() => {
+                  if (isDemo) {
+                    return;
+                  }
                   persistConfig(config);
                   setMessage('Settings saved. Restart the container to apply changes.');
                 }}
+                disabled={isDemo}
               >
                 Save Settings
               </Button>
