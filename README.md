@@ -53,11 +53,23 @@ If your Docker Desktop policy blocks local extension installs, enable non-Market
 
 1. Open the `OpenClaw` extension tab in Docker Desktop.
 2. Start the service.
-3. Wait for the status to become `RUNNING`.
-4. Open the Control UI.
-5. Connect using:
+3. If you want Anthropic-backed chat, paste your Anthropic API key into `Provider Auth` and save it.
+4. Wait for the status to become `RUNNING`.
+5. Open the Control UI.
+6. Connect using:
    - Browser URL: `http://127.0.0.1:18789`
    - WebSocket URL: `ws://127.0.0.1:18789`
+
+## Provider auth
+
+The extension includes a masked, write-only Anthropic API key field.
+
+- The key is written into `/home/node/.openclaw/.env`
+- That file lives in the persistent Docker volume `openclaw-docker-extension-home`
+- The extension clears the input field after save
+- The service restarts after the key is written so OpenClaw reloads the credential
+
+This means the credential survives container restarts and rebuilds, but is removed if you delete the named volume.
 
 ## Security notes
 
@@ -70,6 +82,7 @@ If your Docker Desktop policy blocks local extension installs, enable non-Market
 - Gateway token autofill is not fully reliable yet. If the token field is blank in the extension UI, open the Control UI and paste the token manually.
 - The runtime can spend a short warm-up period in `starting` even after the host health check is already passing.
 - This has been tested primarily on macOS with Docker Desktop. Other environments may not need the bridge at all.
+- Anthropic provider auth currently supports the local `.env` persistence path first. It does not yet manage richer OpenClaw auth-profile workflows in the UI.
 
 ## Troubleshooting
 

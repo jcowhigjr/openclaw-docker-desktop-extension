@@ -100,6 +100,7 @@ export function App() {
   const [phase, setPhase] = useState<ContainerPhase>('missing');
   const [statusText, setStatusText] = useState('No OpenClaw container yet');
   const [token, setToken] = useState('');
+  const [anthropicApiKey, setAnthropicApiKey] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -360,6 +361,57 @@ export function App() {
     setMessage('Gateway token copied to clipboard.');
   }, [token]);
 
+  const saveAnthropicKey = useCallback(async () => {
+    const key = anthropicApiKey.trim();
+    if (!key) {
+      setError('Enter an Anthropic API key first.');
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const container = await findContainer();
+      if (!container) {
+        throw new Error('Start OpenClaw before configuring provider credentials.');
+      }
+
+      appendDebug('writing Anthropic API key to /home/node/.openclaw/.env');
+      await ddClient.docker.cli.exec('exec', [
+        '-e',
+        `OPENCLAW_ANTHROPIC_API_KEY=${key}`,
+        container.id,
+        'node',
+        '-e',
+        `
+const fs = require("fs");
+const path = "/home/node/.openclaw/.env";
+const key = process.env.OPENCLAW_ANTHROPIC_API_KEY || "";
+const lines = fs.existsSync(path)
+  ? fs.readFileSync(path, "utf8").split(/\\r?\\n/)
+  : [];
+const filtered = lines.filter((line) => line && !line.startsWith("ANTHROPIC_API_KEY="));
+filtered.push("ANTHROPIC_API_KEY=" + key);
+fs.writeFileSync(path, filtered.join("\\n") + "\\n", { mode: 0o600 });
+fs.chmodSync(path, 0o600);
+        `.trim(),
+      ]);
+
+      appendDebug('restarting service after Anthropic key update');
+      setAnthropicApiKey('');
+      await ddClient.docker.cli.exec('restart', [container.id]);
+      setMessage('Anthropic API key saved to the persistent OpenClaw state volume.');
+      await runAndPoll();
+    } catch (err) {
+      const text = err instanceof Error ? err.message : String(err);
+      appendDebug(`anthropic key save failed: ${text}`);
+      setError(text);
+    } finally {
+      setBusy(false);
+    }
+  }, [anthropicApiKey, appendDebug, ddClient, findContainer, runAndPoll]);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -502,6 +554,30 @@ export function App() {
                 }}
               >
                 Save Settings
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Stack spacing={2}>
+              <Typography variant="h5">Provider Auth</Typography>
+              <TextField
+                label="Anthropic API Key"
+                type="password"
+                value={anthropicApiKey}
+                fullWidth
+                autoComplete="off"
+                onChange={(event) => setAnthropicApiKey(event.target.value)}
+                helperText="Write-only. Saved into /home/node/.openclaw/.env in the persistent Docker volume, then the service is restarted."
+              />
+              <Button
+                variant="outlined"
+                onClick={() => void saveAnthropicKey()}
+                disabled={busy || !anthropicApiKey.trim()}
+              >
+                Save Anthropic Key
               </Button>
             </Stack>
           </CardContent>
