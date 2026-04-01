@@ -1,26 +1,72 @@
 # OpenClaw Docker Desktop Extension
 
-Docker Desktop extension for running OpenClaw on macOS with a localhost bridge workaround.
+Run OpenClaw from Docker Desktop on macOS with a more isolated, localhost-only container setup.
 
-## Why this exists
+## 60-second quick start
 
-OpenClaw's gateway listens on loopback inside the container. On Docker Desktop for macOS, publishing that listener directly can leave the Control UI unreachable from the host even when the process is healthy inside the container.
+This repo packages OpenClaw as a Docker Desktop extension for macOS. It builds two local images, installs the extension into Docker Desktop, and gives you start/stop controls plus a write-only Anthropic API key flow.
 
-This extension works around that by running OpenClaw inside a small wrapper image that includes `socat`, then publishing a bridged localhost port that behaves like a normal host-facing service.
+```bash
+make install-dev
+```
 
-## What it does
+Then:
+
+1. Open the `OpenClaw` extension in Docker Desktop.
+2. Click `Start OpenClaw`.
+3. Optional: paste an Anthropic API key into `Provider Auth` and save.
+4. Wait for the service status to show `OpenClaw is ready`.
+5. Click `Open Control UI` and connect with:
+   - Browser URL: `http://127.0.0.1:18789`
+   - WebSocket URL: `ws://127.0.0.1:18789`
+
+If Docker Desktop blocks local extensions, enable local or non-Marketplace extension installs first.
+
+## What this project is
+
+OpenClaw normally expects its gateway listener to work from inside the container. On Docker Desktop for macOS, that can leave the Control UI unreachable from the host even when the process is healthy.
+
+This extension works around that by running OpenClaw inside a small wrapper image that includes `socat`, then publishing a localhost bridge that behaves like a normal host-facing service.
+
+Use this repo if you want:
+
+- a Docker Desktop-native way to try OpenClaw on macOS
+- localhost-only exposure instead of a broader host bind
+- an easier-to-clean-up local install path with state in a named Docker volume
+
+Do not use this repo expecting a strong security boundary. It is a more isolated local setup, not a perfect one.
+
+## Before you install
+
+This is the current tested path:
+
+- Docker Desktop on macOS
+- Apple Silicon
+- local image builds for both the runtime wrapper and the extension image
+
+Current constraints:
+
+- Intel Mac support is not complete yet.
+- The extension has been tested primarily on macOS with Docker Desktop.
+- The project currently assumes a local build instead of pre-built GHCR images.
+
+## Common commands
+
+```bash
+make build-runtime
+make build-extension
+make install-dev
+make update-extension
+make uninstall
+```
+
+## What the extension does
 
 - Starts and manages an OpenClaw service container from Docker Desktop
 - Uses a bundled `socat` bridge so the Control UI is reachable on macOS
 - Persists OpenClaw state in a named Docker volume
-- Exposes a simple Docker Desktop UI for start, stop, restart, and open-in-browser actions
+- Exposes Docker Desktop UI controls for start, stop, restart, and open-in-browser actions
 - Surfaces runtime diagnostics in a debug panel inside the extension
-
-## Tested environment
-
-- Docker Desktop on macOS
-- Apple Silicon
-- OpenClaw upstream image via a local runtime wrapper
 
 ## Default runtime
 
@@ -29,36 +75,6 @@ This extension works around that by running OpenClaw inside a small wrapper imag
 - Internal bridge port: `18790`
 - Named volume: `openclaw-docker-extension-home`
 - Service container: `openclaw-docker-extension-service`
-
-## Repository layout
-
-- [metadata.json](./metadata.json): Docker Desktop extension metadata
-- [docker-compose.yaml](./docker-compose.yaml): extension service wiring
-- [runtime/Dockerfile](./runtime/Dockerfile): local runtime image that bundles `socat`
-- [runtime/openclaw-bridge.sh](./runtime/openclaw-bridge.sh): starts OpenClaw and the bridge
-- [ui/src/App.tsx](./ui/src/App.tsx): extension dashboard
-
-## Build and install
-
-```bash
-npm --prefix ui install
-docker build -t openclaw-docker-extension-runtime:dev -f runtime/Dockerfile runtime
-docker build -t openclaw-docker-extension:dev .
-docker extension install -f openclaw-docker-extension:dev
-```
-
-If your Docker Desktop policy blocks local extension installs, enable non-Marketplace or local extension installs in Docker Desktop first.
-
-## Usage
-
-1. Open the `OpenClaw` extension tab in Docker Desktop.
-2. Start the service.
-3. If you want Anthropic-backed chat, paste your Anthropic API key into `Provider Auth` and save it.
-4. Wait for the status to become `RUNNING`.
-5. Open the Control UI.
-6. Connect using:
-   - Browser URL: `http://127.0.0.1:18789`
-   - WebSocket URL: `ws://127.0.0.1:18789`
 
 ## Provider auth
 
@@ -71,24 +87,33 @@ The extension includes a masked, write-only Anthropic API key field.
 
 This means the credential survives container restarts and rebuilds, but is removed if you delete the named volume.
 
-## Security notes
+## Security and isolation notes
 
 - The wrapper publishes OpenClaw on `127.0.0.1` only.
 - State is stored in the named Docker volume `openclaw-docker-extension-home`.
+- This is a more isolated local packaging path, not a perfect security boundary.
 - This project is not an official Docker or OpenClaw extension.
 
 ## Current limitations
 
 - Gateway token autofill is not fully reliable yet. If the token field is blank in the extension UI, open the Control UI and paste the token manually.
 - The runtime can spend a short warm-up period in `starting` even after the host health check is already passing.
-- This has been tested primarily on macOS with Docker Desktop. Other environments may not need the bridge at all.
 - Anthropic provider auth currently supports the local `.env` persistence path first. It does not yet manage richer OpenClaw auth-profile workflows in the UI.
+- README screenshot capture is still pending while the extension flow stabilizes.
 
 ## Troubleshooting
 
 - If the extension says `RUNNING` but the browser page does not open, check `http://127.0.0.1:18789/healthz`.
 - If the token field is empty, inspect the debug panel in the extension and fetch the token from the service container or volume.
 - If local installation fails, confirm Docker Desktop allows local extensions.
+
+## Repository layout
+
+- [metadata.json](./metadata.json): Docker Desktop extension metadata
+- [docker-compose.yaml](./docker-compose.yaml): extension service wiring
+- [runtime/Dockerfile](./runtime/Dockerfile): local runtime image that bundles `socat`
+- [runtime/openclaw-bridge.sh](./runtime/openclaw-bridge.sh): starts OpenClaw and the bridge
+- [ui/src/App.tsx](./ui/src/App.tsx): extension dashboard
 
 ## Attribution
 
