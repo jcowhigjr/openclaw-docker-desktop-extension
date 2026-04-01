@@ -1,0 +1,12 @@
+services:
+  extension-placeholder:
+    image: alpine:latest
+    command: ["sh", "-c", "echo 'OpenClaw extension loaded' && sleep infinity"]
+    restart: "no"
+    read_only: true
+    labels:
+      - "com.docker.extension.openclaw=true"
+      - "com.docker.extension.openclaw.role=placeholder"
+
+volumes:
+  openclaw-docker-extension-home:

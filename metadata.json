@@ -1,0 +1,13 @@
+{
+  "icon": "openclaw.svg",
+  "vm": {
+    "composefile": "docker-compose.yaml"
+  },
+  "ui": {
+    "dashboard-tab": {
+      "title": "OpenClaw",
+      "src": "index.html",
+      "root": "ui"
+    }
+  }
+}

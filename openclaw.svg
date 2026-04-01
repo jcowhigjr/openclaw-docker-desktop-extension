@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="OpenClaw">
+  <rect width="128" height="128" rx="28" fill="#101820"/>
+  <path d="M31 70c0-21 13-36 33-36s33 15 33 36c0 12-6 24-16 31l-7-11c6-4 10-12 10-20 0-13-7-22-20-22s-20 9-20 22c0 8 4 16 10 20l-7 11c-10-7-16-19-16-31Z" fill="#ff5a36"/>
+  <circle cx="51" cy="60" r="5" fill="#fff2e8"/>
+  <circle cx="77" cy="60" r="5" fill="#fff2e8"/>
+  <path d="M52 80c7 5 17 5 24 0" fill="none" stroke="#fff2e8" stroke-linecap="round" stroke-width="6"/>
+</svg>
