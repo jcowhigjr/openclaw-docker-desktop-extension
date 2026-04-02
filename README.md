@@ -22,6 +22,14 @@ Then:
 
 If Docker Desktop blocks local extensions, enable local or non-Marketplace extension installs first.
 
+## Fast command guide
+
+Use these commands depending on where you are in the flow:
+
+- `make install-dev`: build both local images and install the extension into Docker Desktop
+- `make update-extension`: rebuild both local images and refresh an existing local install
+- `make uninstall`: remove the extension from Docker Desktop
+
 ## What the extension looks like
 
 ![OpenClaw Docker Desktop extension screenshot](docs/assets/openclaw-extension-dashboard.png)
@@ -53,16 +61,6 @@ Current constraints:
 - Intel Mac support is not complete yet.
 - The extension has been tested primarily on macOS with Docker Desktop.
 - The project currently assumes a local build instead of pre-built GHCR images.
-
-## Common commands
-
-```bash
-make build-runtime
-make build-extension
-make install-dev
-make update-extension
-make uninstall
-```
 
 ## What the extension does
 
