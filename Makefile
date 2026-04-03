@@ -2,6 +2,7 @@ IMAGE ?= openclaw-docker-extension
 TAG ?= dev
 RUNTIME_IMAGE ?= openclaw-docker-extension-runtime
 RUNTIME_TAG ?= dev
+DEFAULT_RUNTIME_IMAGE ?= $(RUNTIME_IMAGE):$(RUNTIME_TAG)
 SCREENSHOT_URL ?= http://127.0.0.1:4173/?demo=1
 SCREENSHOT_PATH ?= docs/assets/openclaw-extension-dashboard.png
 
@@ -11,7 +12,7 @@ build-runtime:
 	docker build -t $(RUNTIME_IMAGE):$(RUNTIME_TAG) -f runtime/Dockerfile runtime
 
 build-extension:
-	docker build --tag=$(IMAGE):$(TAG) .
+	docker build --build-arg VITE_DEFAULT_RUNTIME_IMAGE=$(DEFAULT_RUNTIME_IMAGE) --tag=$(IMAGE):$(TAG) .
 
 install-dev: build-runtime build-extension
 	docker extension install -f $(IMAGE):$(TAG)
