@@ -31,6 +31,15 @@ Use these commands depending on where you are in the flow:
 - `make uninstall`: remove the extension from Docker Desktop
 - `make capture-readme-screenshot`: rebuild the demo UI and refresh the checked-in README screenshot
 
+## Release-image path
+
+Tagged releases now publish both images to GHCR through GitHub Actions:
+
+- extension image: `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:<tag>`
+- runtime image: `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:<tag>`
+
+Release builds of the extension UI default the runtime image field to the matching GHCR runtime tag. Local development still defaults to `openclaw-docker-extension-runtime:dev`.
+
 ## What the extension looks like
 
 ![OpenClaw Docker Desktop extension screenshot](docs/assets/openclaw-extension-dashboard.png)
@@ -64,6 +73,7 @@ Current constraints:
 - Intel Mac support is not complete yet.
 - The extension has been tested primarily on macOS with Docker Desktop.
 - The project currently assumes a local build instead of pre-built GHCR images.
+- GHCR publishing is wired for tagged releases, but the end-user one-line install flow is not documented as complete yet.
 
 ## What the extension does
 
