@@ -14,13 +14,28 @@ Then:
 
 1. Open the `OpenClaw` extension in Docker Desktop.
 2. Click `Start OpenClaw`.
-3. Optional: paste an Anthropic API key into `Provider Auth` and save.
+3. If you plan to use Anthropic-backed sessions, paste an Anthropic API key into `Provider Auth` and save.
 4. Wait for the service status to show `OpenClaw is ready`.
 5. Click `Open Control UI` and connect with:
    - Browser URL: `http://127.0.0.1:18789`
    - WebSocket URL: `ws://127.0.0.1:18789`
 
 If Docker Desktop blocks local extensions, enable local or non-Marketplace extension installs first.
+
+## Fast command guide
+
+Use these commands depending on where you are in the flow:
+
+- `make install-dev`: build both local images and install the extension into Docker Desktop
+- `make update-extension`: rebuild both local images and refresh an existing local install
+- `make uninstall`: remove the extension from Docker Desktop
+- `make capture-readme-screenshot`: rebuild the demo UI and refresh the checked-in README screenshot
+
+## What the extension looks like
+
+![OpenClaw Docker Desktop extension screenshot](docs/assets/openclaw-extension-dashboard.png)
+
+The screenshot is generated from the real extension UI running in browser demo mode, so it can be refreshed without Docker Desktop by running `make capture-readme-screenshot`.
 
 ## What this project is
 
@@ -50,16 +65,6 @@ Current constraints:
 - The extension has been tested primarily on macOS with Docker Desktop.
 - The project currently assumes a local build instead of pre-built GHCR images.
 
-## Common commands
-
-```bash
-make build-runtime
-make build-extension
-make install-dev
-make update-extension
-make uninstall
-```
-
 ## What the extension does
 
 - Starts and manages an OpenClaw service container from Docker Desktop
@@ -85,6 +90,8 @@ The extension includes a masked, write-only Anthropic API key field.
 - The extension clears the input field after save
 - The service restarts after the key is written so OpenClaw reloads the credential
 
+You can install and open the extension before saving a key, but Anthropic-backed sessions will not work until one is stored.
+
 This means the credential survives container restarts and rebuilds, but is removed if you delete the named volume.
 
 ## Security and isolation notes
@@ -99,7 +106,6 @@ This means the credential survives container restarts and rebuilds, but is remov
 - Gateway token autofill is not fully reliable yet. If the token field is blank in the extension UI, open the Control UI and paste the token manually.
 - The runtime can spend a short warm-up period in `starting` even after the host health check is already passing.
 - Anthropic provider auth currently supports the local `.env` persistence path first. It does not yet manage richer OpenClaw auth-profile workflows in the UI.
-- README screenshot capture is still pending while the extension flow stabilizes.
 
 ## Troubleshooting
 
