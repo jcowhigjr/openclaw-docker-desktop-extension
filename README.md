@@ -37,6 +37,7 @@ Tagged releases now publish both images to GHCR through GitHub Actions:
 
 - extension image: `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:<tag>`
 - runtime image: `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:<tag>`
+- published architecture today: `linux/arm64` (Apple Silicon path first)
 
 Release builds of the extension UI default the runtime image field to the matching GHCR runtime tag. Local development still defaults to `openclaw-docker-extension-runtime:dev`.
 

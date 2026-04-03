@@ -76,13 +76,9 @@ function loadConfig(): ExtensionConfig {
     }
 
     const parsed = JSON.parse(raw) as Partial<ExtensionConfig>;
+    const image = typeof parsed.image === 'string' ? parsed.image.trim() : '';
     return {
-      image:
-        typeof parsed.image === 'string' && parsed.image.trim()
-          ? parsed.image.trim() === LEGACY_RUNTIME_IMAGE
-            ? DEFAULT_RUNTIME_IMAGE
-            : parsed.image
-          : DEFAULT_CONFIG.image,
+      image: image ? (image === LEGACY_RUNTIME_IMAGE ? DEFAULT_RUNTIME_IMAGE : image) : DEFAULT_CONFIG.image,
       port: typeof parsed.port === 'number' && Number.isFinite(parsed.port) ? parsed.port : DEFAULT_CONFIG.port,
       autoStart: parsed.autoStart ?? DEFAULT_CONFIG.autoStart,
     };

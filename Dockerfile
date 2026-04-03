@@ -1,11 +1,11 @@
 FROM node:24-alpine AS client-builder
 ARG VITE_DEFAULT_RUNTIME_IMAGE=openclaw-docker-extension-runtime:dev
-ENV VITE_DEFAULT_RUNTIME_IMAGE=${VITE_DEFAULT_RUNTIME_IMAGE}
 WORKDIR /ui
 COPY ui/package.json /ui/package.json
 COPY ui/package-lock.json /ui/package-lock.json
 RUN npm ci
 COPY ui /ui
+ENV VITE_DEFAULT_RUNTIME_IMAGE=${VITE_DEFAULT_RUNTIME_IMAGE}
 RUN npm run build
 
 FROM alpine:3.20
