@@ -14,7 +14,7 @@ Then:
 
 1. Open the `OpenClaw` extension in Docker Desktop.
 2. Click `Start OpenClaw`.
-3. Optional: paste an Anthropic API key into `Provider Auth` and save.
+3. If you plan to use Anthropic-backed sessions, paste an Anthropic API key into `Provider Auth` and save.
 4. Wait for the service status to show `OpenClaw is ready`.
 5. Click `Open Control UI` and connect with:
    - Browser URL: `http://127.0.0.1:18789`
@@ -29,10 +29,13 @@ Use these commands depending on where you are in the flow:
 - `make install-dev`: build both local images and install the extension into Docker Desktop
 - `make update-extension`: rebuild both local images and refresh an existing local install
 - `make uninstall`: remove the extension from Docker Desktop
+- `make capture-readme-screenshot`: rebuild the demo UI and refresh the checked-in README screenshot
 
 ## What the extension looks like
 
 ![OpenClaw Docker Desktop extension screenshot](docs/assets/openclaw-extension-dashboard.png)
+
+The screenshot is generated from the real extension UI running in browser demo mode, so it can be refreshed without Docker Desktop by running `make capture-readme-screenshot`.
 
 ## What this project is
 
@@ -86,6 +89,8 @@ The extension includes a masked, write-only Anthropic API key field.
 - That file lives in the persistent Docker volume `openclaw-docker-extension-home`
 - The extension clears the input field after save
 - The service restarts after the key is written so OpenClaw reloads the credential
+
+You can install and open the extension before saving a key, but Anthropic-backed sessions will not work until one is stored.
 
 This means the credential survives container restarts and rebuilds, but is removed if you delete the named volume.
 

@@ -117,7 +117,7 @@ function loadDemoState(): DemoState | null {
     },
     phase: 'running',
     statusText: 'OpenClaw is ready',
-    token: 'oc_demo_12789_localhost',
+    token: 'oc_demo_18789_localhost',
     message: '',
     debugLog: [
       'demo mode enabled',
