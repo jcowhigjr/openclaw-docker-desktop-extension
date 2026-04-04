@@ -3,6 +3,9 @@ TAG ?= dev
 RUNTIME_IMAGE ?= openclaw-docker-extension-runtime
 RUNTIME_TAG ?= dev
 DEFAULT_RUNTIME_IMAGE ?= $(RUNTIME_IMAGE):$(RUNTIME_TAG)
+GHCR_OWNER ?= jcowhigjr
+RELEASE_TAG ?=
+RELEASE_EXTENSION_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-desktop-extension:$(RELEASE_TAG)
 SCREENSHOT_URL ?= http://127.0.0.1:4173/?demo=1
 SCREENSHOT_PATH ?= docs/assets/openclaw-extension-dashboard.png
 
@@ -20,6 +23,14 @@ install-dev: build-runtime build-extension
 update-extension: build-runtime build-extension
 	docker extension update $(IMAGE):$(TAG)
 
+install-release:
+	@test -n "$(RELEASE_TAG)" || (echo "RELEASE_TAG is required, for example: make install-release RELEASE_TAG=v0.1.0" && exit 1)
+	docker extension install -f $(RELEASE_EXTENSION_IMAGE)
+
+update-release:
+	@test -n "$(RELEASE_TAG)" || (echo "RELEASE_TAG is required, for example: make update-release RELEASE_TAG=v0.1.0" && exit 1)
+	docker extension update $(RELEASE_EXTENSION_IMAGE)
+
 uninstall:
 	docker extension rm $(IMAGE)
 
@@ -30,4 +41,4 @@ capture-readme-screenshot:
 	npx --yes playwright screenshot --device="Desktop Chrome" --color-scheme=light --wait-for-selector="text=OpenClaw Extension" --wait-for-timeout=1000 "$(SCREENSHOT_URL)" "$(SCREENSHOT_PATH)"
 	kill $$(cat /tmp/openclaw-vite-preview.pid) && rm -f /tmp/openclaw-vite-preview.pid
 
-.PHONY: build-runtime build-extension install-dev update-extension uninstall capture-readme-screenshot
+.PHONY: build-runtime build-extension install-dev update-extension install-release update-release uninstall capture-readme-screenshot
