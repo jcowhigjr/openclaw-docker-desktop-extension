@@ -28,6 +28,7 @@ Use these commands depending on where you are in the flow:
 
 - `make install-dev`: build both local images and install the extension into Docker Desktop
 - `make update-extension`: rebuild both local images and refresh an existing local install
+- `make verify-release-tag RELEASE_TAG=vX.Y.Z`: maintainer check that the GitHub release and both GHCR tags exist
 - `make install-release RELEASE_TAG=vX.Y.Z`: install a tagged GHCR-published extension image
 - `make update-release RELEASE_TAG=vX.Y.Z`: update an installed GHCR-published extension image
 - `make uninstall`: remove the extension from Docker Desktop
@@ -42,6 +43,12 @@ Tagged releases now publish both images to GHCR through GitHub Actions:
 - published architecture today: `linux/arm64` (Apple Silicon path first)
 
 Release builds of the extension UI default the runtime image field to the matching GHCR runtime tag. Local development still defaults to `openclaw-docker-extension-runtime:dev`.
+
+Maintainer preflight for a newly published tag:
+
+```bash
+make verify-release-tag RELEASE_TAG=vX.Y.Z
+```
 
 When a tagged release exists, the end-user install path is:
 
