@@ -28,6 +28,8 @@ Use these commands depending on where you are in the flow:
 
 - `make install-dev`: build both local images and install the extension into Docker Desktop
 - `make update-extension`: rebuild both local images and refresh an existing local install
+- `make install-release RELEASE_TAG=vX.Y.Z`: install a tagged GHCR-published extension image
+- `make update-release RELEASE_TAG=vX.Y.Z`: update an installed GHCR-published extension image
 - `make uninstall`: remove the extension from Docker Desktop
 - `make capture-readme-screenshot`: rebuild the demo UI and refresh the checked-in README screenshot
 
@@ -40,6 +42,20 @@ Tagged releases now publish both images to GHCR through GitHub Actions:
 - published architecture today: `linux/arm64` (Apple Silicon path first)
 
 Release builds of the extension UI default the runtime image field to the matching GHCR runtime tag. Local development still defaults to `openclaw-docker-extension-runtime:dev`.
+
+When a tagged release exists, the end-user install path is:
+
+```bash
+docker extension install ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:vX.Y.Z
+```
+
+To update an existing release install:
+
+```bash
+docker extension update ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:vX.Y.Z
+```
+
+If there is no tagged release yet, use the local build path in the quick start instead.
 
 ## What the extension looks like
 
@@ -73,8 +89,8 @@ Current constraints:
 
 - Intel Mac support is not complete yet.
 - The extension has been tested primarily on macOS with Docker Desktop.
-- The project currently assumes a local build instead of pre-built GHCR images.
-- GHCR publishing is wired for tagged releases, but the end-user one-line install flow is not documented as complete yet.
+- The direct GHCR install path depends on a tagged release being published first.
+- Until a tagged release exists, the supported install path is still the local build flow.
 
 ## What the extension does
 
@@ -117,6 +133,18 @@ This means the credential survives container restarts and rebuilds, but is remov
 - Gateway token autofill is not fully reliable yet. If the token field is blank in the extension UI, open the Control UI and paste the token manually.
 - The runtime can spend a short warm-up period in `starting` even after the host health check is already passing.
 - Anthropic provider auth currently supports the local `.env` persistence path first. It does not yet manage richer OpenClaw auth-profile workflows in the UI.
+
+## Roadmap path
+
+The roadmap source of truth is [issue #12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12). Keep this section aligned with that issue.
+
+The repo should move in this order:
+
+1. Publish pre-built GHCR images and finish the end-user install/update path.
+2. Tighten the isolation and trust-boundary story around the wrapper runtime.
+3. Add architecture detection or graceful failure for unsupported hosts.
+
+The developer-only local update path remains `make update-extension`. The release-image path is the one that should eventually replace manual rebuilds for end users.
 
 ## Troubleshooting
 

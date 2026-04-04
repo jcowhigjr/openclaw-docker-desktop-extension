@@ -21,11 +21,11 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 ## Current Roadmap
 
 - Treat issue [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12) as the source of truth for roadmap and decision gates.
-- Default priority order:
-  1. [#7](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/7) README onboarding and screenshot
-  2. [#3](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/3) pre-built GHCR images
-  3. [#10](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/10) security and isolation story
-  4. [#5](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/5) architecture support and graceful failure
+- Issue [#7](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/7) is already closed; treat onboarding work as completed.
+- Active priority order:
+  1. [#3](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/3) pre-built GHCR images
+  2. [#10](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/10) security and isolation story
+  3. [#5](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/5) architecture support and graceful failure
 - Do not pick up "nice-to-have" work ahead of MVP issues unless explicitly requested.
 
 ## Decision Gates
