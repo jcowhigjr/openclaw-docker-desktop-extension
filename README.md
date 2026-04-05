@@ -51,6 +51,12 @@ Maintainer preflight for a newly published tag:
 make verify-release-tag RELEASE_TAG=vX.Y.Z
 ```
 
+That check verifies all three requirements for the documented install path:
+
+- the GitHub release exists for the tag
+- both GHCR image tags exist
+- both GHCR packages are public to anonymous users
+
 If the tag exists but the GitHub release is still missing, publish it first:
 
 ```bash
