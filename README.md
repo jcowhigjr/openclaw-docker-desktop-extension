@@ -28,6 +28,7 @@ Use these commands depending on where you are in the flow:
 
 - `make install-dev`: build both local images and install the extension into Docker Desktop
 - `make update-extension`: rebuild both local images and refresh an existing local install
+- `make publish-release RELEASE_TAG=vX.Y.Z`: maintainer step to publish the GitHub release for an existing tag
 - `make verify-release-tag RELEASE_TAG=vX.Y.Z`: maintainer check that the GitHub release and both GHCR tags exist
 - `make install-release RELEASE_TAG=vX.Y.Z`: install a tagged GHCR-published extension image
 - `make update-release RELEASE_TAG=vX.Y.Z`: update an installed GHCR-published extension image
@@ -47,6 +48,19 @@ Release builds of the extension UI default the runtime image field to the matchi
 Maintainer preflight for a newly published tag:
 
 ```bash
+make verify-release-tag RELEASE_TAG=vX.Y.Z
+```
+
+That check verifies all three requirements for the documented install path:
+
+- the GitHub release exists for the tag
+- both GHCR image tags exist
+- both GHCR packages are public to anonymous users
+
+If the tag exists but the GitHub release is still missing, publish it first:
+
+```bash
+make publish-release RELEASE_TAG=vX.Y.Z
 make verify-release-tag RELEASE_TAG=vX.Y.Z
 ```
 

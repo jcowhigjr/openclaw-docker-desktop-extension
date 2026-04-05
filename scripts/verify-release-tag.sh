@@ -56,9 +56,33 @@ require_package_tag() {
   return 1
 }
 
+require_package_public() {
+  package_name="$1"
+  image_name="$2"
+
+  visibility="$(gh api "/users/${ghcr_owner}/packages/container/${package_name}" --jq '.visibility' 2>/dev/null || true)"
+
+  if [ "$visibility" = "public" ]; then
+    echo "ghcr package is public: ghcr.io/${ghcr_owner}/${image_name}"
+    return 0
+  fi
+
+  if [ -z "$visibility" ]; then
+    echo "ghcr package details unavailable: ghcr.io/${ghcr_owner}/${image_name}" >&2
+    echo "Next step: confirm the package exists under ${ghcr_owner} and is visible to GitHub Packages." >&2
+    return 1
+  fi
+
+  echo "ghcr package is not public (${visibility}): ghcr.io/${ghcr_owner}/${image_name}" >&2
+  echo "Next step: change the package visibility to public so end users can install it without authentication." >&2
+  return 1
+}
+
 require_release
 require_package_tag "openclaw-docker-desktop-extension" "openclaw-docker-desktop-extension"
+require_package_public "openclaw-docker-desktop-extension" "openclaw-docker-desktop-extension"
 require_package_tag "openclaw-docker-desktop-extension-runtime" "openclaw-docker-desktop-extension-runtime"
+require_package_public "openclaw-docker-desktop-extension-runtime" "openclaw-docker-desktop-extension-runtime"
 
 cat <<EOF
 Release install path is ready for this tag:
