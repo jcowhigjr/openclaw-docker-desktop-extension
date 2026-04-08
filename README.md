@@ -116,6 +116,7 @@ This is the current tested path:
 Current constraints:
 
 - Intel Mac support is not complete yet.
+- On unsupported Docker architectures, the extension now stops before container start and shows a clear error instead of blindly trying `linux/arm64`.
 - The extension has been tested primarily on macOS with Docker Desktop.
 - The direct GHCR install path depends on a tagged release being published first.
 - Until a tagged release exists, the supported install path is still the local build flow.
