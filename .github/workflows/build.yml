@@ -33,3 +33,6 @@ jobs:
 
       - name: Build extension image
         run: docker build -t openclaw-docker-extension:test .
+
+      - name: Verify release bundle wiring
+        run: make verify-release-bundle RELEASE_TAG=v0.0.0-ci
