@@ -57,6 +57,8 @@ const STORAGE_KEY = 'openclaw-docker-extension-config';
 const CONTAINER_NAME = 'openclaw-docker-extension-service';
 const VOLUME_NAME = 'openclaw-docker-extension-home';
 const BRIDGE_PORT = 18790;
+const RUNTIME_PLATFORM = 'linux/arm64';
+const SUPPORTED_DOCKER_ARCH = 'arm64';
 const LEGACY_RUNTIME_IMAGE = 'ghcr.io/openclaw/openclaw:latest';
 const DEFAULT_RUNTIME_IMAGE = import.meta.env.VITE_DEFAULT_RUNTIME_IMAGE || 'openclaw-docker-extension-runtime:dev';
 const DEFAULT_CONFIG: ExtensionConfig = {
@@ -226,6 +228,37 @@ export function App() {
     }
   }, [openUrl]);
 
+  const readDockerServerArch = useCallback(async () => {
+    if (!ddClient) {
+      return '';
+    }
+
+    const result = (await ddClient.docker.cli.exec('version', ['--format', '{{.Server.Arch}}'])) as CliExecResult;
+    return asText(result.stdout).trim();
+  }, [asText, ddClient]);
+
+  const requireSupportedPlatform = useCallback(async () => {
+    try {
+      const serverArch = await readDockerServerArch();
+      if (!serverArch) {
+        appendDebug('docker server architecture was empty; continuing with linux/arm64 runtime platform');
+        return;
+      }
+
+      appendDebug(`docker server architecture: ${serverArch}`);
+      if (serverArch !== SUPPORTED_DOCKER_ARCH) {
+        throw new Error(
+          `Unsupported Docker architecture: ${serverArch}. This extension currently runs the OpenClaw service as ${RUNTIME_PLATFORM} for Apple Silicon Macs. Intel Mac and multi-arch support are not complete yet.`,
+        );
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('Unsupported Docker architecture:')) {
+        throw err;
+      }
+      appendDebug(`docker server architecture check failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }, [appendDebug, readDockerServerArch]);
+
   const refresh = useCallback(async (): Promise<RefreshResult> => {
     try {
       const container = await findContainer();
@@ -281,6 +314,7 @@ export function App() {
     setPhase('starting');
     setStatusText('Creating OpenClaw container...');
     try {
+      await requireSupportedPlatform();
       const existing = await findContainer();
       if (existing) {
         appendDebug(`found existing container ${existing.id} (${existing.state})`);
@@ -293,7 +327,7 @@ export function App() {
           '--name',
           CONTAINER_NAME,
           '--platform',
-          'linux/arm64',
+          RUNTIME_PLATFORM,
           '-v',
           `${VOLUME_NAME}:/home/node`,
           '-p',
