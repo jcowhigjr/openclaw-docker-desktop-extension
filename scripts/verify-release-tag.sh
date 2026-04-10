@@ -6,10 +6,22 @@ release_tag="${1:-${RELEASE_TAG:-}}"
 repo_owner="${REPO_OWNER:-jcowhigjr}"
 repo_name="${REPO_NAME:-openclaw-docker-desktop-extension}"
 ghcr_owner="${GHCR_OWNER:-$repo_owner}"
+dry_run="${DRY_RUN:-0}"
 
 if [ -z "$release_tag" ]; then
   echo "RELEASE_TAG is required, for example: make verify-release-tag RELEASE_TAG=v0.1.0" >&2
   exit 1
+fi
+
+if [ "$dry_run" = "1" ]; then
+  cat <<EOF
+dry run: gh api /repos/${repo_owner}/${repo_name}/releases/tags/${release_tag}
+dry run: gh api /users/${ghcr_owner}/packages/container/openclaw-docker-desktop-extension/versions?per_page=100 --paginate
+dry run: gh api /users/${ghcr_owner}/packages/container/openclaw-docker-desktop-extension
+dry run: gh api /users/${ghcr_owner}/packages/container/openclaw-docker-desktop-extension-runtime/versions?per_page=100 --paginate
+dry run: gh api /users/${ghcr_owner}/packages/container/openclaw-docker-desktop-extension-runtime
+EOF
+  exit 0
 fi
 
 if ! command -v gh >/dev/null 2>&1; then
