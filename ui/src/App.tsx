@@ -563,6 +563,11 @@ fs.chmodSync(path, 0o600);
           </Typography>
         </Box>
 
+        <Alert severity="info">
+          This is a more isolated local wrapper, not a strong security boundary. The service is
+          exposed on localhost only, and provider auth is stored in the persistent Docker volume.
+        </Alert>
+
         {error && <Alert severity="error">{error}</Alert>}
         {message && <Alert severity="success">{message}</Alert>}
 
@@ -723,6 +728,11 @@ fs.chmodSync(path, 0o600);
                 OpenClaw listens on container loopback by default. On macOS, Docker Desktop does not
                 always forward that listener correctly. This extension uses a local runtime image with
                 a baked-in socat bridge so Docker Desktop can publish a normal host-facing port.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                OpenClaw itself runs as the non-root `node` user after the upstream entrypoint starts.
+                The wrapper still is not a hardened sandbox: it keeps writable state in a named Docker
+                volume, and the local bridge process exists to make localhost access work on macOS.
               </Typography>
               <Divider />
               <Typography variant="body2" color="text.secondary">
