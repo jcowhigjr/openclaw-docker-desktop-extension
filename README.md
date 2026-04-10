@@ -74,6 +74,12 @@ If you want the full maintainer handoff in one command after the tag is publishe
 make ship-release RELEASE_TAG=vX.Y.Z
 ```
 
+To rehearse the same maintainer flow without touching GitHub or Docker Desktop state:
+
+```bash
+make ship-release RELEASE_TAG=vX.Y.Z DRY_RUN=1
+```
+
 If you want to run the same steps one by one, or the tag exists but the GitHub release is still missing:
 
 ```bash

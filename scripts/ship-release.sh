@@ -26,7 +26,7 @@ run_step "Publish GitHub release if needed" \
   ./scripts/publish-release.sh
 
 run_step "Verify GitHub release and GHCR tags" \
-  env RELEASE_TAG="$release_tag" REPO_OWNER="$repo_owner" REPO_NAME="$repo_name" GHCR_OWNER="$ghcr_owner" \
+  env RELEASE_TAG="$release_tag" REPO_OWNER="$repo_owner" REPO_NAME="$repo_name" GHCR_OWNER="$ghcr_owner" DRY_RUN="$dry_run" \
   ./scripts/verify-release-tag.sh
 
 run_step "Validate Docker Desktop install/uninstall" \
