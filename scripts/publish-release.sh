@@ -22,6 +22,15 @@ if ! gh auth status >/dev/null 2>&1; then
   exit 1
 fi
 
+release_args="release create ${release_tag} --repo ${repo_owner}/${repo_name} --title ${release_tag} --generate-notes"
+
+if [ "$dry_run" = "1" ]; then
+  echo "dry run: gh api /repos/${repo_owner}/${repo_name}/git/ref/tags/${release_tag}"
+  echo "dry run: gh api /repos/${repo_owner}/${repo_name}/releases/tags/${release_tag}"
+  echo "dry run: gh ${release_args}"
+  exit 0
+fi
+
 if ! gh api "/repos/${repo_owner}/${repo_name}/git/ref/tags/${release_tag}" >/dev/null 2>&1; then
   echo "git tag is missing: ${release_tag}" >&2
   echo "Next step: create and push the tag before publishing a GitHub release." >&2
@@ -31,13 +40,6 @@ fi
 if gh api "/repos/${repo_owner}/${repo_name}/releases/tags/${release_tag}" >/dev/null 2>&1; then
   echo "GitHub release already exists: ${release_tag}"
   echo "Next step: run make verify-release-tag RELEASE_TAG=${release_tag}" >&2
-  exit 0
-fi
-
-release_args="release create ${release_tag} --repo ${repo_owner}/${repo_name} --title ${release_tag} --generate-notes"
-
-if [ "$dry_run" = "1" ]; then
-  echo "dry run: gh ${release_args}"
   exit 0
 fi
 
