@@ -34,6 +34,19 @@ if ! gh auth status >/dev/null 2>&1; then
   exit 1
 fi
 
+resolve_package_owner_scope() {
+  package_name="$1"
+
+  for owner_scope in users orgs; do
+    if gh api "/${owner_scope}/${ghcr_owner}/packages/container/${package_name}" >/dev/null 2>&1; then
+      echo "$owner_scope"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 require_release() {
   if gh api "/repos/${repo_owner}/${repo_name}/releases/tags/${release_tag}" >/dev/null 2>&1; then
     echo "release exists: ${release_tag}"
@@ -54,8 +67,15 @@ require_release() {
 require_package_tag() {
   package_name="$1"
   image_name="$2"
+  owner_scope="$(resolve_package_owner_scope "$package_name" || true)"
 
-  if gh api "/users/${ghcr_owner}/packages/container/${package_name}/versions?per_page=100" \
+  if [ -z "$owner_scope" ]; then
+    echo "ghcr package details unavailable: ghcr.io/${ghcr_owner}/${image_name}" >&2
+    echo "Next step: confirm the package exists under ${ghcr_owner} and is visible to GitHub Packages." >&2
+    return 1
+  fi
+
+  if gh api "/${owner_scope}/${ghcr_owner}/packages/container/${package_name}/versions?per_page=100" \
     --paginate \
     --jq ".[] | select(any(.metadata.container.tags[]?; . == \"${release_tag}\")) | .id" \
     | grep -q '.'; then
@@ -71,8 +91,15 @@ require_package_tag() {
 require_package_public() {
   package_name="$1"
   image_name="$2"
+  owner_scope="$(resolve_package_owner_scope "$package_name" || true)"
 
-  visibility="$(gh api "/users/${ghcr_owner}/packages/container/${package_name}" --jq '.visibility' 2>/dev/null || true)"
+  if [ -z "$owner_scope" ]; then
+    echo "ghcr package details unavailable: ghcr.io/${ghcr_owner}/${image_name}" >&2
+    echo "Next step: confirm the package exists under ${ghcr_owner} and is visible to GitHub Packages." >&2
+    return 1
+  fi
+
+  visibility="$(gh api "/${owner_scope}/${ghcr_owner}/packages/container/${package_name}" --jq '.visibility' 2>/dev/null || true)"
 
   if [ "$visibility" = "public" ]; then
     echo "ghcr package is public: ghcr.io/${ghcr_owner}/${image_name}"
