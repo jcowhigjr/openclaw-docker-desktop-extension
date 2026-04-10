@@ -1,0 +1,22 @@
+# Keep the extension publish context limited to the files the Dockerfile copies.
+**
+
+!.dockerignore
+!Dockerfile
+!docker-compose.yaml
+!metadata.json
+!openclaw.svg
+!ui/
+!ui/index.html
+!ui/package-lock.json
+!ui/package.json
+!ui/src/
+!ui/src/**
+!ui/tsconfig.json
+!ui/tsconfig.node.json
+!ui/vite-env.d.ts
+!ui/vite.config.ts
+
+# Exclude generated or local-only UI artifacts from the allowed tree above.
+ui/build/
+ui/node_modules/
