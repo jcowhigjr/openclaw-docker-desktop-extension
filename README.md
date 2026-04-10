@@ -32,6 +32,7 @@ Use these commands depending on where you are in the flow:
 - `make verify-release-tag RELEASE_TAG=vX.Y.Z`: maintainer check that the GitHub release and both GHCR tags exist
 - `make verify-release-bundle RELEASE_TAG=vX.Y.Z`: maintainer check that a release extension build points at the matching GHCR runtime image
 - `make verify-release-install RELEASE_TAG=vX.Y.Z`: maintainer check that Docker Desktop can install and uninstall the GHCR extension image
+- `make ship-release RELEASE_TAG=vX.Y.Z`: maintainer path that publishes the GitHub release if needed, verifies the GHCR tags, then validates Docker Desktop install/uninstall
 - `make install-release RELEASE_TAG=vX.Y.Z`: install a tagged GHCR-published extension image
 - `make update-release RELEASE_TAG=vX.Y.Z`: update an installed GHCR-published extension image
 - `make uninstall`: remove the extension from Docker Desktop
@@ -67,7 +68,13 @@ That check verifies all three requirements for the documented install path:
 - both GHCR image tags exist
 - both GHCR packages are public to anonymous users
 
-If the tag exists but the GitHub release is still missing, publish it first:
+If you want the full maintainer handoff in one command after the tag is published to GHCR:
+
+```bash
+make ship-release RELEASE_TAG=vX.Y.Z
+```
+
+If you want to run the same steps one by one, or the tag exists but the GitHub release is still missing:
 
 ```bash
 make verify-release-bundle RELEASE_TAG=vX.Y.Z
