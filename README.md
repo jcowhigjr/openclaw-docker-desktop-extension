@@ -28,11 +28,11 @@ Use these commands depending on where you are in the flow:
 
 - `make install-dev`: build both local images and install the extension into Docker Desktop
 - `make update-extension`: rebuild both local images and refresh an existing local install
-- `make publish-release RELEASE_TAG=vX.Y.Z`: maintainer step to publish the GitHub release for an existing tag
 - `make verify-release-tag RELEASE_TAG=vX.Y.Z`: maintainer check that the GitHub release and both GHCR tags exist
 - `make verify-release-bundle RELEASE_TAG=vX.Y.Z`: maintainer check that a release extension build points at the matching GHCR runtime image
 - `make verify-release-install RELEASE_TAG=vX.Y.Z`: maintainer check that Docker Desktop can install and uninstall the GHCR extension image
-- `make ship-release RELEASE_TAG=vX.Y.Z`: maintainer path that publishes the GitHub release if needed, verifies the GHCR tags, then validates Docker Desktop install/uninstall
+- `make publish-release RELEASE_TAG=vX.Y.Z`: maintainer fallback if a tag exists but the GitHub release needs to be repaired manually
+- `make ship-release RELEASE_TAG=vX.Y.Z`: maintainer repair path that publishes the GitHub release if needed, verifies the GHCR tags, then validates Docker Desktop install/uninstall
 - `make install-release RELEASE_TAG=vX.Y.Z`: install a tagged GHCR-published extension image
 - `make update-release RELEASE_TAG=vX.Y.Z`: update an installed GHCR-published extension image
 - `make uninstall`: remove the extension from Docker Desktop
@@ -40,7 +40,7 @@ Use these commands depending on where you are in the flow:
 
 ## Release-image path
 
-Tagged releases now publish both images to GHCR through GitHub Actions:
+Tagged releases now publish both images to GHCR through GitHub Actions and create the matching GitHub release automatically:
 
 - extension image: `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:<tag>`
 - runtime image: `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:<tag>`
@@ -80,7 +80,7 @@ To rehearse the same maintainer flow without touching GitHub or Docker Desktop s
 make ship-release RELEASE_TAG=vX.Y.Z DRY_RUN=1
 ```
 
-If you want to run the same steps one by one, or the tag exists but the GitHub release is still missing:
+If you need to repair a tag after the publish workflow only partially completed:
 
 ```bash
 make verify-release-bundle RELEASE_TAG=vX.Y.Z
