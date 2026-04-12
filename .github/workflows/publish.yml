@@ -70,7 +70,6 @@ jobs:
           tags: |
             type=raw,value=${{ env.RELEASE_TAG }}
             type=sha,prefix=sha-
-            type=raw,value=latest
 
       - name: Build and push runtime image
         uses: docker/build-push-action@v6
@@ -90,7 +89,6 @@ jobs:
           tags: |
             type=raw,value=${{ env.RELEASE_TAG }}
             type=sha,prefix=sha-
-            type=raw,value=latest
 
       - name: Build and push extension image
         uses: docker/build-push-action@v6
