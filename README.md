@@ -33,8 +33,8 @@ Use these commands depending on where you are in the flow:
 - `make verify-release-install RELEASE_TAG=vX.Y.Z`: maintainer check that Docker Desktop can install and uninstall the GHCR extension image
 - `make publish-release RELEASE_TAG=vX.Y.Z`: maintainer fallback if a tag exists but the GitHub release needs to be repaired manually
 - `make ship-release RELEASE_TAG=vX.Y.Z`: maintainer repair path that publishes the GitHub release if needed, verifies the GHCR tags, then validates Docker Desktop install/uninstall
-- `make install-release RELEASE_TAG=vX.Y.Z`: install a tagged GHCR-published extension image
-- `make update-release RELEASE_TAG=vX.Y.Z`: update an installed GHCR-published extension image
+- `make install-release RELEASE_TAG=vX.Y.Z`: install a tagged GHCR-published extension image after an anonymous GHCR preflight
+- `make update-release RELEASE_TAG=vX.Y.Z`: update an installed GHCR-published extension image after the same preflight
 - `make uninstall`: remove the extension from Docker Desktop
 - `make capture-readme-screenshot`: rebuild the demo UI and refresh the checked-in README screenshot
 
@@ -102,6 +102,12 @@ When a tagged release exists, the end-user install path is:
 
 ```bash
 docker extension install ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:vX.Y.Z
+```
+
+The repo-level shortcut checks the published tag first so a missing GHCR release fails early with a clear next step:
+
+```bash
+make install-release RELEASE_TAG=vX.Y.Z
 ```
 
 To update an existing release install:
