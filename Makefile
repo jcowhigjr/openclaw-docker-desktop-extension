@@ -27,10 +27,12 @@ update-extension: build-runtime build-extension
 
 install-release:
 	@test -n "$(RELEASE_TAG)" || (echo "RELEASE_TAG is required, for example: make install-release RELEASE_TAG=v0.1.0" && exit 1)
+	@RELEASE_TAG="$(RELEASE_TAG)" GHCR_OWNER="$(GHCR_OWNER)" IMAGE_NAME="openclaw-docker-desktop-extension" ./scripts/verify-release-image.sh
 	docker extension install -f $(RELEASE_EXTENSION_IMAGE)
 
 update-release:
 	@test -n "$(RELEASE_TAG)" || (echo "RELEASE_TAG is required, for example: make update-release RELEASE_TAG=v0.1.0" && exit 1)
+	@RELEASE_TAG="$(RELEASE_TAG)" GHCR_OWNER="$(GHCR_OWNER)" IMAGE_NAME="openclaw-docker-desktop-extension" ./scripts/verify-release-image.sh
 	docker extension update $(RELEASE_EXTENSION_IMAGE)
 
 verify-release-tag:
