@@ -66,6 +66,11 @@ type DemoState = {
   runtimeUpdate: RuntimeUpdateCheckResult | null;
 };
 
+function isMissingLocalImageError(error: unknown): boolean {
+  const text = error instanceof Error ? error.message : String(error);
+  return /No such image|not found|No such object/i.test(text);
+}
+
 const STORAGE_KEY = 'openclaw-docker-extension-config';
 const CONTAINER_NAME = 'openclaw-docker-extension-service';
 const VOLUME_NAME = 'openclaw-docker-extension-home';
@@ -418,12 +423,21 @@ export function App() {
 
       setCheckingUpdate(true);
       try {
-        const localInspect = (await ddClient.docker.cli.exec('image', [
-          'inspect',
-          image,
-        ])) as CliExecResult;
-        appendCliResult(`docker image inspect ${image}`, localInspect);
-        const localImage = parseLocalImageInspect(asText(localInspect.stdout));
+        let localImage: ReturnType<typeof parseLocalImageInspect> = { digests: [] };
+        try {
+          const localInspect = (await ddClient.docker.cli.exec('image', [
+            'inspect',
+            image,
+          ])) as CliExecResult;
+          appendCliResult(`docker image inspect ${image}`, localInspect);
+          localImage = parseLocalImageInspect(asText(localInspect.stdout));
+        } catch (err) {
+          if (!isMissingLocalImageError(err)) {
+            throw err;
+          }
+          appendDebug(`runtime image ${image} is not cached locally yet`);
+        }
+
         const remoteDigest = await inspectRemoteDigest(image);
 
         if (!remoteDigest) {
@@ -584,20 +598,29 @@ export function App() {
     setError('');
     setMessage('');
     setPhase('starting');
-    setStatusText('Checking OpenClaw runtime...');
+    setStatusText('Creating OpenClaw container...');
 
     try {
-      const updateResult = await checkForRuntimeUpdate({ force: true });
+      let updateResult: RuntimeUpdateCheckResult | null = null;
+      if (config.updatePolicy === 'auto-before-launch') {
+        setStatusText('Checking OpenClaw runtime...');
+        updateResult = await checkForRuntimeUpdate({ force: true });
+      } else if (isRuntimeImageUpdateable(config.image)) {
+        void checkForRuntimeUpdate({ force: true });
+      }
+
       if (shouldAutoApplyRuntimeUpdate(config.updatePolicy, updateResult)) {
         appendDebug('auto-before-launch policy found a newer runtime image');
         await applyRuntimeUpdateInternal('auto-before-launch');
       } else {
-        setStatusText('Creating OpenClaw container...');
         await ensureContainerRunning(config);
         setMessage(
           'OpenClaw setup started. The first launch can take a minute while socat is installed.',
         );
         await runAndPoll();
+        if (isRuntimeImageUpdateable(config.image)) {
+          void checkForRuntimeUpdate({ force: true });
+        }
       }
     } catch (err) {
       setPhase('error');
