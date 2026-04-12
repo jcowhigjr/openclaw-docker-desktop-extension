@@ -55,6 +55,13 @@ The publish workflow also promotes the runtime image onto a floating channel tag
 
 That gives the extension a predictable GHCR runtime channel for update checks without changing the pinned version-tag install path.
 
+When the runtime image points at a published GHCR channel tag such as `stable` or `beta`, the extension can check for a newer runtime image on open and again before launch. The current MVP update policies are:
+
+- `Check only`: show an update banner and let the user trigger the update manually
+- `Auto-update before launch`: pull the newer runtime image and recreate the service container before `Start`
+
+The update flow preserves the named Docker volume and saved settings. A "what's new" surface is still out of scope for MVP.
+
 Maintainer preflight for a newly published tag:
 
 ```bash
@@ -168,6 +175,7 @@ Current constraints:
 - Persists OpenClaw state in a named Docker volume
 - Starts the service container with `--cap-drop=ALL` and `--security-opt no-new-privileges`
 - Exposes Docker Desktop UI controls for start, stop, restart, and open-in-browser actions
+- Can check published GHCR channel images for runtime updates and optionally apply them before launch
 - Surfaces runtime diagnostics in a debug panel inside the extension
 
 ## Default runtime
@@ -206,6 +214,8 @@ This means the credential survives container restarts and rebuilds, but is remov
 - Gateway token autofill is not fully reliable yet. If the token field is blank in the extension UI, open the Control UI and paste the token manually.
 - The runtime can spend a short warm-up period in `starting` even after the host health check is already passing.
 - Anthropic provider auth currently supports the local `.env` persistence path first. It does not yet manage richer OpenClaw auth-profile workflows in the UI.
+- The update banner only applies to published GHCR channel images. Pinned release tags stay fixed, and local dev images are not auto-updated by the extension.
+- The extension does not yet show release notes or "what's new" content after an update.
 
 ## Roadmap path
 
