@@ -61,6 +61,7 @@ const RUNTIME_PLATFORM = 'linux/arm64';
 const SUPPORTED_DOCKER_ARCH = 'arm64';
 const LEGACY_RUNTIME_IMAGE = 'ghcr.io/openclaw/openclaw:latest';
 const DEFAULT_RUNTIME_IMAGE = import.meta.env.VITE_DEFAULT_RUNTIME_IMAGE || 'openclaw-docker-extension-runtime:dev';
+const RUNTIME_SECURITY_ARGS = ['--cap-drop', 'ALL', '--security-opt', 'no-new-privileges'];
 const DEFAULT_CONFIG: ExtensionConfig = {
   image: DEFAULT_RUNTIME_IMAGE,
   port: 18789,
@@ -328,6 +329,7 @@ export function App() {
           CONTAINER_NAME,
           '--platform',
           RUNTIME_PLATFORM,
+          ...RUNTIME_SECURITY_ARGS,
           '-v',
           `${VOLUME_NAME}:/home/node`,
           '-p',
