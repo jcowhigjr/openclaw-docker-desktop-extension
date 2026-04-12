@@ -2,6 +2,11 @@ name: Publish
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing v* tag to publish or repair
+        required: true
+        type: string
   push:
     tags:
       - 'v*'
@@ -18,8 +23,31 @@ jobs:
       contents: write
       packages: write
     steps:
+      - name: Resolve release tag
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            release_tag="${INPUT_RELEASE_TAG}"
+          else
+            release_tag="${GITHUB_REF_NAME}"
+          fi
+
+          case "${release_tag}" in
+            v*)
+              ;;
+            *)
+              echo "release_tag must start with v, got: ${release_tag}" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "RELEASE_TAG=${release_tag}" >> "${GITHUB_ENV}"
+
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -40,9 +68,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.RUNTIME_IMAGE_NAME }}
           tags: |
-            type=ref,event=tag
+            type=raw,value=${{ env.RELEASE_TAG }}
             type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
 
       - name: Build and push runtime image
         uses: docker/build-push-action@v6
@@ -60,9 +87,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.EXTENSION_IMAGE_NAME }}
           tags: |
-            type=ref,event=tag
+            type=raw,value=${{ env.RELEASE_TAG }}
             type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
 
       - name: Build and push extension image
         uses: docker/build-push-action@v6
@@ -77,7 +103,7 @@ jobs:
             VITE_DEFAULT_RUNTIME_IMAGE=${{ env.REGISTRY }}/${{ env.RUNTIME_IMAGE_NAME }}:${{ steps.runtime-meta.outputs.version }}
 
       - name: Create or update GitHub release for tag
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           generate_release_notes: true
