@@ -48,6 +48,13 @@ Tagged releases now publish both images to GHCR through GitHub Actions and creat
 
 Release builds of the extension UI default the runtime image field to the matching GHCR runtime tag. Local development still defaults to `openclaw-docker-extension-runtime:dev`.
 
+The publish workflow also promotes the runtime image onto a floating channel tag on real tag pushes:
+
+- `stable` for normal release tags such as `v0.2.0`
+- `beta` for prerelease tags such as `v0.2.0-rc.1`
+
+That gives the extension a predictable GHCR runtime channel for update checks without changing the pinned version-tag install path.
+
 Maintainer preflight for a newly published tag:
 
 ```bash
@@ -90,7 +97,7 @@ make verify-release-tag RELEASE_TAG=vX.Y.Z
 
 If the GitHub Actions publish job needs to be re-run for an existing tag, use the `Publish` workflow's manual dispatch and pass `release_tag=vX.Y.Z` so it rebuilds the matching GHCR artifacts instead of publishing the default branch state.
 
-That repair path only refreshes the requested versioned tags. It does not move a floating `latest` tag to an older release.
+That repair path only refreshes the requested versioned tags. It does not move the floating `stable` or `beta` runtime channel tags to an older release.
 
 Before treating the release image as verified for end users, run the Docker Desktop install/uninstall validation:
 
