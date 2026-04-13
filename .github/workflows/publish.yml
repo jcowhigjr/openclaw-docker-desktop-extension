@@ -23,7 +23,8 @@ jobs:
       contents: write
       packages: write
     steps:
-      - name: Resolve release tag
+      - name: Resolve release metadata
+        id: release-context
         env:
           INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
@@ -43,6 +44,7 @@ jobs:
           esac
 
           echo "RELEASE_TAG=${release_tag}" >> "${GITHUB_ENV}"
+          ./scripts/release-channel.sh "${release_tag}" "${{ github.event_name }}" >> "${GITHUB_OUTPUT}"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -69,6 +71,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.RUNTIME_IMAGE_NAME }}
           tags: |
             type=raw,value=${{ env.RELEASE_TAG }}
+            type=raw,value=${{ steps.release-context.outputs.channel_tag }},enable=${{ steps.release-context.outputs.has_channel_tag }}
             type=sha,prefix=sha-
 
       - name: Build and push runtime image
