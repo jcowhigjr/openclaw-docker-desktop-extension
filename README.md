@@ -173,7 +173,7 @@ Current constraints:
 - Starts and manages an OpenClaw service container from Docker Desktop
 - Uses a bundled `socat` bridge so the Control UI is reachable on macOS
 - Persists OpenClaw state in a named Docker volume
-- Starts the service container with `--cap-drop=ALL` and `--security-opt no-new-privileges`
+- Starts the service container with a read-only root filesystem, `tmpfs` at `/tmp`, `--cap-drop=ALL`, and `--security-opt no-new-privileges`
 - Exposes Docker Desktop UI controls for start, stop, restart, and open-in-browser actions
 - Can check published GHCR channel images for runtime updates and optionally apply them before launch
 - Surfaces runtime diagnostics in a debug panel inside the extension
@@ -202,10 +202,10 @@ This means the credential survives container restarts and rebuilds, but is remov
 ## Security and isolation notes
 
 - The wrapper publishes OpenClaw on `127.0.0.1` only.
-- The service container drops all Linux capabilities and sets `no-new-privileges` when the extension starts it.
+- The service container uses a read-only root filesystem, mounts `/tmp` as `tmpfs`, drops all Linux capabilities, and sets `no-new-privileges` when the extension starts it.
 - OpenClaw starts through the upstream image entrypoint and runs as the `node` user, while the wrapper image adds a small `socat` bridge so Docker Desktop can forward the service on macOS.
 - State, including the write-only Anthropic key saved by the extension UI, is stored in the named Docker volume `openclaw-docker-extension-home`.
-- The runtime is still not a hardened sandbox yet: the bridge exists to solve localhost reachability, the service retains writable state in its volume, and this repo has not finished a read-only-filesystem pass.
+- The runtime is still not a hardened sandbox yet: the bridge exists to solve localhost reachability and the service retains writable state in its volume.
 - This is a more isolated local packaging path, not a perfect security boundary.
 - This project is not an official Docker or OpenClaw extension.
 
