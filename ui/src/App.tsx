@@ -88,6 +88,8 @@ const RUNTIME_SECURITY_ARGS = [
   'ALL',
   '--security-opt',
   'no-new-privileges',
+  '--ulimit',
+  'nofile=1024:1024',
 ];
 const DEFAULT_CONFIG: ExtensionConfig = {
   image: DEFAULT_RUNTIME_IMAGE,
