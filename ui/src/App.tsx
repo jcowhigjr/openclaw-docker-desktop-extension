@@ -80,7 +80,17 @@ const SUPPORTED_DOCKER_ARCH = 'arm64';
 const LEGACY_RUNTIME_IMAGE = 'ghcr.io/openclaw/openclaw:latest';
 const DEFAULT_RUNTIME_IMAGE =
   import.meta.env.VITE_DEFAULT_RUNTIME_IMAGE || 'openclaw-docker-extension-runtime:dev';
-const RUNTIME_SECURITY_ARGS = ['--cap-drop', 'ALL', '--security-opt', 'no-new-privileges'];
+const RUNTIME_SECURITY_ARGS = [
+  '--read-only',
+  '--tmpfs',
+  '/tmp:rw,noexec,nosuid,size=64m',
+  '--cap-drop',
+  'ALL',
+  '--security-opt',
+  'no-new-privileges',
+  '--ulimit',
+  'nofile=1024:1024',
+];
 const DEFAULT_CONFIG: ExtensionConfig = {
   image: DEFAULT_RUNTIME_IMAGE,
   port: 18789,

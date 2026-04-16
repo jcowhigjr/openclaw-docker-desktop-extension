@@ -9,4 +9,6 @@ RUN apt-get update \
 COPY openclaw-bridge.sh /usr/local/bin/openclaw-bridge.sh
 RUN chmod 755 /usr/local/bin/openclaw-bridge.sh
 
+USER node
+
 ENTRYPOINT ["sh", "/usr/local/bin/openclaw-bridge.sh"]
