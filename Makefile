@@ -38,6 +38,8 @@ update-release:
 verify-release-tag:
 	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" ./scripts/verify-release-tag.sh
 
+test-release-channel: ; @./scripts/test-release-channel.sh
+
 verify-release-bundle:
 	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" GHCR_OWNER="$(GHCR_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-bundle.sh
 
@@ -59,4 +61,4 @@ capture-readme-screenshot:
 	npx --yes playwright screenshot --device="Desktop Chrome" --color-scheme=light --wait-for-selector="text=OpenClaw Extension" --wait-for-timeout=1000 "$(SCREENSHOT_URL)" "$(SCREENSHOT_PATH)"
 	kill $$(cat /tmp/openclaw-vite-preview.pid) && rm -f /tmp/openclaw-vite-preview.pid
 
-.PHONY: build-runtime build-extension install-dev update-extension install-release update-release verify-release-tag verify-release-bundle verify-release-install publish-release ship-release uninstall capture-readme-screenshot
+.PHONY: build-runtime build-extension install-dev update-extension install-release update-release verify-release-tag test-release-channel verify-release-bundle verify-release-install publish-release ship-release uninstall capture-readme-screenshot
