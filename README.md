@@ -68,6 +68,12 @@ Maintainer preflight for a newly published tag:
 make verify-release-tag RELEASE_TAG=vX.Y.Z
 ```
 
+That maintainer check uses `gh` for release metadata plus package visibility, so the local `gh` token needs both `repo` and `read:packages` scopes. If the verifier says a scope is missing, run:
+
+```bash
+gh auth refresh -s repo -s read:packages
+```
+
 Local maintainer check before publishing a new tag:
 
 ```bash

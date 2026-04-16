@@ -29,13 +29,29 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! gh auth status >/dev/null 2>&1; then
+auth_status="$(gh auth status 2>&1 || true)"
+
+if ! printf '%s\n' "$auth_status" | grep -F "Active account: true" >/dev/null 2>&1; then
   echo "gh auth status failed. Log in with 'gh auth login' before verifying a release tag." >&2
   exit 1
 fi
 
+require_auth_scope() {
+  required_scope="$1"
+
+  if printf '%s\n' "$auth_status" | grep -F "'${required_scope}'" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "gh token is missing the required scope: ${required_scope}" >&2
+  echo "Next step: run 'gh auth refresh -s ${required_scope}' and rerun make verify-release-tag RELEASE_TAG=${release_tag}." >&2
+  exit 1
+}
+
 resolve_package_owner_scope() {
   package_name="$1"
+
+  require_auth_scope "read:packages"
 
   for owner_scope in users orgs; do
     if gh api "/${owner_scope}/${ghcr_owner}/packages/container/${package_name}" >/dev/null 2>&1; then
@@ -48,6 +64,8 @@ resolve_package_owner_scope() {
 }
 
 require_release() {
+  require_auth_scope "repo"
+
   if gh api "/repos/${repo_owner}/${repo_name}/releases/tags/${release_tag}" >/dev/null 2>&1; then
     echo "release exists: ${release_tag}"
     return 0
