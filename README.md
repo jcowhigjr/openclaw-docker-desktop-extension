@@ -35,6 +35,7 @@ Use these commands depending on where you are in the flow:
 - `make ship-release RELEASE_TAG=vX.Y.Z`: maintainer repair path that publishes the GitHub release if needed, verifies the GHCR tags, then validates Docker Desktop install/uninstall
 - `make install-release RELEASE_TAG=vX.Y.Z`: install a tagged GHCR-published extension image after an anonymous GHCR preflight
 - `make update-release RELEASE_TAG=vX.Y.Z`: update an installed GHCR-published extension image after the same preflight
+- add `DRY_RUN=1` to `install-release`, `update-release`, or `ship-release` to rehearse the documented release path without mutating Docker Desktop
 - `make uninstall`: remove the extension from Docker Desktop
 - `make capture-readme-screenshot`: rebuild the demo UI and refresh the checked-in README screenshot
 
@@ -130,10 +131,23 @@ The repo-level shortcut checks the published tag first so a missing GHCR release
 make install-release RELEASE_TAG=vX.Y.Z
 ```
 
+To rehearse the same install wrapper without changing Docker Desktop state:
+
+```bash
+make install-release RELEASE_TAG=vX.Y.Z DRY_RUN=1
+```
+
 To update an existing release install:
 
 ```bash
 docker extension update ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:vX.Y.Z
+```
+
+Or use the repo shortcut with the same preflight and optional dry-run:
+
+```bash
+make update-release RELEASE_TAG=vX.Y.Z
+make update-release RELEASE_TAG=vX.Y.Z DRY_RUN=1
 ```
 
 If there is no tagged release yet, use the local build path in the quick start instead.
