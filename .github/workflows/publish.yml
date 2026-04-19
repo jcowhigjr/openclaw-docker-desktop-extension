@@ -123,6 +123,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.EXTENSION_IMAGE_NAME }}
           tags: |
             type=raw,value=${{ env.RELEASE_TAG }}
+            type=raw,value=${{ steps.release-context.outputs.channel_tag }},enable=${{ steps.release-context.outputs.has_channel_tag }}
             type=sha,prefix=sha-
 
       - name: Build and push extension image

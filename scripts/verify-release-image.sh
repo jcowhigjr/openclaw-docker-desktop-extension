@@ -2,14 +2,14 @@
 
 set -eu
 
-release_tag="${1:-${RELEASE_TAG:-}}"
+image_tag="${1:-${IMAGE_TAG:-${RELEASE_TAG:-}}}"
 ghcr_owner="${GHCR_OWNER:-jcowhigjr}"
 image_name="${IMAGE_NAME:-openclaw-docker-desktop-extension}"
-image_ref="ghcr.io/${ghcr_owner}/${image_name}:${release_tag}"
+image_ref="ghcr.io/${ghcr_owner}/${image_name}:${image_tag}"
 dry_run="${DRY_RUN:-0}"
 
-if [ -z "$release_tag" ]; then
-  echo "RELEASE_TAG is required, for example: make install-release RELEASE_TAG=v0.1.0" >&2
+if [ -z "$image_tag" ]; then
+  echo "IMAGE_TAG or RELEASE_TAG is required, for example: make install-release RELEASE_TAG=v0.1.0" >&2
   exit 1
 fi
 
@@ -37,6 +37,6 @@ Published extension image is not available yet:
 
 Next step:
   - If you are testing before the first public tag, use 'make install-dev'.
-  - If this tag should exist, run 'make verify-release-tag RELEASE_TAG=${release_tag}' as a maintainer.
+  - If this tag should exist, run 'make verify-release-tag RELEASE_TAG=${image_tag}' as a maintainer.
 EOF
 exit 1

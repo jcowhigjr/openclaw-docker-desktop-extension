@@ -5,9 +5,11 @@ RUNTIME_TAG ?= dev
 DEFAULT_RUNTIME_IMAGE ?= $(RUNTIME_IMAGE):$(RUNTIME_TAG)
 GHCR_OWNER ?= jcowhigjr
 RELEASE_TAG ?=
+RELEASE_CHANNEL ?= stable
 REPO_OWNER ?= jcowhigjr
 REPO_NAME ?= openclaw-docker-desktop-extension
 RELEASE_EXTENSION_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-desktop-extension:$(RELEASE_TAG)
+CHANNEL_EXTENSION_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-desktop-extension:$(RELEASE_CHANNEL)
 SCREENSHOT_URL ?= http://127.0.0.1:4173/?demo=1
 SCREENSHOT_PATH ?= docs/assets/openclaw-extension-dashboard.png
 
@@ -28,6 +30,10 @@ update-extension: build-runtime build-extension
 install-release: ; @test -n "$(RELEASE_TAG)" || (echo "RELEASE_TAG is required, for example: make install-release RELEASE_TAG=v0.1.0" && exit 1); RELEASE_TAG="$(RELEASE_TAG)" GHCR_OWNER="$(GHCR_OWNER)" IMAGE_NAME="openclaw-docker-desktop-extension" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-image.sh; if [ "$(DRY_RUN)" = "1" ]; then echo "dry run: docker extension install -f $(RELEASE_EXTENSION_IMAGE)"; else docker extension install -f $(RELEASE_EXTENSION_IMAGE); fi
 
 update-release: ; @test -n "$(RELEASE_TAG)" || (echo "RELEASE_TAG is required, for example: make update-release RELEASE_TAG=v0.1.0" && exit 1); RELEASE_TAG="$(RELEASE_TAG)" GHCR_OWNER="$(GHCR_OWNER)" IMAGE_NAME="openclaw-docker-desktop-extension" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-image.sh; if [ "$(DRY_RUN)" = "1" ]; then echo "dry run: docker extension update $(RELEASE_EXTENSION_IMAGE)"; else docker extension update $(RELEASE_EXTENSION_IMAGE); fi
+
+install-channel: ; @test -n "$(RELEASE_CHANNEL)" || (echo "RELEASE_CHANNEL is required, for example: make install-channel RELEASE_CHANNEL=stable" && exit 1); IMAGE_TAG="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" IMAGE_NAME="openclaw-docker-desktop-extension" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-image.sh; if [ "$(DRY_RUN)" = "1" ]; then echo "dry run: docker extension install -f $(CHANNEL_EXTENSION_IMAGE)"; else docker extension install -f $(CHANNEL_EXTENSION_IMAGE); fi
+
+update-channel: ; @test -n "$(RELEASE_CHANNEL)" || (echo "RELEASE_CHANNEL is required, for example: make update-channel RELEASE_CHANNEL=stable" && exit 1); IMAGE_TAG="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" IMAGE_NAME="openclaw-docker-desktop-extension" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-image.sh; if [ "$(DRY_RUN)" = "1" ]; then echo "dry run: docker extension update $(CHANNEL_EXTENSION_IMAGE)"; else docker extension update $(CHANNEL_EXTENSION_IMAGE); fi
 
 verify-release-tag:
 	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" ./scripts/verify-release-tag.sh
@@ -57,4 +63,4 @@ capture-readme-screenshot:
 	npx --yes playwright screenshot --device="Desktop Chrome" --color-scheme=light --wait-for-selector="text=OpenClaw Extension" --wait-for-timeout=1000 "$(SCREENSHOT_URL)" "$(SCREENSHOT_PATH)"
 	kill $$(cat /tmp/openclaw-vite-preview.pid) && rm -f /tmp/openclaw-vite-preview.pid
 
-.PHONY: build-runtime build-extension install-dev update-extension install-release update-release verify-release-tag test-release-channel test-release-tag-dry-run test-release-install-dry-run verify-release-bundle verify-release-install publish-release ship-release uninstall capture-readme-screenshot
+.PHONY: build-runtime build-extension install-dev update-extension install-release update-release install-channel update-channel verify-release-tag test-release-channel test-release-tag-dry-run test-release-install-dry-run verify-release-bundle verify-release-install publish-release ship-release uninstall capture-readme-screenshot
