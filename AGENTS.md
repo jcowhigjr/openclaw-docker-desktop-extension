@@ -22,9 +22,9 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 
 - Treat issue [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12) as the source of truth for roadmap and decision gates.
 - Issue [#7](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/7) is already closed; treat onboarding work as completed.
-- Active priority order:
+- Issue [#5](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/5) is already closed; treat architecture handling as completed for MVP.
+- Active MVP priority:
   1. [#3](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/3) pre-built GHCR images
-  2. [#5](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/5) architecture support and graceful failure
 - Anything beyond those open MVP issues is unknown until issue [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12) says otherwise.
 - Do not pick up "nice-to-have" work ahead of MVP issues unless explicitly requested.
 
