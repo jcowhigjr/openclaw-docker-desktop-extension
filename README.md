@@ -35,6 +35,8 @@ Use these commands depending on where you are in the flow:
 - `make ship-release RELEASE_TAG=vX.Y.Z`: maintainer repair path that publishes the GitHub release if needed, verifies the GHCR tags, then validates Docker Desktop install/uninstall
 - `make install-release RELEASE_TAG=vX.Y.Z`: install a tagged GHCR-published extension image after an anonymous GHCR preflight
 - `make update-release RELEASE_TAG=vX.Y.Z`: update an installed GHCR-published extension image after the same preflight
+- `make install-channel RELEASE_CHANNEL=stable`: install the current published GHCR channel image with the same preflight
+- `make update-channel RELEASE_CHANNEL=stable`: update an installed GHCR channel image with the same preflight
 - add `DRY_RUN=1` to `install-release`, `update-release`, or `ship-release` to rehearse the documented release path without mutating Docker Desktop
 - `make uninstall`: remove the extension from Docker Desktop
 - `make capture-readme-screenshot`: rebuild the demo UI and refresh the checked-in README screenshot
@@ -49,12 +51,12 @@ Tagged releases now publish both images to GHCR through GitHub Actions and creat
 
 Release builds of the extension UI default the runtime image field to the matching GHCR runtime tag. Local development still defaults to `openclaw-docker-extension-runtime:dev`.
 
-The publish workflow also promotes the runtime image onto a floating channel tag on real tag pushes:
+The publish workflow also promotes both images onto floating channel tags on real tag pushes:
 
 - `stable` for normal release tags such as `v0.2.0`
 - `beta` for prerelease tags such as `v0.2.0-rc.1`
 
-That gives the extension a predictable GHCR runtime channel for update checks without changing the pinned version-tag install path.
+That gives end users a one-line extension install path and gives the extension a predictable GHCR runtime channel for update checks without changing the pinned version-tag install path.
 
 When the runtime image points at a published GHCR channel tag such as `stable` or `beta`, the extension can check for a newer runtime image on open and again before launch. The current MVP update policies are:
 
@@ -125,6 +127,19 @@ The repo-level shortcut checks the published tag first so a missing GHCR release
 make install-release RELEASE_TAG=vX.Y.Z
 ```
 
+If you want the latest published channel instead of a pinned tag, use the floating GHCR channel image:
+
+```bash
+docker extension install ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable
+```
+
+Or use the repo shortcut with the same preflight and optional dry-run:
+
+```bash
+make install-channel RELEASE_CHANNEL=stable
+make install-channel RELEASE_CHANNEL=stable DRY_RUN=1
+```
+
 To rehearse the same install wrapper without changing Docker Desktop state:
 
 ```bash
@@ -142,6 +157,13 @@ Or use the repo shortcut with the same preflight and optional dry-run:
 ```bash
 make update-release RELEASE_TAG=vX.Y.Z
 make update-release RELEASE_TAG=vX.Y.Z DRY_RUN=1
+```
+
+For the floating channel install path:
+
+```bash
+make update-channel RELEASE_CHANNEL=stable
+make update-channel RELEASE_CHANNEL=stable DRY_RUN=1
 ```
 
 If there is no tagged release yet, use the local build path in the quick start instead.
