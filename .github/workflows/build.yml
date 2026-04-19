@@ -37,6 +37,9 @@ jobs:
       - name: Verify release channel mapping
         run: make test-release-channel
 
+      - name: Verify release tag dry-run
+        run: make test-release-tag-dry-run
+
       - name: Verify release install dry-run wrappers
         run: make test-release-install-dry-run
 
