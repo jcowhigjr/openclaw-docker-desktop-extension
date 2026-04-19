@@ -35,6 +35,8 @@ Use these commands depending on where you are in the flow:
 - `make ship-release RELEASE_TAG=vX.Y.Z`: maintainer repair path that publishes the GitHub release if needed, verifies the GHCR tags, then validates Docker Desktop install/uninstall
 - `make install-release RELEASE_TAG=vX.Y.Z`: install a tagged GHCR-published extension image after an anonymous GHCR preflight
 - `make update-release RELEASE_TAG=vX.Y.Z`: update an installed GHCR-published extension image after the same preflight
+- `make verify-release-channel RELEASE_CHANNEL=stable`: maintainer check that the floating channel tags are publicly readable
+- `make verify-channel-install RELEASE_CHANNEL=stable`: maintainer check that Docker Desktop can install and uninstall the floating channel image
 - `make install-channel RELEASE_CHANNEL=stable`: install the current published GHCR channel image with the same preflight
 - `make update-channel RELEASE_CHANNEL=stable`: update an installed GHCR channel image with the same preflight
 - add `DRY_RUN=1` to `install-release`, `update-release`, or `ship-release` to rehearse the documented release path without mutating Docker Desktop
@@ -140,6 +142,13 @@ make install-channel RELEASE_CHANNEL=stable
 make install-channel RELEASE_CHANNEL=stable DRY_RUN=1
 ```
 
+If you are maintaining the floating channel path, verify the anonymous channel tags first:
+
+```bash
+make verify-release-channel RELEASE_CHANNEL=stable
+make verify-release-channel RELEASE_CHANNEL=stable DRY_RUN=1
+```
+
 To rehearse the same install wrapper without changing Docker Desktop state:
 
 ```bash
@@ -164,6 +173,13 @@ For the floating channel install path:
 ```bash
 make update-channel RELEASE_CHANNEL=stable
 make update-channel RELEASE_CHANNEL=stable DRY_RUN=1
+```
+
+To validate the Docker Desktop install and uninstall path for the current published channel image:
+
+```bash
+make verify-channel-install RELEASE_CHANNEL=stable
+make verify-channel-install RELEASE_CHANNEL=stable DRY_RUN=1
 ```
 
 If there is no tagged release yet, use the local build path in the quick start instead.

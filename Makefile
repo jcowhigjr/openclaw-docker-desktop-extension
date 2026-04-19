@@ -38,14 +38,19 @@ update-channel: ; @test -n "$(RELEASE_CHANNEL)" || (echo "RELEASE_CHANNEL is req
 verify-release-tag:
 	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" ./scripts/verify-release-tag.sh
 
+verify-release-channel: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" ./scripts/verify-release-channel.sh
+
 test-release-channel: ; @./scripts/test-release-channel.sh
 test-release-tag-dry-run: ; @./scripts/test-release-tag-dry-run.sh
 test-release-install-dry-run: ; @./scripts/test-release-install-dry-run.sh
+test-release-channel-dry-run: ; @./scripts/test-release-channel-dry-run.sh
 
 verify-release-bundle:
 	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" GHCR_OWNER="$(GHCR_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-bundle.sh
 
 verify-release-install: ; @RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-install.sh
+
+verify-channel-install: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-channel-install.sh
 
 publish-release:
 	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" DRY_RUN="$(DRY_RUN)" ./scripts/publish-release.sh
@@ -63,4 +68,4 @@ capture-readme-screenshot:
 	npx --yes playwright screenshot --device="Desktop Chrome" --color-scheme=light --wait-for-selector="text=OpenClaw Extension" --wait-for-timeout=1000 "$(SCREENSHOT_URL)" "$(SCREENSHOT_PATH)"
 	kill $$(cat /tmp/openclaw-vite-preview.pid) && rm -f /tmp/openclaw-vite-preview.pid
 
-.PHONY: build-runtime build-extension install-dev update-extension install-release update-release install-channel update-channel verify-release-tag test-release-channel test-release-tag-dry-run test-release-install-dry-run verify-release-bundle verify-release-install publish-release ship-release uninstall capture-readme-screenshot
+.PHONY: build-runtime build-extension install-dev update-extension install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-release-tag-dry-run test-release-install-dry-run test-release-channel-dry-run verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot
