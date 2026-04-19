@@ -44,7 +44,27 @@ jobs:
           esac
 
           echo "RELEASE_TAG=${release_tag}" >> "${GITHUB_ENV}"
-          ./scripts/release-channel.sh "${release_tag}" "${{ github.event_name }}" >> "${GITHUB_OUTPUT}"
+
+          channel_tag=""
+          has_channel_tag=false
+
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            case "${release_tag}" in
+              *-*)
+                channel_tag="beta"
+                ;;
+              *)
+                channel_tag="stable"
+                ;;
+            esac
+            has_channel_tag=true
+          fi
+
+          {
+            echo "release_tag=${release_tag}"
+            echo "channel_tag=${channel_tag}"
+            echo "has_channel_tag=${has_channel_tag}"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Checkout
         uses: actions/checkout@v4
