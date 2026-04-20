@@ -28,6 +28,9 @@ jobs:
       contents: write
       packages: write
     steps:
+      - name: Checkout workflow revision
+        uses: actions/checkout@v4
+
       - name: Resolve release metadata
         id: release-context
         env:
@@ -52,7 +55,7 @@ jobs:
           echo "RELEASE_TAG=${release_tag}" >> "${GITHUB_ENV}"
           ./scripts/release-channel.sh "${release_tag}" "${{ github.event_name }}" "${INPUT_PROMOTE_CHANNEL}" >> "${GITHUB_OUTPUT}"
 
-      - name: Checkout
+      - name: Checkout release tag
         uses: actions/checkout@v4
         with:
           ref: refs/tags/${{ env.RELEASE_TAG }}
