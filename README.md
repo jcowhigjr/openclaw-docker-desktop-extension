@@ -109,7 +109,7 @@ make verify-release-tag RELEASE_TAG=vX.Y.Z
 
 If the GitHub Actions publish job needs to be re-run for an existing tag, use the `Publish` workflow's manual dispatch and pass `release_tag=vX.Y.Z` so it rebuilds the matching GHCR artifacts instead of publishing the default branch state.
 
-That repair path only refreshes the requested versioned tags. It does not move the floating `stable` or `beta` runtime channel tags to an older release.
+By default that repair path only refreshes the requested versioned tags. Leave `promote_channel=false` when you do not want to move the floating `stable` or `beta` tags. Set `promote_channel=true` only when you are intentionally repairing the current channel pointer for that release.
 
 Before treating the release image as verified for end users, run the Docker Desktop install/uninstall validation:
 
