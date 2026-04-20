@@ -43,5 +43,8 @@ jobs:
       - name: Verify release install dry-run wrappers
         run: make test-release-install-dry-run
 
+      - name: Verify release channel dry-run helpers
+        run: make test-release-channel-dry-run
+
       - name: Verify release bundle wiring
         run: make verify-release-bundle RELEASE_TAG=v0.0.0-ci
