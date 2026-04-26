@@ -3,6 +3,8 @@ TAG ?= dev
 RUNTIME_IMAGE ?= openclaw-docker-extension-runtime
 RUNTIME_TAG ?= dev
 DEFAULT_RUNTIME_IMAGE ?= $(RUNTIME_IMAGE):$(RUNTIME_TAG)
+REGISTRY_IMAGE ?= ghcr.io/openclaw/openclaw-docker-extension-runtime
+REGISTRY_TAG ?= latest
 GHCR_OWNER ?= jcowhigjr
 RELEASE_TAG ?=
 RELEASE_CHANNEL ?= stable
@@ -26,6 +28,14 @@ install-dev: build-runtime build-extension
 
 update-extension: build-runtime build-extension
 	docker extension update $(IMAGE):$(TAG)
+
+publish-runtime:
+	docker buildx build \
+	  --platform linux/arm64,linux/amd64 \
+	  --tag $(REGISTRY_IMAGE):$(REGISTRY_TAG) \
+	  --push \
+	  -f runtime/Dockerfile \
+	  runtime
 
 install-release: ; @test -n "$(RELEASE_TAG)" || (echo "RELEASE_TAG is required, for example: make install-release RELEASE_TAG=v0.1.0" && exit 1); RELEASE_TAG="$(RELEASE_TAG)" GHCR_OWNER="$(GHCR_OWNER)" IMAGE_NAME="openclaw-docker-desktop-extension" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-image.sh; if [ "$(DRY_RUN)" = "1" ]; then echo "dry run: docker extension install -f $(RELEASE_EXTENSION_IMAGE)"; else docker extension install -f $(RELEASE_EXTENSION_IMAGE); fi
 
@@ -68,4 +78,4 @@ capture-readme-screenshot:
 	npx --yes playwright screenshot --device="Desktop Chrome" --color-scheme=light --wait-for-selector="text=OpenClaw Extension" --wait-for-timeout=1000 "$(SCREENSHOT_URL)" "$(SCREENSHOT_PATH)"
 	kill $$(cat /tmp/openclaw-vite-preview.pid) && rm -f /tmp/openclaw-vite-preview.pid
 
-.PHONY: build-runtime build-extension install-dev update-extension install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-release-tag-dry-run test-release-install-dry-run test-release-channel-dry-run verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot
+.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-release-tag-dry-run test-release-install-dry-run test-release-channel-dry-run verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot
