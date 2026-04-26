@@ -2,14 +2,25 @@ IMAGE ?= openclaw-docker-extension
 TAG ?= dev
 RUNTIME_IMAGE ?= openclaw-docker-extension-runtime
 RUNTIME_TAG ?= dev
-DEFAULT_RUNTIME_IMAGE ?= $(RUNTIME_IMAGE):$(RUNTIME_TAG)
-REGISTRY_IMAGE ?= ghcr.io/openclaw/openclaw-docker-extension-runtime
-REGISTRY_TAG ?= latest
 GHCR_OWNER ?= jcowhigjr
 RELEASE_TAG ?=
 RELEASE_CHANNEL ?= stable
 REPO_OWNER ?= jcowhigjr
 REPO_NAME ?= openclaw-docker-desktop-extension
+REGISTRY_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-extension-runtime
+REGISTRY_TAG ?= latest
+RELEASE_RUNTIME_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-extension-runtime:$(RELEASE_TAG)
+CHANNEL_RUNTIME_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-extension-runtime:$(RELEASE_CHANNEL)
+DEFAULT_RUNTIME_IMAGE ?= $(RUNTIME_IMAGE):$(RUNTIME_TAG)
+ifneq ($(RELEASE_TAG),)
+  DEFAULT_RUNTIME_IMAGE := $(RELEASE_RUNTIME_IMAGE)
+endif
+ifneq ($(RELEASE_CHANNEL),)
+  ifneq ($(RELEASE_TAG),)
+  else
+    DEFAULT_RUNTIME_IMAGE := $(CHANNEL_RUNTIME_IMAGE)
+  endif
+endif
 RELEASE_EXTENSION_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-desktop-extension:$(RELEASE_TAG)
 CHANNEL_EXTENSION_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-desktop-extension:$(RELEASE_CHANNEL)
 SCREENSHOT_URL ?= http://127.0.0.1:4173/?demo=1

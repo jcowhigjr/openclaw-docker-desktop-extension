@@ -49,7 +49,7 @@ const STORAGE_KEY = 'openclaw-docker-extension-config';
 const CONTAINER_NAME = 'openclaw-docker-extension-service';
 const VOLUME_NAME = 'openclaw-docker-extension-home';
 const BRIDGE_PORT = 18790;
-const DEFAULT_RUNTIME_IMAGE = 'ghcr.io/openclaw/openclaw-docker-extension-runtime:latest';
+const DEFAULT_RUNTIME_IMAGE = (import.meta.env.VITE_DEFAULT_RUNTIME_IMAGE || 'ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest') as string;
 const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const DEFAULT_CONFIG: ExtensionConfig = {
   image: DEFAULT_RUNTIME_IMAGE,
