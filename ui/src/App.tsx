@@ -221,7 +221,7 @@ export function App() {
     } catch (err) {
       setPhase('error');
       setStatusText('Failed to inspect container');
-      setError(String(err));
+      setError(err instanceof Error ? err.message : String(err));
       return { phase: 'error', ready: false };
     }
   }, [checkReady, findContainer, readToken]);
@@ -527,11 +527,11 @@ export function App() {
               <Stack direction="row" spacing={1} flexWrap="wrap">
                 <Button
                   variant="contained"
-                  startIcon={<PlayArrowIcon />}
+                  startIcon={busy ? <CircularProgress size={20} /> : <PlayArrowIcon />}
                   onClick={() => void createOrStart()}
-                  disabled={busy}
+                  disabled={busy || phase === 'running'}
                 >
-                  Start
+                  {busy ? 'Starting...' : 'Start'}
                 </Button>
                 <Button
                   variant="outlined"

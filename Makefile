@@ -9,17 +9,11 @@ REPO_OWNER ?= jcowhigjr
 REPO_NAME ?= openclaw-docker-desktop-extension
 REGISTRY_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-extension-runtime
 REGISTRY_TAG ?= latest
-RELEASE_RUNTIME_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-extension-runtime:$(RELEASE_TAG)
-CHANNEL_RUNTIME_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-extension-runtime:$(RELEASE_CHANNEL)
-DEFAULT_RUNTIME_IMAGE ?= $(RUNTIME_IMAGE):$(RUNTIME_TAG)
-ifneq ($(RELEASE_TAG),)
-  DEFAULT_RUNTIME_IMAGE := $(RELEASE_RUNTIME_IMAGE)
-endif
-ifneq ($(RELEASE_CHANNEL),)
-  ifneq ($(RELEASE_TAG),)
-  else
-    DEFAULT_RUNTIME_IMAGE := $(CHANNEL_RUNTIME_IMAGE)
-  endif
+# For release builds, use the tagged registry image. Otherwise use the published latest.
+ifeq ($(RELEASE_TAG),)
+  DEFAULT_RUNTIME_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-extension-runtime:latest
+else
+  DEFAULT_RUNTIME_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-extension-runtime:$(RELEASE_TAG)
 endif
 RELEASE_EXTENSION_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-desktop-extension:$(RELEASE_TAG)
 CHANNEL_EXTENSION_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-desktop-extension:$(RELEASE_CHANNEL)
