@@ -3,12 +3,20 @@ name: Publish runtime image
 on:
   push:
     branches: [main]
-    paths: ['runtime/**']
+    paths:
+      - 'runtime/**'
+      - '.github/workflows/publish-runtime.yml'
+  schedule:
+    # Rebuild the wrapper against ghcr.io/openclaw/openclaw:latest even when this repo is unchanged.
+    - cron: '17 9 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
+
+env:
+  RUNTIME_IMAGE: ghcr.io/${{ github.repository_owner }}/openclaw-docker-extension-runtime
 
 jobs:
   build-and-push:
@@ -25,7 +33,7 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/${{ github.repository_owner }}/openclaw-docker-extension-runtime
+          images: ${{ env.RUNTIME_IMAGE }}
           tags: |
             type=raw,value=latest
             type=sha,prefix=sha-,format=short
@@ -37,3 +45,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Verify published runtime image
+        run: docker buildx imagetools inspect "${RUNTIME_IMAGE}:latest"

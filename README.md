@@ -60,7 +60,11 @@ The publish workflow also promotes both images onto floating channel tags on rea
 
 That gives end users a one-line extension install path and gives the extension a predictable GHCR runtime channel for update checks without changing the pinned version-tag install path.
 
-When the runtime image points at a published GHCR channel tag such as `stable` or `beta`, the extension can check for a newer runtime image on open and again before launch. The current MVP update policies are:
+When the runtime image points at a published GHCR channel tag such as `stable` or `beta`, the extension can check for a newer runtime image on open and again before launch.
+
+The standalone runtime publish workflow also refreshes `ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest` on a daily schedule and can still be run manually with `workflow_dispatch`. That scheduled rebuild is how the wrapper picks up new `ghcr.io/openclaw/openclaw:latest` content when this repo has no file changes, so upstream OpenClaw updates become available after the next scheduled runtime rebuild and GHCR push, not instantly at the moment upstream publishes them.
+
+The current MVP update policies are:
 
 - `Check only`: show an update banner and let the user trigger the update manually
 - `Auto-update before launch`: pull the newer runtime image and recreate the service container before `Start`
