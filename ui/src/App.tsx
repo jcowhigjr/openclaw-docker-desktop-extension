@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getDDClient } from './dockerDesktopClient';
 import {
+  buildOllamaAuthProfilesStore,
   chooseRecommendedOllamaModel,
   normalizeOllamaModelName,
   parseOllamaTags,
@@ -462,6 +463,23 @@ export function App() {
       await setConfigValue('models.providers.ollama.models[0].reasoning', 'false', true);
       await setConfigValue('agents.defaults.model.primary', `ollama/${model}`);
       await setConfigValue('agents.defaults.timeoutSeconds', '300', true);
+      const authProfilesJson = JSON.stringify(buildOllamaAuthProfilesStore());
+      const writeAuthProfilesCode = `const fs=require("fs"); const path=require("path"); const file="/home/node/.openclaw/agents/main/agent/auth-profiles.json"; fs.mkdirSync(path.dirname(file), {recursive:true}); const data=${authProfilesJson}; fs.writeFileSync(file, JSON.stringify(data, null, 2) + "\\n");`;
+      await ddClient.docker.cli.exec('exec', [container.id, 'node', '-e', writeAuthProfilesCode]);
+      await ddClient.docker.cli.exec('exec', [
+        container.id,
+        'node',
+        'openclaw.mjs',
+        'models',
+        'auth',
+        'order',
+        'set',
+        '--agent',
+        'main',
+        '--provider',
+        'ollama',
+        'ollama:manual',
+      ]);
       appendDebug(`OpenClaw default model set to ollama/${model}`);
       setOllamaStatus(`Configured OpenClaw to use Ollama model ${model}. Restarting OpenClaw...`);
       await restart();

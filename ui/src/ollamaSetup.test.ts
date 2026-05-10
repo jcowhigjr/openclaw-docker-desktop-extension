@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildOllamaAuthOrder,
+  buildOllamaAuthProfilesStore,
   buildOllamaProviderPatch,
   chooseRecommendedOllamaModel,
   mergeOllamaProviderConfig,
@@ -55,6 +57,20 @@ describe('ollamaSetup helpers', () => {
     });
   });
 
+  it('builds the per-agent Ollama auth store profile', () => {
+    expect(buildOllamaAuthProfilesStore()).toEqual({
+      version: 1,
+      profiles: {
+        'ollama:manual': {
+          type: 'api_key',
+          provider: 'ollama',
+          key: 'ollama-local',
+        },
+      },
+    });
+    expect(buildOllamaAuthOrder()).toEqual(['ollama:manual']);
+  });
+
   it('prefers a practical installed local model over the first Ollama result', () => {
     expect(
       chooseRecommendedOllamaModel([
@@ -87,6 +103,17 @@ describe('ollamaSetup helpers', () => {
             token: 'preserved-token',
           },
         },
+        auth: {
+          profiles: {
+            'anthropic:default': {
+              provider: 'anthropic',
+              mode: 'api_key',
+            },
+          },
+          order: {
+            anthropic: ['anthropic:default'],
+          },
+        },
         models: {
           providers: {
             anthropic: {
@@ -102,6 +129,17 @@ describe('ollamaSetup helpers', () => {
     expect(merged.gateway.auth.token).toBe('preserved-token');
     expect(merged.agents.defaults.model.primary).toBe('ollama/qwen3.5:latest');
     expect(merged.agents.defaults.timeoutSeconds).toBe(300);
+    expect(merged.auth.profiles['anthropic:default']).toEqual({
+      provider: 'anthropic',
+      mode: 'api_key',
+    });
+    expect(merged.auth.profiles['ollama:manual']).toEqual({
+      type: 'api_key',
+      provider: 'ollama',
+      key: 'ollama-local',
+    });
+    expect(merged.auth.order.anthropic).toEqual(['anthropic:default']);
+    expect(merged.auth.order.ollama).toEqual(['ollama:manual']);
     expect(merged.models.providers.anthropic.api).toBe('anthropic');
     expect(merged.models.providers.ollama).toEqual({
       api: 'ollama',
