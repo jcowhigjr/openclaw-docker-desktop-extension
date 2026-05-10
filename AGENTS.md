@@ -88,3 +88,9 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
   - the extension UI state
   - the relevant OpenClaw UI state when the feature crosses that boundary
 - If verification is partial, say exactly what ran and what did not.
+
+## Local Developer Notes
+
+- On this workstation, Docker Desktop CLI symlinks are installed under `$HOME/.docker/bin`.
+- If `docker` resolves to another install or cannot reach the Desktop engine, use `$HOME/.docker/bin/docker` or add `$HOME/.docker/bin` to `PATH` before live Docker validation.
+- Current local-model development assumes host Ollama is already running on `127.0.0.1:11434`; container-to-host checks should use `http://host.docker.internal:11434`.
