@@ -29,6 +29,7 @@ import {
   parseOllamaTags,
   type OllamaModel,
 } from './ollamaSetup';
+import { buildControlUiLaunchUrl } from './controlUiLaunch';
 
 type ContainerPhase = 'missing' | 'running' | 'stopped' | 'starting' | 'error';
 
@@ -377,8 +378,13 @@ export function App() {
   }, [appendDebug, ddClient, findContainer, refresh]);
 
   const openBrowser = useCallback(async () => {
-    await Promise.resolve(ddClient.host.openExternal(openUrl));
-  }, [ddClient, openUrl]);
+    await Promise.resolve(ddClient.host.openExternal(buildControlUiLaunchUrl(openUrl, token)));
+    setMessage(
+      token
+        ? 'Opened OpenClaw Control with gateway token bootstrap.'
+        : 'Opened OpenClaw Control. Paste the gateway token if the dashboard asks for one.',
+    );
+  }, [ddClient, openUrl, token]);
 
   const copyToken = useCallback(async () => {
     if (!token) {
@@ -699,7 +705,7 @@ export function App() {
                   value={token}
                   fullWidth
                   InputProps={{ readOnly: true }}
-                  helperText="Paste this into OpenClaw Control if the dashboard asks for a token."
+                  helperText="Open Control UI passes this token in the URL fragment. Use Copy only if the dashboard asks again."
                 />
                 <Button
                   variant="outlined"
