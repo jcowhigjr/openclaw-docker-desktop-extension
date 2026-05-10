@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   buildOllamaAuthOrder,
   buildOllamaAuthProfilesStore,
+  buildOllamaAuthProfilesWriteScript,
+  buildOllamaConfigWriteScript,
   buildOllamaProviderPatch,
+  buildOllamaTagsFetchScript,
   chooseRecommendedOllamaModel,
   mergeOllamaProviderConfig,
   normalizeOllamaModelName,
@@ -26,6 +29,11 @@ describe('ollamaSetup helpers', () => {
       { name: 'qwen3.5:latest', size: 6594474711 },
       { name: 'gemma4-fast:latest', size: 9608350718 },
     ]);
+  });
+
+  it('treats invalid Ollama tags output as no detected models', () => {
+    expect(parseOllamaTags('<html>not json</html>')).toEqual([]);
+    expect(parseOllamaTags('ollama request timed out')).toEqual([]);
   });
 
   it('builds a native Ollama provider patch for OpenClaw', () => {
@@ -69,6 +77,22 @@ describe('ollamaSetup helpers', () => {
       },
     });
     expect(buildOllamaAuthOrder()).toEqual(['ollama:manual']);
+  });
+
+  it('builds Docker SDK-safe Node scripts for Ollama setup', () => {
+    const scripts = [
+      buildOllamaTagsFetchScript(),
+      buildOllamaConfigWriteScript('gemma4:latest'),
+      buildOllamaAuthProfilesWriteScript(),
+    ];
+
+    for (const script of scripts) {
+      expect(script).not.toContain('=>');
+      expect(script).not.toContain('`');
+    }
+
+    expect(buildOllamaConfigWriteScript('gemma4:latest')).toContain('gemma4:latest');
+    expect(buildOllamaAuthProfilesWriteScript()).toContain('auth-profiles.json');
   });
 
   it('prefers a practical installed local model over the first Ollama result', () => {

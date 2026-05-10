@@ -89,7 +89,7 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
   - the relevant OpenClaw UI state when the feature crosses that boundary
 - If verification is partial, say exactly what ran and what did not.
 
-## Local Developer Notes
+## Workstation-Specific Local Developer Notes
 
 - On this workstation, Docker Desktop CLI symlinks are installed under `$HOME/.docker/bin`.
 - If `docker` resolves to another install or cannot reach the Desktop engine, use `$HOME/.docker/bin/docker` or add `$HOME/.docker/bin` to `PATH` before live Docker validation.

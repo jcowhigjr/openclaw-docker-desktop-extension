@@ -21,7 +21,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getDDClient } from './dockerDesktopClient';
 import {
-  buildOllamaAuthProfilesStore,
+  buildOllamaAuthProfilesWriteScript,
+  buildOllamaConfigWriteScript,
+  buildOllamaTagsFetchScript,
   chooseRecommendedOllamaModel,
   normalizeOllamaModelName,
   parseOllamaTags,
@@ -128,6 +130,7 @@ export function App() {
   const [configuredOllamaModel, setConfiguredOllamaModel] = useState('');
   const [ollamaChecking, setOllamaChecking] = useState(false);
   const [ollamaStatus, setOllamaStatus] = useState('');
+  const [ollamaAlertSeverity, setOllamaAlertSeverity] = useState<'success' | 'info' | 'error'>('info');
   const selectedOllamaChanged = Boolean(selectedOllamaModel) && selectedOllamaModel !== configuredOllamaModel;
 
   const persistConfig = useCallback((next: ExtensionConfig) => {
@@ -389,13 +392,18 @@ export function App() {
     setOllamaChecking(true);
     setError('');
     setOllamaStatus('');
+    setOllamaAlertSeverity('info');
     try {
-      const result = (await ddClient.docker.cli.exec('run', [
-        '--rm',
-        'alpine:latest',
-        'wget',
-        '-qO-',
-        'http://host.docker.internal:11434/api/tags',
+      const container = await findContainer();
+      if (!container || container.state !== 'running') {
+        throw new Error('Start OpenClaw before detecting local Ollama models.');
+      }
+
+      const result = (await ddClient.docker.cli.exec('exec', [
+        container.id,
+        'node',
+        '-e',
+        buildOllamaTagsFetchScript(),
       ])) as CliExecResult;
       const stderr = asText(result.stderr).trim();
       if (stderr) {
@@ -404,7 +412,7 @@ export function App() {
 
       const models = parseOllamaTags(asText(result.stdout));
       const currentModelResult = (await ddClient.docker.cli.exec('exec', [
-        CONTAINER_NAME,
+        container.id,
         'node',
         'openclaw.mjs',
         'config',
@@ -415,6 +423,7 @@ export function App() {
       setOllamaModels(models);
       setConfiguredOllamaModel(currentModel);
       setSelectedOllamaModel((current) => current || currentModel || chooseRecommendedOllamaModel(models));
+      setOllamaAlertSeverity(models.length > 0 ? 'success' : 'info');
       setOllamaStatus(
         models.length > 0
           ? `Detected ${models.length} host Ollama model${models.length === 1 ? '' : 's'}${currentModel ? `; configured model is ${currentModel}.` : '.'}`
@@ -424,6 +433,7 @@ export function App() {
       const text = err instanceof Error ? err.message : String(err);
       appendDebug(`ollama detect failed: ${text}`);
       setOllamaModels([]);
+      setOllamaAlertSeverity('error');
       setOllamaStatus(`Could not reach host Ollama from OpenClaw: ${text}`);
     } finally {
       setOllamaChecking(false);
@@ -446,26 +456,9 @@ export function App() {
         throw new Error('Start OpenClaw before applying local model setup.');
       }
 
-      const setConfigValue = async (path: string, value: string, strictJson = false) => {
-        const args = [container.id, 'node', 'openclaw.mjs', 'config', 'set', path, value];
-        if (strictJson) {
-          args.push('--strict-json');
-        }
-        await ddClient.docker.cli.exec('exec', args);
-      };
-
       appendDebug(`configuring OpenClaw Ollama provider for ${model}`);
-      await setConfigValue('models.providers.ollama.api', 'ollama');
-      await setConfigValue('models.providers.ollama.apiKey', 'ollama-local');
-      await setConfigValue('models.providers.ollama.baseUrl', 'http://host.docker.internal:11434');
-      await setConfigValue('models.providers.ollama.models[0].id', model);
-      await setConfigValue('models.providers.ollama.models[0].name', model);
-      await setConfigValue('models.providers.ollama.models[0].reasoning', 'false', true);
-      await setConfigValue('agents.defaults.model.primary', `ollama/${model}`);
-      await setConfigValue('agents.defaults.timeoutSeconds', '300', true);
-      const authProfilesJson = JSON.stringify(buildOllamaAuthProfilesStore());
-      const writeAuthProfilesCode = `const fs=require("fs"); const path=require("path"); const file="/home/node/.openclaw/agents/main/agent/auth-profiles.json"; fs.mkdirSync(path.dirname(file), {recursive:true}); const data=${authProfilesJson}; fs.writeFileSync(file, JSON.stringify(data, null, 2) + "\\n");`;
-      await ddClient.docker.cli.exec('exec', [container.id, 'node', '-e', writeAuthProfilesCode]);
+      await ddClient.docker.cli.exec('exec', [container.id, 'node', '-e', buildOllamaConfigWriteScript(model)]);
+      await ddClient.docker.cli.exec('exec', [container.id, 'node', '-e', buildOllamaAuthProfilesWriteScript()]);
       await ddClient.docker.cli.exec('exec', [
         container.id,
         'node',
@@ -804,7 +797,7 @@ export function App() {
                 ))}
               </TextField>
               {ollamaStatus && (
-                <Alert severity={ollamaModels.length > 0 ? 'success' : 'info'}>{ollamaStatus}</Alert>
+                <Alert severity={ollamaAlertSeverity}>{ollamaStatus}</Alert>
               )}
             </Stack>
           </CardContent>
