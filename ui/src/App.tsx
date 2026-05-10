@@ -20,6 +20,15 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getDDClient } from './dockerDesktopClient';
+import {
+  buildOllamaAuthProfilesWriteScript,
+  buildOllamaConfigWriteScript,
+  buildOllamaTagsFetchScript,
+  chooseRecommendedOllamaModel,
+  normalizeOllamaModelName,
+  parseOllamaTags,
+  type OllamaModel,
+} from './ollamaSetup';
 
 type ContainerPhase = 'missing' | 'running' | 'stopped' | 'starting' | 'error';
 
@@ -116,6 +125,13 @@ export function App() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updateChecking, setUpdateChecking] = useState(false);
   const [updateError, setUpdateError] = useState('');
+  const [ollamaModels, setOllamaModels] = useState<OllamaModel[]>([]);
+  const [selectedOllamaModel, setSelectedOllamaModel] = useState('');
+  const [configuredOllamaModel, setConfiguredOllamaModel] = useState('');
+  const [ollamaChecking, setOllamaChecking] = useState(false);
+  const [ollamaStatus, setOllamaStatus] = useState('');
+  const [ollamaAlertSeverity, setOllamaAlertSeverity] = useState<'success' | 'info' | 'error'>('info');
+  const selectedOllamaChanged = Boolean(selectedOllamaModel) && selectedOllamaModel !== configuredOllamaModel;
 
   const persistConfig = useCallback((next: ExtensionConfig) => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -371,6 +387,106 @@ export function App() {
     await navigator.clipboard.writeText(token);
     setMessage('Gateway token copied to clipboard.');
   }, [token]);
+
+  const detectOllamaModels = useCallback(async () => {
+    setOllamaChecking(true);
+    setError('');
+    setOllamaStatus('');
+    setOllamaAlertSeverity('info');
+    try {
+      const container = await findContainer();
+      if (!container || container.state !== 'running') {
+        throw new Error('Start OpenClaw before detecting local Ollama models.');
+      }
+
+      const result = (await ddClient.docker.cli.exec('exec', [
+        container.id,
+        'node',
+        '-e',
+        buildOllamaTagsFetchScript(),
+      ])) as CliExecResult;
+      const stderr = asText(result.stderr).trim();
+      if (stderr) {
+        appendDebug(`ollama detect stderr: ${stderr}`);
+      }
+
+      const models = parseOllamaTags(asText(result.stdout));
+      const currentModelResult = (await ddClient.docker.cli.exec('exec', [
+        container.id,
+        'node',
+        'openclaw.mjs',
+        'config',
+        'get',
+        'agents.defaults.model.primary',
+      ])) as CliExecResult;
+      const currentModel = normalizeOllamaModelName(asText(currentModelResult.stdout));
+      setOllamaModels(models);
+      setConfiguredOllamaModel(currentModel);
+      setSelectedOllamaModel((current) => current || currentModel || chooseRecommendedOllamaModel(models));
+      setOllamaAlertSeverity(models.length > 0 ? 'success' : 'info');
+      setOllamaStatus(
+        models.length > 0
+          ? `Detected ${models.length} host Ollama model${models.length === 1 ? '' : 's'}${currentModel ? `; configured model is ${currentModel}.` : '.'}`
+          : 'Host Ollama responded, but no models were installed.',
+      );
+    } catch (err) {
+      const text = err instanceof Error ? err.message : String(err);
+      appendDebug(`ollama detect failed: ${text}`);
+      setOllamaModels([]);
+      setOllamaAlertSeverity('error');
+      setOllamaStatus(`Could not reach host Ollama from OpenClaw: ${text}`);
+    } finally {
+      setOllamaChecking(false);
+    }
+  }, [appendDebug, asText, ddClient, findContainer]);
+
+  const applyOllamaSetup = useCallback(async () => {
+    const model = selectedOllamaModel.trim();
+    if (!model) {
+      setOllamaStatus('Choose an installed Ollama model first.');
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const container = await findContainer();
+      if (!container || container.state !== 'running') {
+        throw new Error('Start OpenClaw before applying local model setup.');
+      }
+
+      appendDebug(`configuring OpenClaw Ollama provider for ${model}`);
+      await ddClient.docker.cli.exec('exec', [container.id, 'node', '-e', buildOllamaConfigWriteScript(model)]);
+      await ddClient.docker.cli.exec('exec', [container.id, 'node', '-e', buildOllamaAuthProfilesWriteScript()]);
+      await ddClient.docker.cli.exec('exec', [
+        container.id,
+        'node',
+        'openclaw.mjs',
+        'models',
+        'auth',
+        'order',
+        'set',
+        '--agent',
+        'main',
+        '--provider',
+        'ollama',
+        'ollama:manual',
+      ]);
+      appendDebug(`OpenClaw default model set to ollama/${model}`);
+      setOllamaStatus(`Configured OpenClaw to use Ollama model ${model}. Restarting OpenClaw...`);
+      await restart();
+      setConfiguredOllamaModel(model);
+      setOllamaStatus(`Restart complete. OpenClaw is using ${model}.`);
+      setMessage(`OpenClaw local model setup applied for ${model}.`);
+    } catch (err) {
+      const text = err instanceof Error ? err.message : String(err);
+      appendDebug(`ollama setup failed: ${text}`);
+      setError(text);
+    } finally {
+      setBusy(false);
+    }
+  }, [appendDebug, ddClient, findContainer, restart, selectedOllamaModel]);
 
   const checkForUpdate = useCallback(async () => {
     if (!config.image.startsWith('ghcr.io/')) {
@@ -630,6 +746,59 @@ export function App() {
               >
                 Save Settings
               </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Stack spacing={2}>
+              <Typography variant="h5">Local Model Setup</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Use an already installed host Ollama model. The extension verifies Ollama from inside
+                the OpenClaw container and writes only the OpenClaw provider config in the named volume.
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Button
+                  variant="outlined"
+                  startIcon={ollamaChecking ? <CircularProgress size={20} /> : <RefreshIcon />}
+                  onClick={() => void detectOllamaModels()}
+                  disabled={busy || ollamaChecking || phase !== 'running'}
+                >
+                  {ollamaChecking ? 'Checking...' : 'Detect Ollama Models'}
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => void applyOllamaSetup()}
+                  disabled={busy || phase !== 'running' || !selectedOllamaChanged}
+                >
+                  {selectedOllamaChanged ? 'Apply and Restart' : 'Already Applied'}
+                </Button>
+              </Stack>
+              <TextField
+                select
+                SelectProps={{ native: true }}
+                label="Ollama Model"
+                value={selectedOllamaModel}
+                onChange={(event) => setSelectedOllamaModel(event.target.value)}
+                fullWidth
+                helperText={
+                  configuredOllamaModel
+                    ? `Configured model: ${configuredOllamaModel}`
+                    : 'Models are read from host Ollama through host.docker.internal:11434.'
+                }
+                disabled={ollamaModels.length === 0}
+              >
+                {ollamaModels.length === 0 && <option value="">No models detected yet</option>}
+                {ollamaModels.map((model) => (
+                  <option key={model.name} value={model.name}>
+                    {model.name}
+                  </option>
+                ))}
+              </TextField>
+              {ollamaStatus && (
+                <Alert severity={ollamaAlertSeverity}>{ollamaStatus}</Alert>
+              )}
             </Stack>
           </CardContent>
         </Card>
