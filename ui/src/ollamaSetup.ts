@@ -108,6 +108,13 @@ export function buildOllamaAuthProfilesStore(): JsonObject {
   };
 }
 
+export function buildOllamaAuthConfigProfile(): JsonObject {
+  return {
+    provider: 'ollama',
+    mode: 'api_key',
+  };
+}
+
 export function buildOllamaAuthOrder(): string[] {
   return [OLLAMA_AUTH_PROFILE_ID];
 }
@@ -151,7 +158,7 @@ export function buildOllamaConfigWriteScript(model: string): string {
     'config.models.providers.ollama={api:"ollama",apiKey:"ollama-local",baseUrl:"http://host.docker.internal:11434",models:[{id:model,name:model,reasoning:false}]};',
     'config.auth=config.auth||{};',
     'config.auth.profiles=config.auth.profiles||{};',
-    'config.auth.profiles["ollama:manual"]={provider:"ollama",mode:"api_key"};',
+    'config.auth.profiles["ollama:manual"]=' + JSON.stringify(buildOllamaAuthConfigProfile()) + ';',
     'config.auth.order=config.auth.order||{};',
     'config.auth.order.ollama=["ollama:manual"];',
     'if(fs.existsSync(configPath)){fs.copyFileSync(configPath,configPath+".bak");}',
@@ -193,7 +200,9 @@ function isJsonObject(value: unknown): value is JsonObject {
 export function mergeOllamaProviderConfig(existing: JsonObject, model: string): JsonObject {
   const patch = buildOllamaProviderPatch(model);
   const patchAuth = {
-    profiles: buildOllamaAuthProfilesStore().profiles as JsonObject,
+    profiles: {
+      [OLLAMA_AUTH_PROFILE_ID]: buildOllamaAuthConfigProfile(),
+    },
     order: {
       ollama: buildOllamaAuthOrder(),
     },

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildOllamaAuthConfigProfile,
   buildOllamaAuthOrder,
   buildOllamaAuthProfilesStore,
   buildOllamaAuthProfilesWriteScript,
@@ -66,6 +67,10 @@ describe('ollamaSetup helpers', () => {
   });
 
   it('builds the per-agent Ollama auth store profile', () => {
+    expect(buildOllamaAuthConfigProfile()).toEqual({
+      provider: 'ollama',
+      mode: 'api_key',
+    });
     expect(buildOllamaAuthProfilesStore()).toEqual({
       version: 1,
       profiles: {
@@ -158,9 +163,8 @@ describe('ollamaSetup helpers', () => {
       mode: 'api_key',
     });
     expect(merged.auth.profiles['ollama:manual']).toEqual({
-      type: 'api_key',
       provider: 'ollama',
-      key: 'ollama-local',
+      mode: 'api_key',
     });
     expect(merged.auth.order.anthropic).toEqual(['anthropic:default']);
     expect(merged.auth.order.ollama).toEqual(['ollama:manual']);
