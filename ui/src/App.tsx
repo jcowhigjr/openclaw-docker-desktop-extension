@@ -184,20 +184,24 @@ export function App() {
     });
   }, []);
 
+  const fetchGatewayToken = useCallback(async (containerId: string) => {
+    const result = (await ddClient.docker.cli.exec('exec', [
+      containerId,
+      'node',
+      '-e',
+      'const fs=require("fs"); const file="/home/node/.openclaw/openclaw.json"; if (!fs.existsSync(file)) { process.exit(0); } const cfg=JSON.parse(fs.readFileSync(file,"utf8")); process.stdout.write(cfg.gateway?.auth?.token || "");',
+    ])) as CliExecResult;
+    return asText(result.stdout).trim();
+  }, [asText, ddClient]);
+
   const readToken = useCallback(async (containerId: string) => {
     try {
-      const result = (await ddClient.docker.cli.exec('exec', [
-        containerId,
-        'node',
-        '-e',
-        'const fs=require("fs"); const file="/home/node/.openclaw/openclaw.json"; if (!fs.existsSync(file)) { process.exit(0); } const cfg=JSON.parse(fs.readFileSync(file,"utf8")); process.stdout.write(cfg.gateway?.auth?.token || "");',
-      ])) as CliExecResult;
-      setToken(asText((result as CliExecResult).stdout).trim());
+      setToken(await fetchGatewayToken(containerId));
     } catch (err) {
       appendDebug(`token read failed: ${err instanceof Error ? err.message : String(err)}`);
       setToken('');
     }
-  }, [appendDebug, asText, ddClient]);
+  }, [appendDebug, fetchGatewayToken]);
 
   const checkReady = useCallback(async () => {
     try {
@@ -378,13 +382,31 @@ export function App() {
   }, [appendDebug, ddClient, findContainer, refresh]);
 
   const openBrowser = useCallback(async () => {
-    await Promise.resolve(ddClient.host.openExternal(buildControlUiLaunchUrl(openUrl, token)));
+    const ready = await checkReady();
+    if (!ready) {
+      setError('OpenClaw Control is not reachable on localhost yet. Start or restart OpenClaw and try again.');
+      return;
+    }
+
+    let launchToken = token;
+    try {
+      const container = await findContainer();
+      if (container?.state === 'running') {
+        launchToken = await fetchGatewayToken(container.id);
+        setToken(launchToken);
+      }
+    } catch (err) {
+      appendDebug(`launch token refresh failed: ${err instanceof Error ? err.message : String(err)}`);
+      launchToken = '';
+    }
+
+    await Promise.resolve(ddClient.host.openExternal(buildControlUiLaunchUrl(openUrl, launchToken)));
     setMessage(
-      token
+      launchToken
         ? 'Opened OpenClaw Control with gateway token bootstrap.'
         : 'Opened OpenClaw Control. Paste the gateway token if the dashboard asks for one.',
     );
-  }, [ddClient, openUrl, token]);
+  }, [appendDebug, checkReady, ddClient, fetchGatewayToken, findContainer, openUrl, token]);
 
   const copyToken = useCallback(async () => {
     if (!token) {
