@@ -259,6 +259,27 @@ Current extension-managed auth is intentionally narrow:
 - `Local Model Setup` writes OpenClaw config and a per-agent Ollama auth profile for an already installed host Ollama model.
 - Other provider credentials should be configured through OpenClaw's own auth/onboarding flows or by writing supported keys such as `ANTHROPIC_API_KEY=...` into `/home/node/.openclaw/.env`, then restarting OpenClaw.
 
+## Offline-first local model path
+
+The supported local/offline path is **OpenClaw in Docker Desktop plus host Ollama**. This keeps the extension packaging small while letting the model runtime use the host Mac's normal Ollama install and Apple Silicon acceleration.
+
+Expected flow:
+
+1. Install the extension while online.
+2. Install Ollama on the host Mac and pull a practical local model from the [Ollama model library](https://ollama.com/models).
+3. Start OpenClaw from the Docker Desktop extension.
+4. Use `Local Model Setup` to detect host Ollama through `http://host.docker.internal:11434`, choose a model, and apply the configuration.
+5. Restart OpenClaw through the extension. After the model is already downloaded, core chat can continue without hosted-provider network access.
+
+Validated local path on macOS:
+
+- host Ollama responds on `127.0.0.1:11434`
+- the OpenClaw service container can reach Ollama at `host.docker.internal:11434`
+- OpenClaw can be configured to use an `ollama/<model>` default
+- a direct container-to-host Ollama generation request succeeds after the model is downloaded
+
+Model guidance should stay conservative. Prefer an already installed small or mid-sized model that responds quickly on the user's Mac before suggesting larger models. A bundled local inference runtime remains out of scope until the host-Ollama path has enough real user validation to justify the packaging, performance, and platform cost.
+
 ## Execution mode
 
 OpenClaw exec approval settings can be cached by the running gateway. If the approvals file changes on disk but the gateway is not restarted, webchat command behavior may still reflect the older in-memory policy.
@@ -309,13 +330,13 @@ Do not use Portless or another alternate hostname for the default installed-app 
 
 The roadmap source of truth is [issue #12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12). Keep this section aligned with that issue.
 
-Current status: the MVP foundation is complete enough for external review. The release/channel image path exists, the extension can update its runtime image, the localhost Control UI launch path bootstraps the gateway token, host Ollama setup is available, and the README now documents the current provider-auth and `.env` behavior.
+Current status: the MVP foundation is complete enough for external review. The release/channel image path exists, the extension can update its runtime image, the localhost Control UI launch path bootstraps the gateway token, host Ollama setup is available, execution mode changes restart OpenClaw to reload cached exec approvals, and the README now documents the current provider-auth, `.env`, and host-Ollama offline-first behavior.
 
 The repo should now move in this order:
 
-1. Prepare a public project surface: GitHub Pages landing page, current screenshot/GIF, quick-start links, and clear limitations.
-2. Resolve the remaining exec-approval UX gap by making restart-required behavior explicit and recoverable from the extension.
-3. Keep offline-first/local-model work bounded to host Ollama validation unless real user traction justifies a bundled local runtime.
+1. Keep the release/channel image path and public landing page current for external review.
+2. Treat host Ollama as the supported offline-first local model path after initial setup.
+3. Defer bundled local inference runtime work unless real user traction justifies it.
 
 The developer-only local update path remains `make update-extension`. The release-image path is the preferred end-user path; local builds remain useful for development and validation.
 
