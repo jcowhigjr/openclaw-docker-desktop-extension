@@ -30,8 +30,10 @@ import {
   type OllamaModel,
 } from './ollamaSetup';
 import { buildControlUiLaunchUrl } from './controlUiLaunch';
+import { readGatewayTokenWithRetry } from './tokenRetry';
 
 type ContainerPhase = 'missing' | 'running' | 'stopped' | 'starting' | 'error';
+type TokenStatus = 'unknown' | 'checking' | 'ready' | 'empty' | 'error';
 
 type ExtensionConfig = {
   image: string;
@@ -119,6 +121,7 @@ export function App() {
   const [phase, setPhase] = useState<ContainerPhase>('missing');
   const [statusText, setStatusText] = useState('No OpenClaw container yet');
   const [token, setToken] = useState('');
+  const [tokenStatus, setTokenStatus] = useState<TokenStatus>('unknown');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -195,11 +198,18 @@ export function App() {
   }, [asText, ddClient]);
 
   const readToken = useCallback(async (containerId: string) => {
+    setTokenStatus('checking');
     try {
-      setToken(await fetchGatewayToken(containerId));
+      const nextToken = await readGatewayTokenWithRetry(
+        () => fetchGatewayToken(containerId),
+        { attempts: 5, delayMs: 1000 },
+      );
+      setToken(nextToken);
+      setTokenStatus(nextToken ? 'ready' : 'empty');
     } catch (err) {
       appendDebug(`token read failed: ${err instanceof Error ? err.message : String(err)}`);
       setToken('');
+      setTokenStatus('error');
     }
   }, [appendDebug, fetchGatewayToken]);
 
@@ -224,6 +234,7 @@ export function App() {
         setPhase('missing');
         setStatusText('No OpenClaw container yet');
         setToken('');
+        setTokenStatus('unknown');
         return { phase: 'missing', ready: false };
       }
 
@@ -238,6 +249,7 @@ export function App() {
       setPhase(container.state === 'exited' ? 'stopped' : 'error');
       setStatusText(container.status);
       setToken('');
+      setTokenStatus('unknown');
       return { phase: container.state === 'exited' ? 'stopped' : 'error', ready: false };
     } catch (err) {
       setPhase('error');
@@ -371,6 +383,7 @@ export function App() {
         await ddClient.docker.cli.exec('rm', ['-f', container.id]);
       }
       setToken('');
+      setTokenStatus('unknown');
       await refresh();
     } catch (err) {
       const text = err instanceof Error ? err.message : String(err);
@@ -394,10 +407,12 @@ export function App() {
       if (container?.state === 'running') {
         launchToken = await fetchGatewayToken(container.id);
         setToken(launchToken);
+        setTokenStatus(launchToken ? 'ready' : 'empty');
       }
     } catch (err) {
       appendDebug(`launch token refresh failed: ${err instanceof Error ? err.message : String(err)}`);
       launchToken = '';
+      setTokenStatus('error');
     }
 
     await Promise.resolve(ddClient.host.openExternal(buildControlUiLaunchUrl(openUrl, launchToken)));
@@ -617,6 +632,22 @@ export function App() {
     };
   }, [phase, checkForUpdate]);
 
+  const tokenHelperText = (() => {
+    if (token) {
+      return 'Open Control UI passes this token in the URL fragment. Use Copy only if the dashboard asks again.';
+    }
+    if (tokenStatus === 'checking') {
+      return 'Waiting for OpenClaw to write the gateway token. This should resolve shortly after startup.';
+    }
+    if (tokenStatus === 'empty') {
+      return 'Gateway token is still blank after retries. Open Control UI can still launch; paste the token manually if asked.';
+    }
+    if (tokenStatus === 'error') {
+      return 'Could not read the gateway token. Open Control UI can still launch; use manual fallback if asked.';
+    }
+    return 'Gateway token appears here after the OpenClaw service is ready.';
+  })();
+
   return (
     <Box sx={{ p: 3, maxWidth: 1100, mx: 'auto' }}>
       <Stack spacing={3}>
@@ -727,7 +758,7 @@ export function App() {
                   value={token}
                   fullWidth
                   InputProps={{ readOnly: true }}
-                  helperText="Open Control UI passes this token in the URL fragment. Use Copy only if the dashboard asks again."
+                  helperText={tokenHelperText}
                 />
                 <Button
                   variant="outlined"
