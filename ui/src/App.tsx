@@ -6,6 +6,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
 import {
   Alert,
+  AlertColor,
   Box,
   Button,
   Card,
@@ -41,6 +42,11 @@ import {
   type ExecutionMode,
 } from './execMode';
 import { buildRuntimeRunArgs } from './runtimeContainer';
+import {
+  buildDockerPsPortCheckArgs,
+  formatStartFailure,
+  parseDockerPublishedPortConflicts,
+} from './requirementChecks';
 
 type ContainerPhase = 'missing' | 'running' | 'stopped' | 'starting' | 'error';
 type TokenStatus = 'unknown' | 'checking' | 'ready' | 'empty' | 'error';
@@ -136,6 +142,9 @@ export function App() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [debugLog, setDebugLog] = useState('');
+  const [requirementsChecking, setRequirementsChecking] = useState(false);
+  const [requirementsStatus, setRequirementsStatus] = useState('');
+  const [requirementsSeverity, setRequirementsSeverity] = useState<AlertColor>('info');
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updateChecking, setUpdateChecking] = useState(false);
   const [updateError, setUpdateError] = useState('');
@@ -202,6 +211,68 @@ export function App() {
       return next.slice(-12000);
     });
   }, []);
+
+  const findPortConflicts = useCallback(async () => {
+    const result = (await ddClient.docker.cli.exec('ps', buildDockerPsPortCheckArgs())) as CliExecResult;
+    return parseDockerPublishedPortConflicts(asText(result.stdout), config.port, CONTAINER_NAME);
+  }, [asText, config.port, ddClient]);
+
+  const checkRequirements = useCallback(async () => {
+    setRequirementsChecking(true);
+    setRequirementsStatus('');
+    setRequirementsSeverity('info');
+    setError('');
+    try {
+      const version = (await ddClient.docker.cli.exec('version', ['--format', '{{.Server.Version}}'])) as CliExecResult;
+      const dockerVersion = asText(version.stdout).trim();
+      if (!dockerVersion) {
+        throw new Error('Docker Desktop responded, but the Docker Engine version was empty.');
+      }
+
+      const conflicts = await findPortConflicts();
+      if (conflicts.length > 0) {
+        setRequirementsSeverity('warning');
+        setRequirementsStatus(
+          `Docker is ready, but host port ${config.port} is already published by ${conflicts.map((conflict) => conflict.name || conflict.id).join(', ')}. Change the Host Port or stop the other container before starting OpenClaw.`,
+        );
+        return;
+      }
+
+      if (configuredOllamaModel && phase === 'running') {
+        try {
+          const container = await findContainer();
+          if (container?.state === 'running') {
+            await ddClient.docker.cli.exec('exec', [container.id, ...buildOllamaTagsFetchArgs()]);
+          }
+          setRequirementsSeverity('success');
+          setRequirementsStatus(
+            `Docker is ready, host port ${config.port} is available, and host Ollama is reachable for ${configuredOllamaModel}.`,
+          );
+          return;
+        } catch (err) {
+          const text = err instanceof Error ? err.message : String(err);
+          appendDebug(`requirements Ollama check failed: ${text}`);
+          setRequirementsSeverity('warning');
+          setRequirementsStatus(
+            `Docker is ready and host port ${config.port} is available, but host Ollama was not reachable. Start Ollama before using the configured local model ${configuredOllamaModel}.`,
+          );
+          return;
+        }
+      }
+
+      setRequirementsSeverity('success');
+      setRequirementsStatus(
+        `Docker is ready and host port ${config.port} is available. Ollama is only required for Local Model Setup or an ollama/<model> default.`,
+      );
+    } catch (err) {
+      const text = err instanceof Error ? err.message : String(err);
+      appendDebug(`requirements check failed: ${text}`);
+      setRequirementsSeverity('error');
+      setRequirementsStatus(formatStartFailure(text, config.port));
+    } finally {
+      setRequirementsChecking(false);
+    }
+  }, [appendDebug, asText, config.port, configuredOllamaModel, ddClient, findContainer, findPortConflicts, phase]);
 
   const fetchGatewayToken = useCallback(async (containerId: string) => {
     const result = (await ddClient.docker.cli.exec('exec', [
@@ -302,6 +373,13 @@ export function App() {
         await ddClient.docker.cli.exec('start', [existing.id]);
         setStatusText('Starting existing OpenClaw container...');
       } else {
+        const conflicts = await findPortConflicts();
+        if (conflicts.length > 0) {
+          throw new Error(
+            `Host port ${config.port} is already published by ${conflicts.map((conflict) => conflict.name || conflict.id).join(', ')}. Change the Host Port in Settings or stop the other container, then try Start again.`,
+          );
+        }
+
         appendDebug(`creating container ${CONTAINER_NAME} from ${config.image}`);
         const result = (await ddClient.docker.cli.exec('run', buildRuntimeRunArgs({
           containerName: CONTAINER_NAME,
@@ -335,13 +413,13 @@ export function App() {
       await runAndPoll();
     } catch (err) {
       setPhase('error');
-      const text = err instanceof Error ? err.message : String(err);
+      const text = formatStartFailure(err instanceof Error ? err.message : String(err), config.port);
       appendDebug(`create/start failed: ${text}`);
       setError(text);
     } finally {
       setBusy(false);
     }
-  }, [appendDebug, asText, config.image, config.port, ddClient, findContainer, runAndPoll]);
+  }, [appendDebug, asText, config.image, config.port, ddClient, findContainer, findPortConflicts, runAndPoll]);
 
   const stop = useCallback(async () => {
     setBusy(true);
@@ -777,6 +855,11 @@ export function App() {
             Update check failed: {updateError}
           </Alert>
         )}
+        {requirementsStatus && (
+          <Alert severity={requirementsSeverity} onClose={() => setRequirementsStatus('')}>
+            {requirementsStatus}
+          </Alert>
+        )}
 
         <Card>
           <CardContent>
@@ -797,6 +880,14 @@ export function App() {
                   disabled={busy || phase === 'running'}
                 >
                   {busy ? 'Starting...' : 'Start'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={requirementsChecking ? <CircularProgress size={20} /> : <RefreshIcon />}
+                  onClick={() => void checkRequirements()}
+                  disabled={busy || requirementsChecking}
+                >
+                  {requirementsChecking ? 'Checking...' : 'Check Requirements'}
                 </Button>
                 <Button
                   variant="outlined"
