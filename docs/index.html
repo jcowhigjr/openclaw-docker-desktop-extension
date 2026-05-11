@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="A Docker Desktop extension for running OpenClaw locally on macOS with a localhost-only bridge, persistent state, and host Ollama setup."
+    >
+    <title>OpenClaw Docker Desktop Extension</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="hero">
+      <nav class="nav" aria-label="Project links">
+        <a class="brand" href="https://github.com/jcowhigjr/openclaw-docker-desktop-extension">
+          OpenClaw Docker Extension
+        </a>
+        <div class="nav-links">
+          <a href="https://github.com/jcowhigjr/openclaw-docker-desktop-extension#readme">README</a>
+          <a href="https://github.com/jcowhigjr/openclaw-docker-desktop-extension/releases">Releases</a>
+          <a href="https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues">Issues</a>
+        </div>
+      </nav>
+
+      <div class="hero-grid">
+        <section class="hero-copy" aria-labelledby="page-title">
+          <p class="eyebrow">Docker Desktop extension for macOS</p>
+          <h1 id="page-title">Run OpenClaw locally without fighting the localhost gap.</h1>
+          <p class="lede">
+            This project packages OpenClaw as a Docker Desktop extension with start,
+            stop, update, diagnostics, and local Ollama setup controls for a
+            Mac-first developer workflow.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="#quick-start">Install from GHCR</a>
+            <a class="button secondary" href="https://github.com/jcowhigjr/openclaw-docker-desktop-extension">
+              View source
+            </a>
+          </div>
+        </section>
+
+        <aside class="install-card" aria-labelledby="install-title">
+          <p class="card-kicker">Latest stable channel</p>
+          <h2 id="install-title">One-line install</h2>
+          <pre><code>docker extension install ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable</code></pre>
+          <p>
+            Requires Docker Desktop with non-Marketplace extension installs enabled.
+            The current release path targets Apple Silicon macOS first.
+          </p>
+        </aside>
+      </div>
+    </header>
+
+    <main>
+      <section class="proof-section" aria-labelledby="proof-title">
+        <p class="eyebrow">What it solves</p>
+        <h2 id="proof-title">A thin wrapper around the sharp edges.</h2>
+        <div class="proof-grid">
+          <article>
+            <span class="marker">01</span>
+            <h3>Localhost-only bridge</h3>
+            <p>
+              The runtime adds a small <code>socat</code> bridge so OpenClaw can be
+              reached from the host at <code>127.0.0.1</code> on Docker Desktop for macOS.
+            </p>
+          </article>
+          <article>
+            <span class="marker">02</span>
+            <h3>Persistent local state</h3>
+            <p>
+              OpenClaw config, auth profiles, and user state live in a named Docker
+              volume, so update and restart flows do not wipe the workspace.
+            </p>
+          </article>
+          <article>
+            <span class="marker">03</span>
+            <h3>Host Ollama setup</h3>
+            <p>
+              The extension can detect host Ollama models and configure OpenClaw to
+              use one, keeping local-model setup inside the existing Docker Desktop UI.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="screenshot-section" aria-labelledby="screenshot-title">
+        <div>
+          <p class="eyebrow">Current extension UI</p>
+          <h2 id="screenshot-title">Start, update, inspect, and launch from one panel.</h2>
+          <p>
+            The extension dashboard manages the service container, checks runtime
+            image freshness, exposes diagnostics, and opens the canonical OpenClaw
+            Control UI with gateway-token bootstrap.
+          </p>
+        </div>
+        <figure class="screenshot-frame">
+          <img
+            src="assets/openclaw-extension-dashboard.png"
+            alt="OpenClaw Docker Desktop extension dashboard showing service controls, update controls, local model setup, and diagnostics."
+          >
+        </figure>
+      </section>
+
+      <section class="quick-start" id="quick-start" aria-labelledby="quick-start-title">
+        <div>
+          <p class="eyebrow">Quick start</p>
+          <h2 id="quick-start-title">Choose the release path unless you are developing the extension.</h2>
+        </div>
+        <div class="steps">
+          <article>
+            <h3>Install the stable channel</h3>
+            <pre><code>docker extension install ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable</code></pre>
+            <p>Open Docker Desktop, select the OpenClaw extension, then click <strong>Start OpenClaw</strong>.</p>
+          </article>
+          <article>
+            <h3>Develop locally</h3>
+            <pre><code>make install-dev</code></pre>
+            <p>Use this repo path when changing the extension UI, wrapper image, or release automation.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="limits" aria-labelledby="limits-title">
+        <p class="eyebrow">Current boundaries</p>
+        <h2 id="limits-title">Clear constraints are part of the product.</h2>
+        <ul>
+          <li>Tested first on Docker Desktop for macOS and Apple Silicon.</li>
+          <li>The wrapper improves local isolation, but it is not a hardened sandbox.</li>
+          <li>Provider auth beyond the Ollama setup flow stays owned by OpenClaw.</li>
+          <li>Windows browser-app instructions are advisory until the runtime path is tested there.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <a href="https://github.com/openclaw/openclaw">OpenClaw upstream</a>
+      <a href="https://github.com/jcowhigjr/openclaw-docker-desktop-extension#security-and-isolation-notes">
+        Security notes
+      </a>
+      <a href="https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/new">Report an issue</a>
+    </footer>
+  </body>
+</html>

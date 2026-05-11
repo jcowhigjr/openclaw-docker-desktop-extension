@@ -6,6 +6,8 @@ Run OpenClaw from Docker Desktop on macOS with a more isolated, localhost-only c
 
 This repo packages OpenClaw as a Docker Desktop extension for macOS. It builds two local images, installs the extension into Docker Desktop, and gives you start/stop/update controls plus a guided local Ollama setup flow.
 
+Project landing page: <https://jcowhigjr.github.io/openclaw-docker-desktop-extension/>
+
 ```bash
 make install-dev
 ```
