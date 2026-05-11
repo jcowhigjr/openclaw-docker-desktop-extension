@@ -56,6 +56,7 @@ verify-release-tag:
 verify-release-channel: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" ./scripts/verify-release-channel.sh
 
 test-release-channel: ; @./scripts/test-release-channel.sh
+test-runtime-bridge: ; @sh ./scripts/test-runtime-bridge.sh
 test-release-tag-dry-run: ; @./scripts/test-release-tag-dry-run.sh
 test-release-install-dry-run: ; @./scripts/test-release-install-dry-run.sh
 test-release-channel-dry-run: ; @./scripts/test-release-channel-dry-run.sh
@@ -83,4 +84,4 @@ capture-readme-screenshot:
 	npx --yes playwright screenshot --device="Desktop Chrome" --color-scheme=light --wait-for-selector="text=OpenClaw Extension" --wait-for-timeout=1000 "$(SCREENSHOT_URL)" "$(SCREENSHOT_PATH)"
 	kill $$(cat /tmp/openclaw-vite-preview.pid) && rm -f /tmp/openclaw-vite-preview.pid
 
-.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-release-tag-dry-run test-release-install-dry-run test-release-channel-dry-run verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot
+.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-runtime-bridge test-release-tag-dry-run test-release-install-dry-run test-release-channel-dry-run verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot

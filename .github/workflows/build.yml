@@ -37,6 +37,9 @@ jobs:
       - name: Build extension image
         run: docker build -t openclaw-docker-extension:test .
 
+      - name: Verify runtime bridge wiring
+        run: make test-runtime-bridge
+
       - name: Verify release channel mapping
         run: make test-release-channel
 

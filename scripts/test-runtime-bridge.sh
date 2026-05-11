@@ -18,6 +18,11 @@ if ! grep -F 'socat_pid=$!' "$script" >/dev/null; then
   exit 1
 fi
 
+if ! grep -F 'docker-entrypoint.sh node openclaw.mjs gateway --allow-unconfigured' "$script" >/dev/null; then
+  echo "runtime bridge must launch OpenClaw through the upstream gateway entrypoint" >&2
+  exit 1
+fi
+
 if grep -F 'exec socat' "$script" >/dev/null; then
   echo "runtime bridge must not exec socat and orphan OpenClaw failures" >&2
   exit 1

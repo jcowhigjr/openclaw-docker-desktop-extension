@@ -4,7 +4,7 @@ Run OpenClaw from Docker Desktop on macOS with a more isolated, localhost-only c
 
 ## 60-second quick start
 
-This repo packages OpenClaw as a Docker Desktop extension for macOS. It builds two local images, installs the extension into Docker Desktop, and gives you start/stop controls plus a write-only Anthropic API key flow.
+This repo packages OpenClaw as a Docker Desktop extension for macOS. It builds two local images, installs the extension into Docker Desktop, and gives you start/stop/update controls plus a guided local Ollama setup flow.
 
 ```bash
 make install-dev
@@ -14,9 +14,9 @@ Then:
 
 1. Open the `OpenClaw` extension in Docker Desktop.
 2. Click `Start OpenClaw`.
-3. If you plan to use Anthropic-backed sessions, paste an Anthropic API key into `Provider Auth` and save.
-4. Wait for the service status to show `OpenClaw is ready`.
-5. Click `Open Control UI`. The extension opens the canonical localhost Control UI and passes the gateway token through the URL fragment for dashboard bootstrap.
+3. Wait for the service status to show `OpenClaw is ready`.
+4. Click `Open Control UI`. The extension opens the canonical localhost Control UI and passes the gateway token through the URL fragment for dashboard bootstrap.
+5. Configure provider auth in OpenClaw, or use the extension's `Local Model Setup` flow for an already installed host Ollama model.
 
 If Docker Desktop blocks local extensions, enable local or non-Marketplace extension installs first.
 
@@ -241,18 +241,21 @@ Current constraints:
 - Named volume: `openclaw-docker-extension-home`
 - Service container: `openclaw-docker-extension-service`
 
-## Provider auth
+## Provider auth and `.env` loading
 
-The extension includes a masked, write-only Anthropic API key field.
+OpenClaw owns provider credential loading. The wrapper starts the upstream gateway through `docker-entrypoint.sh node openclaw.mjs gateway --allow-unconfigured`; it does not source `.env` itself.
 
-- The key is written into `/home/node/.openclaw/.env`
-- That file lives in the persistent Docker volume `openclaw-docker-extension-home`
-- The extension clears the input field after save
-- The service restarts after the key is written so OpenClaw reloads the credential
+Upstream OpenClaw reads environment variables from the parent process plus these files:
 
-You can install and open the extension before saving a key, but Anthropic-backed sessions will not work until one is stored.
+- `.env` from the current working directory when present
+- `~/.openclaw/.env`, which maps to `/home/node/.openclaw/.env` in this container
 
-This means the credential survives container restarts and rebuilds, but is removed if you delete the named volume.
+Those files do not override environment variables that already exist in the process. In this extension, `/home/node/.openclaw/.env` lives in the persistent Docker volume `openclaw-docker-extension-home`, so credentials stored there survive container restarts and image rebuilds but are removed if you delete the named volume.
+
+Current extension-managed auth is intentionally narrow:
+
+- `Local Model Setup` writes OpenClaw config and a per-agent Ollama auth profile for an already installed host Ollama model.
+- Other provider credentials should be configured through OpenClaw's own auth/onboarding flows or by writing supported keys such as `ANTHROPIC_API_KEY=...` into `/home/node/.openclaw/.env`, then restarting OpenClaw.
 
 ## Installed Control UI on macOS
 
@@ -275,7 +278,7 @@ Do not use Portless or another alternate hostname for the default installed-app 
  - The wrapper publishes OpenClaw on `127.0.0.1` only.
  - The service container uses a read-only root filesystem, mounts `/tmp` as `tmpfs`, drops all Linux capabilities, sets `no-new-privileges`, and restricts resource usage with `--ulimit nofile=1024:1024` when the extension starts it.
  - OpenClaw starts through the upstream image entrypoint and runs as the `node` user, while the wrapper image adds a small `socat` bridge so Docker Desktop can forward the service on macOS.
-- State, including the write-only Anthropic key saved by the extension UI, is stored in the named Docker volume `openclaw-docker-extension-home`.
+- State, including OpenClaw config, auth profiles, and `/home/node/.openclaw/.env`, is stored in the named Docker volume `openclaw-docker-extension-home`.
 - The runtime is still not a hardened sandbox yet: the bridge exists to solve localhost reachability and the service retains writable state in its volume.
 - This is a more isolated local packaging path, not a perfect security boundary.
 - This project is not an official Docker or OpenClaw extension.
@@ -285,7 +288,7 @@ Do not use Portless or another alternate hostname for the default installed-app 
 - If the gateway token field is blank, open the Control UI and paste the token manually after retrieving it from the service container or volume.
 - If `Open Control UI` reports that localhost is not reachable, start or restart OpenClaw before retrying.
 - The runtime can spend a short warm-up period in `starting` even after the host health check is already passing.
-- Anthropic provider auth currently supports the local `.env` persistence path first. It does not yet manage richer OpenClaw auth-profile workflows in the UI.
+- Provider auth beyond the Ollama setup flow should be managed through OpenClaw's own auth/onboarding paths or `/home/node/.openclaw/.env`.
 - The update banner only applies to published GHCR channel images. Pinned release tags stay fixed, and local dev images are not auto-updated by the extension.
 - The extension does not yet show release notes or "what's new" content after an update.
 
