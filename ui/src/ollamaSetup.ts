@@ -120,20 +120,25 @@ export function buildOllamaAuthOrder(): string[] {
 }
 
 export function buildOllamaTagsFetchScript(): string {
-  return [
-    'const http=require("http");',
-    'const req=http.get("http://host.docker.internal:11434/api/tags",function(res){',
-    'var data="";',
-    'res.setEncoding("utf8");',
-    'res.on("data",function(chunk){data=data+chunk;});',
-    'res.on("end",function(){',
-    'if(res.statusCode!==200){console.error("ollama returned "+res.statusCode);process.exit(1);}',
-    'process.stdout.write(data);',
+  const script = [
+    'const http = require("http");',
+    'const req = http.get("http://host.docker.internal:11434/api/tags", (res) => {',
+    '  let data = "";',
+    '  res.setEncoding("utf8");',
+    '  res.on("data", (chunk) => { data += chunk; });',
+    '  res.on("end", () => {',
+    '    if (res.statusCode !== 200) {',
+    '      console.error("ollama returned " + res.statusCode);',
+    '      process.exit(1);',
+    '    }',
+    '    process.stdout.write(data);',
+    '  });',
     '});',
-    '});',
-    'req.on("error",function(err){console.error(err.message);process.exit(1);});',
-    'req.setTimeout(5000,function(){req.destroy(new Error("ollama request timed out"));});',
+    'req.on("error", (err) => { console.error(err.message); process.exit(1); });',
+    'req.setTimeout(5000, () => { req.destroy(new Error("ollama request timed out")); });',
   ].join(' ');
+
+  return `node -e '${script.replace(/'/g, "\\'")}'`;
 }
 
 export function buildOllamaConfigWriteScript(model: string): string {
