@@ -8,6 +8,8 @@ This repo packages OpenClaw as a Docker Desktop extension for macOS. It builds t
 
 Project landing page: <https://jcowhigjr.github.io/openclaw-docker-desktop-extension/>
 
+Submission review packet: [docs/submission-readiness.md](docs/submission-readiness.md)
+
 ```bash
 make install-dev
 ```
