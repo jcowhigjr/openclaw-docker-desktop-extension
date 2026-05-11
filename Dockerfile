@@ -11,7 +11,9 @@ RUN npm run build
 FROM alpine:3.20
 LABEL org.opencontainers.image.title="OpenClaw for Docker Desktop" \
     org.opencontainers.image.description="Run OpenClaw from Docker Desktop with a macOS-safe port bridge and one-click controls." \
-    org.opencontainers.image.vendor="OpenAI Codex" \
+    org.opencontainers.image.vendor="jcowhigjr/openclaw-docker-desktop-extension" \
+    org.opencontainers.image.source="https://github.com/jcowhigjr/openclaw-docker-desktop-extension" \
+    org.opencontainers.image.licenses="MIT" \
     com.docker.desktop.extension.api.version="0.4.2" \
     com.docker.desktop.extension.icon="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/static/icon.png" \
     com.docker.extension.categories="ai,developer-tools"
