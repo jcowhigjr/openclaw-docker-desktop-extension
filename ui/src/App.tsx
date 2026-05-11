@@ -13,6 +13,9 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  FormControlLabel,
+  Radio,
+  RadioGroup,
   Stack,
   TextField,
   Typography,
@@ -31,6 +34,12 @@ import {
 } from './ollamaSetup';
 import { buildControlUiLaunchUrl } from './controlUiLaunch';
 import { readGatewayTokenWithRetry } from './tokenRetry';
+import {
+  buildExecModeReadScript,
+  buildExecModeWriteScript,
+  parseExecModeReadOutput,
+  type ExecutionMode,
+} from './execMode';
 
 type ContainerPhase = 'missing' | 'running' | 'stopped' | 'starting' | 'error';
 type TokenStatus = 'unknown' | 'checking' | 'ready' | 'empty' | 'error';
@@ -135,7 +144,13 @@ export function App() {
   const [ollamaChecking, setOllamaChecking] = useState(false);
   const [ollamaStatus, setOllamaStatus] = useState('');
   const [ollamaAlertSeverity, setOllamaAlertSeverity] = useState<'success' | 'info' | 'error'>('info');
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>('safer');
+  const [appliedExecutionMode, setAppliedExecutionMode] = useState<ExecutionMode>('safer');
+  const [executionModeChecking, setExecutionModeChecking] = useState(false);
+  const [executionModeStatus, setExecutionModeStatus] = useState('');
+  const [executionModeAlertSeverity, setExecutionModeAlertSeverity] = useState<'success' | 'info' | 'warning' | 'error'>('info');
   const selectedOllamaChanged = Boolean(selectedOllamaModel) && selectedOllamaModel !== configuredOllamaModel;
+  const executionModeChanged = executionMode !== appliedExecutionMode;
 
   const persistConfig = useCallback((next: ExtensionConfig) => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -481,6 +496,89 @@ export function App() {
     }
   }, [appendDebug, asText, ddClient, findContainer]);
 
+  const detectExecutionMode = useCallback(async () => {
+    setExecutionModeChecking(true);
+    setError('');
+    setExecutionModeStatus('');
+    setExecutionModeAlertSeverity('info');
+    try {
+      const container = await findContainer();
+      if (!container || container.state !== 'running') {
+        throw new Error('Start OpenClaw before checking execution mode.');
+      }
+
+      const result = (await ddClient.docker.cli.exec('exec', [
+        container.id,
+        'node',
+        '-e',
+        buildExecModeReadScript(),
+      ])) as CliExecResult;
+      const stderr = asText(result.stderr).trim();
+      if (stderr) {
+        appendDebug(`execution mode detect stderr: ${stderr}`);
+      }
+
+      const detected = parseExecModeReadOutput(asText(result.stdout)).mode;
+      setExecutionMode(detected);
+      setAppliedExecutionMode(detected);
+      setExecutionModeAlertSeverity('success');
+      setExecutionModeStatus(
+        detected === 'full'
+          ? 'Full access is currently applied. Commands can run without approval prompts inside the OpenClaw container.'
+          : 'Safer mode is currently applied. Unknown commands require allowlist matching or approval.',
+      );
+    } catch (err) {
+      const text = err instanceof Error ? err.message : String(err);
+      appendDebug(`execution mode detect failed: ${text}`);
+      setExecutionModeAlertSeverity('error');
+      setExecutionModeStatus(`Could not read execution mode: ${text}`);
+    } finally {
+      setExecutionModeChecking(false);
+    }
+  }, [appendDebug, asText, ddClient, findContainer]);
+
+  const applyExecutionMode = useCallback(async () => {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    setExecutionModeStatus('');
+    setExecutionModeAlertSeverity(executionMode === 'full' ? 'warning' : 'info');
+    try {
+      const container = await findContainer();
+      if (!container || container.state !== 'running') {
+        throw new Error('Start OpenClaw before applying execution mode.');
+      }
+
+      appendDebug(`applying OpenClaw execution mode: ${executionMode}`);
+      await ddClient.docker.cli.exec('exec', [
+        container.id,
+        'node',
+        '-e',
+        buildExecModeWriteScript(executionMode),
+      ]);
+      setExecutionModeStatus(
+        `Applied ${executionMode === 'full' ? 'Full access' : 'Safer'} mode. Restarting OpenClaw...`,
+      );
+      await restart();
+      setAppliedExecutionMode(executionMode);
+      setExecutionModeAlertSeverity(executionMode === 'full' ? 'warning' : 'success');
+      setExecutionModeStatus(
+        executionMode === 'full'
+          ? 'Restart complete. Full access is active; command approval protections are reduced.'
+          : 'Restart complete. Safer mode is active.',
+      );
+      setMessage(`OpenClaw execution mode applied: ${executionMode === 'full' ? 'Full access' : 'Safer'}.`);
+    } catch (err) {
+      const text = err instanceof Error ? err.message : String(err);
+      appendDebug(`execution mode apply failed: ${text}`);
+      setExecutionModeAlertSeverity('error');
+      setExecutionModeStatus(`Could not apply execution mode: ${text}`);
+      setError(text);
+    } finally {
+      setBusy(false);
+    }
+  }, [appendDebug, ddClient, executionMode, findContainer, restart]);
+
   const applyOllamaSetup = useCallback(async () => {
     const model = selectedOllamaModel.trim();
     if (!model) {
@@ -615,8 +713,9 @@ export function App() {
   useEffect(() => {
     if (phase === 'running') {
       void checkForUpdate();
+      void detectExecutionMode();
     }
-  }, [phase, checkForUpdate]);
+  }, [phase, checkForUpdate, detectExecutionMode]);
 
   useEffect(() => {
     if (phase !== 'running') {
@@ -855,6 +954,59 @@ export function App() {
               </TextField>
               {ollamaStatus && (
                 <Alert severity={ollamaAlertSeverity}>{ollamaStatus}</Alert>
+              )}
+            </Stack>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Stack spacing={2}>
+              <Typography variant="h5">Execution Mode</Typography>
+              <Typography variant="body2" color="text.secondary">
+                OpenClaw may cache exec approval policy until the gateway restarts. Changing this mode writes
+                both OpenClaw exec policy and the host approvals file, then restarts OpenClaw automatically.
+              </Typography>
+              <RadioGroup
+                value={executionMode}
+                onChange={(event) => setExecutionMode(event.target.value as ExecutionMode)}
+              >
+                <FormControlLabel
+                  value="safer"
+                  control={<Radio />}
+                  label="Safer: allowlisted commands and approval prompts"
+                />
+                <FormControlLabel
+                  value="full"
+                  control={<Radio />}
+                  label="Full access: run commands without approval prompts"
+                />
+              </RadioGroup>
+              {executionMode === 'full' && (
+                <Alert severity="warning">
+                  Full access reduces command approval protections. Use it only when you trust the local
+                  OpenClaw session and understand commands can run inside the service container without prompts.
+                </Alert>
+              )}
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Button
+                  variant="outlined"
+                  startIcon={executionModeChecking ? <CircularProgress size={20} /> : <RefreshIcon />}
+                  onClick={() => void detectExecutionMode()}
+                  disabled={busy || executionModeChecking || phase !== 'running'}
+                >
+                  {executionModeChecking ? 'Checking...' : 'Check Mode'}
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => void applyExecutionMode()}
+                  disabled={busy || phase !== 'running' || !executionModeChanged}
+                >
+                  {executionModeChanged ? 'Apply and Restart' : 'Already Applied'}
+                </Button>
+              </Stack>
+              {executionModeStatus && (
+                <Alert severity={executionModeAlertSeverity}>{executionModeStatus}</Alert>
               )}
             </Stack>
           </CardContent>
