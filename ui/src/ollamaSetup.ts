@@ -119,26 +119,14 @@ export function buildOllamaAuthOrder(): string[] {
   return [OLLAMA_AUTH_PROFILE_ID];
 }
 
-export function buildOllamaTagsFetchScript(): string {
-  const script = [
-    'const http = require("http");',
-    'const req = http.get("http://host.docker.internal:11434/api/tags", (res) => {',
-    '  let data = "";',
-    '  res.setEncoding("utf8");',
-    '  res.on("data", (chunk) => { data += chunk; });',
-    '  res.on("end", () => {',
-    '    if (res.statusCode !== 200) {',
-    '      console.error("ollama returned " + res.statusCode);',
-    '      process.exit(1);',
-    '    }',
-    '    process.stdout.write(data);',
-    '  });',
-    '});',
-    'req.on("error", (err) => { console.error(err.message); process.exit(1); });',
-    'req.setTimeout(5000, () => { req.destroy(new Error("ollama request timed out")); });',
-  ].join(' ');
-
-  return `node -e '${script.replace(/'/g, "\\'")}'`;
+export function buildOllamaTagsFetchArgs(): string[] {
+  return [
+    'curl',
+    '-fsS',
+    '--max-time',
+    '5',
+    `${DEFAULT_OLLAMA_BASE_URL}/api/tags`,
+  ];
 }
 
 export function buildOllamaConfigWriteScript(model: string): string {

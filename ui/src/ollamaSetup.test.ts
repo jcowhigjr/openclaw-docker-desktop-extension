@@ -7,7 +7,7 @@ import {
   buildOllamaAuthProfilesWriteScript,
   buildOllamaConfigWriteScript,
   buildOllamaProviderPatch,
-  buildOllamaTagsFetchScript,
+  buildOllamaTagsFetchArgs,
   chooseRecommendedOllamaModel,
   mergeOllamaProviderConfig,
   normalizeOllamaModelName,
@@ -86,7 +86,6 @@ describe('ollamaSetup helpers', () => {
 
   it('builds Docker SDK-safe Node scripts for Ollama setup', () => {
     const scripts = [
-      buildOllamaTagsFetchScript(),
       buildOllamaConfigWriteScript('gemma4:latest'),
       buildOllamaAuthProfilesWriteScript(),
     ];
@@ -98,6 +97,16 @@ describe('ollamaSetup helpers', () => {
 
     expect(buildOllamaConfigWriteScript('gemma4:latest')).toContain('gemma4:latest');
     expect(buildOllamaAuthProfilesWriteScript()).toContain('auth-profiles.json');
+  });
+
+  it('builds Docker SDK-safe argv for fetching host Ollama tags', () => {
+    expect(buildOllamaTagsFetchArgs()).toEqual([
+      'curl',
+      '-fsS',
+      '--max-time',
+      '5',
+      'http://host.docker.internal:11434/api/tags',
+    ]);
   });
 
   it('prefers a practical installed local model over the first Ollama result', () => {
