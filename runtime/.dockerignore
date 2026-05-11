@@ -1,0 +1,5 @@
+# Keep the runtime image context limited to the wrapper files copied by runtime/Dockerfile.
+**
+
+!Dockerfile
+!openclaw-bridge.sh
