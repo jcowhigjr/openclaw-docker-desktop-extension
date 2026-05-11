@@ -23,7 +23,7 @@ import { getDDClient } from './dockerDesktopClient';
 import {
   buildOllamaAuthProfilesWriteScript,
   buildOllamaConfigWriteScript,
-  buildOllamaTagsFetchScript,
+  buildOllamaTagsFetchArgs,
   chooseRecommendedOllamaModel,
   normalizeOllamaModelName,
   parseOllamaTags,
@@ -444,9 +444,7 @@ export function App() {
 
       const result = (await ddClient.docker.cli.exec('exec', [
         container.id,
-        'node',
-        '-e',
-        buildOllamaTagsFetchScript(),
+        ...buildOllamaTagsFetchArgs(),
       ])) as CliExecResult;
       const stderr = asText(result.stderr).trim();
       if (stderr) {
