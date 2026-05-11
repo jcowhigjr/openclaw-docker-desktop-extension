@@ -21,12 +21,13 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 ## Current Roadmap
 
 - Treat issue [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12) as the source of truth for roadmap and decision gates.
-- Issue [#7](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/7) is already closed; treat onboarding work as completed.
-- Issue [#5](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/5) is already closed; treat architecture handling as completed for MVP.
-- Active MVP priority:
-  1. [#3](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/3) pre-built GHCR images
-- Anything beyond those open MVP issues is unknown until issue [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12) says otherwise.
-- Do not pick up "nice-to-have" work ahead of MVP issues unless explicitly requested.
+- MVP foundations are complete enough for external review: GHCR/channel install path, update/restart flow, localhost Control UI bootstrap, token retry UX, host Ollama setup, repo metadata, `.env` documentation, and build validation.
+- Active pre-submission priorities:
+  1. [#11](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/11) public landing page / shareable project surface.
+  2. [#13](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/13) explicit execution-mode UX and restart flow for exec approvals.
+  3. [#14](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/14) offline-first local model exploration, only after the local Ollama path has enough validation to justify more scope.
+- Treat [#2](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/2) as historical context for #13, not a separate implementation track.
+- Do not start new feature branches from stale priority notes. Re-check #12, open issues, and the latest merged PRs first.
 
 ## Decision Gates
 
@@ -58,6 +59,8 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
   - verify the linked issue state
   - close or update related issues
   - update milestones when priorities change
+- Planning freshness hook: after any PR that closes or materially changes a roadmap item, check whether README Roadmap path, AGENTS Current Roadmap, and issue #12 need a one-comment status update. Keep this to a small patch or comment; do not create a planning subsystem.
+- External review loop: before merging user-facing PRs, expect the maintainer may paste the PR into Gemini CLI for a review comment and Claude for a more critical review. Treat those reviews as input to verify, not orders to follow blindly.
 
 ## Repo Hygiene
 

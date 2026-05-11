@@ -296,13 +296,15 @@ Do not use Portless or another alternate hostname for the default installed-app 
 
 The roadmap source of truth is [issue #12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12). Keep this section aligned with that issue.
 
-The repo should move in this order:
+Current status: the MVP foundation is complete enough for external review. The release/channel image path exists, the extension can update its runtime image, the localhost Control UI launch path bootstraps the gateway token, host Ollama setup is available, and the README now documents the current provider-auth and `.env` behavior.
 
-1. Publish pre-built GHCR images and finish the end-user install/update path.
-2. Tighten the isolation and trust-boundary story around the wrapper runtime.
-3. Add architecture detection or graceful failure for unsupported hosts.
+The repo should now move in this order:
 
-The developer-only local update path remains `make update-extension`. The release-image path is the one that should eventually replace manual rebuilds for end users.
+1. Prepare a public project surface: GitHub Pages landing page, current screenshot/GIF, quick-start links, and clear limitations.
+2. Resolve the remaining exec-approval UX gap by making restart-required behavior explicit and recoverable from the extension.
+3. Keep offline-first/local-model work bounded to host Ollama validation unless real user traction justifies a bundled local runtime.
+
+The developer-only local update path remains `make update-extension`. The release-image path is the preferred end-user path; local builds remain useful for development and validation.
 
 ## Troubleshooting
 
