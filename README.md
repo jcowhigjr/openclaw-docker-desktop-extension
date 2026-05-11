@@ -16,9 +16,7 @@ Then:
 2. Click `Start OpenClaw`.
 3. If you plan to use Anthropic-backed sessions, paste an Anthropic API key into `Provider Auth` and save.
 4. Wait for the service status to show `OpenClaw is ready`.
-5. Click `Open Control UI` and connect with:
-   - Browser URL: `http://127.0.0.1:18789`
-   - WebSocket URL: `ws://127.0.0.1:18789`
+5. Click `Open Control UI`. The extension opens the canonical localhost Control UI and passes the gateway token through the URL fragment for dashboard bootstrap.
 
 If Docker Desktop blocks local extensions, enable local or non-Marketplace extension installs first.
 
@@ -256,6 +254,22 @@ You can install and open the extension before saving a key, but Anthropic-backed
 
 This means the credential survives container restarts and rebuilds, but is removed if you delete the named volume.
 
+## Installed Control UI on macOS
+
+Use the canonical localhost Control UI origin for browser-app installs:
+
+- Open the Docker Desktop extension.
+- Click `Open Control UI`.
+- In Chrome, use `Install page as app` or `Create shortcut` with `Open as window`.
+
+The extension launches `http://127.0.0.1:<port>` and, when available, passes the gateway token as a `#token=...` URL fragment. The fragment is used by the browser dashboard bootstrap path and is not part of the HTTP request URL.
+
+The upstream Control UI removes the token fragment from the address bar after reading it. If the gateway token changes, launch the Control UI from the Docker Desktop extension again so it can read the current token before opening the browser.
+
+On Windows, Chrome and Edge expose the same browser-app style install flow through their app or shortcut menus. This repository validates the Docker Desktop extension path on macOS first; keep Windows instructions advisory until a Windows runtime path is tested.
+
+Do not use Portless or another alternate hostname for the default installed-app flow. Alternate origins require extra OpenClaw origin allowlisting and can introduce certificate and bootstrap friction.
+
 ## Security and isolation notes
  
  - The wrapper publishes OpenClaw on `127.0.0.1` only.
@@ -268,7 +282,8 @@ This means the credential survives container restarts and rebuilds, but is remov
 
 ## Current limitations
 
-- Gateway token autofill is not fully reliable yet. If the token field is blank in the extension UI, open the Control UI and paste the token manually.
+- If the gateway token field is blank, open the Control UI and paste the token manually after retrieving it from the service container or volume.
+- If `Open Control UI` reports that localhost is not reachable, start or restart OpenClaw before retrying.
 - The runtime can spend a short warm-up period in `starting` even after the host health check is already passing.
 - Anthropic provider auth currently supports the local `.env` persistence path first. It does not yet manage richer OpenClaw auth-profile workflows in the UI.
 - The update banner only applies to published GHCR channel images. Pinned release tags stay fixed, and local dev images are not auto-updated by the extension.
