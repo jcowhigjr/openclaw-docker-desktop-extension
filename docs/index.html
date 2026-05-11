@@ -78,7 +78,8 @@
             <h3>Host Ollama setup</h3>
             <p>
               The extension can detect host Ollama models and configure OpenClaw to
-              use one, keeping local-model setup inside the existing Docker Desktop UI.
+              use one, keeping local-model setup inside the existing Docker Desktop UI
+              for offline use after the model is downloaded.
             </p>
           </article>
         </div>
@@ -128,7 +129,7 @@
           <li>Tested first on Docker Desktop for macOS and Apple Silicon.</li>
           <li>The wrapper improves local isolation, but it is not a hardened sandbox.</li>
           <li>Provider auth beyond the Ollama setup flow stays owned by OpenClaw.</li>
-          <li>Windows browser-app instructions are advisory until the runtime path is tested there.</li>
+          <li>Bundled local inference is deferred until host Ollama usage shows real demand.</li>
         </ul>
       </section>
     </main>
