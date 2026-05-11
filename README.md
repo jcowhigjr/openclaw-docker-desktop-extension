@@ -259,6 +259,17 @@ Current extension-managed auth is intentionally narrow:
 - `Local Model Setup` writes OpenClaw config and a per-agent Ollama auth profile for an already installed host Ollama model.
 - Other provider credentials should be configured through OpenClaw's own auth/onboarding flows or by writing supported keys such as `ANTHROPIC_API_KEY=...` into `/home/node/.openclaw/.env`, then restarting OpenClaw.
 
+## Execution mode
+
+OpenClaw exec approval settings can be cached by the running gateway. If the approvals file changes on disk but the gateway is not restarted, webchat command behavior may still reflect the older in-memory policy.
+
+The extension exposes an `Execution Mode` control to make that restart requirement explicit:
+
+- `Safer`: configures gateway exec to use allowlisted commands and approval prompts, with denied fallback when no approval UI is reachable.
+- `Full access`: configures gateway exec to run without approval prompts inside the OpenClaw service container.
+
+Changing the mode writes both `/home/node/.openclaw/openclaw.json` and `/home/node/.openclaw/exec-approvals.json`, then restarts OpenClaw automatically so the new policy is loaded. `Full access` is opt-in because it reduces command approval protections.
+
 ## Installed Control UI on macOS
 
 Use the canonical localhost Control UI origin for browser-app installs:
