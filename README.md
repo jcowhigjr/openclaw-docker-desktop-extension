@@ -317,6 +317,20 @@ Do not use Portless or another alternate hostname for the default installed-app 
 - This is a more isolated local packaging path, not a perfect security boundary.
 - This project is not an official Docker or OpenClaw extension.
 
+## Host posture checklist
+
+Host security posture is intentionally a user-run checklist, not automatic extension scanning. The extension should avoid collecting broad host state such as backup status, disk encryption status, account privilege details, or home-directory configuration. Those checks can be useful before relying on any local agent, but they are outside this extension's trust boundary.
+
+Recommended manual checks before using Full access execution mode or sensitive local data:
+
+- Confirm the OpenClaw Control UI is reachable only on localhost, for example `127.0.0.1:<port>`.
+- Confirm Docker Desktop is up to date.
+- Confirm macOS security updates, FileVault, and backups are configured according to your own workstation policy.
+- Keep provider credentials and OpenClaw auth material out of screenshots, logs, issues, and PRs.
+- Prefer `Safer` execution mode unless you trust the local OpenClaw session and understand that commands can run inside the service container without approval prompts.
+
+Safe extension-level diagnostics are limited to project-specific state: container health, localhost binding, runtime image, named volume, selected model provider, and recent Docker command output. Do not add automatic host posture scans unless a future issue narrows the exact checks and privacy expectations.
+
 ## Current limitations
 
 - If the gateway token field is blank, open the Control UI and paste the token manually after retrieving it from the service container or volume.
@@ -330,7 +344,7 @@ Do not use Portless or another alternate hostname for the default installed-app 
 
 The roadmap source of truth is [issue #12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12). Keep this section aligned with that issue.
 
-Current status: the MVP foundation is complete enough for external review. The release/channel image path exists, the extension can update its runtime image, the localhost Control UI launch path bootstraps the gateway token, host Ollama setup is available, execution mode changes restart OpenClaw to reload cached exec approvals, and the README now documents the current provider-auth, `.env`, and host-Ollama offline-first behavior.
+Current status: the MVP foundation is complete enough for external review. The release/channel image path exists, the extension can update its runtime image, the localhost Control UI launch path bootstraps the gateway token, host Ollama setup is available, execution mode changes restart OpenClaw to reload cached exec approvals, and the README now documents the current provider-auth, `.env`, host-Ollama offline-first behavior, and host-posture boundary.
 
 The repo should now move in this order:
 
@@ -342,9 +356,22 @@ The developer-only local update path remains `make update-extension`. The releas
 
 ## Troubleshooting
 
+- Required apps:
+  - Docker Desktop must be running before the extension can start or manage OpenClaw.
+  - Ollama only needs to be running when you use `Local Model Setup` or an already configured `ollama/<model>` default.
+  - Hosted-provider use does not require Ollama, but it does require the relevant provider auth and network access.
+- Basic startup workflow:
+  - Open Docker Desktop and wait for it to finish starting.
+  - Open the OpenClaw extension in Docker Desktop.
+  - Click `Start`; if the service already exists, use `Restart`.
+  - Click `Open Control UI` after the status says `OpenClaw is ready`.
+  - For local/offline model use, start Ollama on the host Mac first, then click `Detect Ollama Models` in `Local Model Setup`.
+- If `Detect Ollama Models` fails, confirm Ollama is running on the Mac and that `http://127.0.0.1:11434/api/tags` opens locally.
+- If no models appear, pull a practical model in Ollama first, then run detection again.
 - If the extension says `RUNNING` but the browser page does not open, check `http://127.0.0.1:18789/healthz`.
 - If the token field is empty, inspect the debug panel in the extension and fetch the token from the service container or volume.
 - If local installation fails, confirm Docker Desktop allows local extensions.
+- If Docker Desktop frequently stops after sleep or restart, start Docker Desktop first and then reopen the extension. Existing OpenClaw state remains in the named Docker volume.
 
 ## Repository layout
 

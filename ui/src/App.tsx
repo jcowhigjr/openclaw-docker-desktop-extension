@@ -40,6 +40,7 @@ import {
   parseExecModeReadOutput,
   type ExecutionMode,
 } from './execMode';
+import { buildRuntimeRunArgs } from './runtimeContainer';
 
 type ContainerPhase = 'missing' | 'running' | 'stopped' | 'starting' | 'error';
 type TokenStatus = 'unknown' | 'checking' | 'ready' | 'empty' | 'error';
@@ -302,22 +303,14 @@ export function App() {
         setStatusText('Starting existing OpenClaw container...');
       } else {
         appendDebug(`creating container ${CONTAINER_NAME} from ${config.image}`);
-        const result = (await ddClient.docker.cli.exec('run', [
-          '-d',
-          '--name',
-          CONTAINER_NAME,
-          '--platform',
-          'linux/arm64',
-          '-v',
-          `${VOLUME_NAME}:/home/node`,
-          '-p',
-          `127.0.0.1:${config.port}:${BRIDGE_PORT}`,
-          '--label',
-          `com.docker.extension.openclaw=${LABELS['com.docker.extension.openclaw']}`,
-          '--label',
-          `com.docker.extension.openclaw.role=${LABELS['com.docker.extension.openclaw.role']}`,
-          config.image,
-        ])) as CliExecResult;
+        const result = (await ddClient.docker.cli.exec('run', buildRuntimeRunArgs({
+          containerName: CONTAINER_NAME,
+          image: config.image,
+          volumeName: VOLUME_NAME,
+          hostPort: config.port,
+          bridgePort: BRIDGE_PORT,
+          labels: LABELS,
+        }))) as CliExecResult;
         const stdout = asText(result.stdout).trim();
         const stderr = asText(result.stderr).trim();
         appendDebug(`docker run stdout: ${stdout || '<empty>'}`);
