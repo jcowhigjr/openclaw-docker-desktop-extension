@@ -3,14 +3,14 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDockerPsPortCheckArgs,
   formatStartFailure,
+  formatUnknownError,
   parseDockerPublishedPortConflicts,
 } from './requirementChecks';
 
 describe('requirement checks', () => {
   it('builds Docker ps args for checking published ports', () => {
     expect(buildDockerPsPortCheckArgs()).toEqual([
-      '--format',
-      '{{.ID}}\t{{.Names}}\t{{.Ports}}',
+      '--format={{json .}}',
     ]);
   });
 
@@ -34,6 +34,33 @@ describe('requirement checks', () => {
     ]);
   });
 
+  it('detects Docker port conflicts from JSON-line ps output', () => {
+    const conflicts = parseDockerPublishedPortConflicts(
+      [
+        JSON.stringify({
+          ID: 'abc123',
+          Names: 'openclaw-docker-extension-service',
+          Ports: '127.0.0.1:18789->18790/tcp',
+        }),
+        JSON.stringify({
+          ID: 'def456',
+          Names: 'other-service',
+          Ports: '127.0.0.1:18789->8080/tcp, [::]:18789->8080/tcp',
+        }),
+      ].join('\n'),
+      18789,
+      'openclaw-docker-extension-service',
+    );
+
+    expect(conflicts).toEqual([
+      {
+        id: 'def456',
+        name: 'other-service',
+        ports: '127.0.0.1:18789->8080/tcp, [::]:18789->8080/tcp',
+      },
+    ]);
+  });
+
   it('formats Docker port binding failures as user-actionable messages', () => {
     expect(
       formatStartFailure(
@@ -49,5 +76,11 @@ describe('requirement checks', () => {
     expect(formatStartFailure('Cannot connect to the Docker daemon', 18789)).toBe(
       'Docker Desktop is not ready yet. Start Docker Desktop, wait until it finishes starting, then try again.',
     );
+  });
+
+  it('formats Docker Desktop SDK error objects without leaking object Object', () => {
+    expect(formatUnknownError({ stderr: 'docker daemon unavailable\n' })).toBe('docker daemon unavailable');
+    expect(formatUnknownError({ message: 'Docker command failed' })).toBe('Docker command failed');
+    expect(formatUnknownError({ code: 1 })).toBe('{"code":1}');
   });
 });

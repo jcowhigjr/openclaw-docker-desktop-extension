@@ -45,6 +45,7 @@ import { buildRuntimeRunArgs } from './runtimeContainer';
 import {
   buildDockerPsPortCheckArgs,
   formatStartFailure,
+  formatUnknownError,
   parseDockerPublishedPortConflicts,
 } from './requirementChecks';
 
@@ -250,7 +251,7 @@ export function App() {
           );
           return;
         } catch (err) {
-          const text = err instanceof Error ? err.message : String(err);
+          const text = formatUnknownError(err);
           appendDebug(`requirements Ollama check failed: ${text}`);
           setRequirementsSeverity('warning');
           setRequirementsStatus(
@@ -265,7 +266,7 @@ export function App() {
         `Docker is ready and host port ${config.port} is available. Ollama is only required for Local Model Setup or an ollama/<model> default.`,
       );
     } catch (err) {
-      const text = err instanceof Error ? err.message : String(err);
+      const text = formatUnknownError(err);
       appendDebug(`requirements check failed: ${text}`);
       setRequirementsSeverity('error');
       setRequirementsStatus(formatStartFailure(text, config.port));
@@ -294,7 +295,7 @@ export function App() {
       setToken(nextToken);
       setTokenStatus(nextToken ? 'ready' : 'empty');
     } catch (err) {
-      appendDebug(`token read failed: ${err instanceof Error ? err.message : String(err)}`);
+      appendDebug(`token read failed: ${formatUnknownError(err)}`);
       setToken('');
       setTokenStatus('error');
     }
@@ -341,7 +342,7 @@ export function App() {
     } catch (err) {
       setPhase('error');
       setStatusText('Failed to inspect container');
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatUnknownError(err));
       return { phase: 'error', ready: false };
     }
   }, [checkReady, findContainer, readToken]);
@@ -413,7 +414,7 @@ export function App() {
       await runAndPoll();
     } catch (err) {
       setPhase('error');
-      const text = formatStartFailure(err instanceof Error ? err.message : String(err), config.port);
+      const text = formatStartFailure(formatUnknownError(err), config.port);
       appendDebug(`create/start failed: ${text}`);
       setError(text);
     } finally {
@@ -431,7 +432,7 @@ export function App() {
       }
       await refresh();
     } catch (err) {
-      const text = err instanceof Error ? err.message : String(err);
+      const text = formatUnknownError(err);
       appendDebug(`stop failed: ${text}`);
       setError(text);
     } finally {
@@ -451,7 +452,7 @@ export function App() {
         await createOrStart();
       }
     } catch (err) {
-      const text = err instanceof Error ? err.message : String(err);
+      const text = formatUnknownError(err);
       appendDebug(`restart failed: ${text}`);
       setError(text);
     } finally {
@@ -472,7 +473,7 @@ export function App() {
       setTokenStatus('unknown');
       await refresh();
     } catch (err) {
-      const text = err instanceof Error ? err.message : String(err);
+      const text = formatUnknownError(err);
       appendDebug(`remove failed: ${text}`);
       setError(text);
     } finally {
@@ -496,7 +497,7 @@ export function App() {
         setTokenStatus(launchToken ? 'ready' : 'empty');
       }
     } catch (err) {
-      appendDebug(`launch token refresh failed: ${err instanceof Error ? err.message : String(err)}`);
+      appendDebug(`launch token refresh failed: ${formatUnknownError(err)}`);
       launchToken = '';
       setTokenStatus('error');
     }
@@ -557,7 +558,7 @@ export function App() {
           : 'Host Ollama responded, but no models were installed.',
       );
     } catch (err) {
-      const text = err instanceof Error ? err.message : String(err);
+      const text = formatUnknownError(err);
       appendDebug(`ollama detect failed: ${text}`);
       setOllamaModels([]);
       setOllamaAlertSeverity('error');
@@ -599,7 +600,7 @@ export function App() {
           : 'Safer mode is currently applied. Unknown commands require allowlist matching or approval.',
       );
     } catch (err) {
-      const text = err instanceof Error ? err.message : String(err);
+      const text = formatUnknownError(err);
       appendDebug(`execution mode detect failed: ${text}`);
       setExecutionModeAlertSeverity('error');
       setExecutionModeStatus(`Could not read execution mode: ${text}`);
@@ -640,7 +641,7 @@ export function App() {
       );
       setMessage(`OpenClaw execution mode applied: ${executionMode === 'full' ? 'Full access' : 'Safer'}.`);
     } catch (err) {
-      const text = err instanceof Error ? err.message : String(err);
+      const text = formatUnknownError(err);
       appendDebug(`execution mode apply failed: ${text}`);
       setExecutionModeAlertSeverity('error');
       setExecutionModeStatus(`Could not apply execution mode: ${text}`);
@@ -690,7 +691,7 @@ export function App() {
       setOllamaStatus(`Restart complete. OpenClaw is using ${model}.`);
       setMessage(`OpenClaw local model setup applied for ${model}.`);
     } catch (err) {
-      const text = err instanceof Error ? err.message : String(err);
+      const text = formatUnknownError(err);
       appendDebug(`ollama setup failed: ${text}`);
       setError(text);
     } finally {
@@ -740,7 +741,7 @@ export function App() {
         setUpdateAvailable(false);
       }
     } catch (err) {
-      const text = err instanceof Error ? err.message : String(err);
+      const text = formatUnknownError(err);
       appendDebug(`update check failed: ${text}`);
       setUpdateError(text);
     } finally {
@@ -765,7 +766,7 @@ export function App() {
       setMessage('OpenClaw updated and restarted successfully.');
     } catch (err) {
       setPhase('error');
-      const text = err instanceof Error ? err.message : String(err);
+      const text = formatUnknownError(err);
       appendDebug(`update/restart failed: ${text}`);
       setError(text);
     }

@@ -5,7 +5,7 @@ export type PortConflict = {
 };
 
 export function buildDockerPsPortCheckArgs(): string[] {
-  return ['--format', '{{.ID}}\t{{.Names}}\t{{.Ports}}'];
+  return ['--format={{json .}}'];
 }
 
 export function parseDockerPublishedPortConflicts(
@@ -22,7 +22,23 @@ export function parseDockerPublishedPortConflicts(
       continue;
     }
 
-    const [id = '', name = '', ports = ''] = trimmed.split('\t');
+    let id = '';
+    let name = '';
+    let ports = '';
+
+    if (trimmed.startsWith('{')) {
+      try {
+        const row = JSON.parse(trimmed) as Record<string, unknown>;
+        id = typeof row.ID === 'string' ? row.ID : '';
+        name = typeof row.Names === 'string' ? row.Names : '';
+        ports = typeof row.Ports === 'string' ? row.Ports : '';
+      } catch {
+        continue;
+      }
+    } else {
+      [id = '', name = '', ports = ''] = trimmed.split('\t');
+    }
+
     if (!id || !ports || name === ownContainerName) {
       continue;
     }
@@ -45,4 +61,32 @@ export function formatStartFailure(message: string, hostPort: number): string {
   }
 
   return message;
+}
+
+export function formatUnknownError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (error && typeof error === 'object') {
+    const record = error as Record<string, unknown>;
+    for (const key of ['message', 'stderr', 'stdout', 'error']) {
+      const value = record[key];
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return 'Unknown error';
+    }
+  }
+
+  return String(error);
 }
