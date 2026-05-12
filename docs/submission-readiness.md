@@ -70,9 +70,10 @@ Use `DRY_RUN=1` when you want to validate command construction without mutating 
 
 Open issues at submission time:
 
-- [#64](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/64): investigate a native OpenClaw migration path after Docker Desktop trial.
 - [#65](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/65): long-term security, hardening, supply-chain, and network migration epic.
 - [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12): roadmap and decision gates tracker.
+
+Native migration after a Docker Desktop trial is documented as a manual investigation path in [native-migration-investigation.md](native-migration-investigation.md).
 
 These are not blockers for an external review of the current Docker Desktop extension path.
 
