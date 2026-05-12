@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDockerPsPortCheckArgs,
   formatStartFailure,
+  formatUnknownError,
   parseDockerPublishedPortConflicts,
 } from './requirementChecks';
 
@@ -49,5 +50,11 @@ describe('requirement checks', () => {
     expect(formatStartFailure('Cannot connect to the Docker daemon', 18789)).toBe(
       'Docker Desktop is not ready yet. Start Docker Desktop, wait until it finishes starting, then try again.',
     );
+  });
+
+  it('formats Docker Desktop SDK error objects without leaking object Object', () => {
+    expect(formatUnknownError({ stderr: 'docker daemon unavailable\n' })).toBe('docker daemon unavailable');
+    expect(formatUnknownError({ message: 'Docker command failed' })).toBe('Docker command failed');
+    expect(formatUnknownError({ code: 1 })).toBe('{"code":1}');
   });
 });
