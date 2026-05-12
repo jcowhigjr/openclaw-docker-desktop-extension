@@ -348,6 +348,8 @@ The roadmap source of truth is [issue #12](https://github.com/jcowhigjr/openclaw
 
 Current status: the MVP foundation is complete enough for external review. The release/channel image path exists, the extension can update its runtime image, the localhost Control UI launch path bootstraps the gateway token, host Ollama setup is available, execution mode changes restart OpenClaw to reload cached exec approvals, and the README now documents the current provider-auth, `.env`, host-Ollama offline-first behavior, and host-posture boundary.
 
+Native migration after a successful Docker Desktop trial is documented as a manual investigation path in [docs/native-migration-investigation.md](docs/native-migration-investigation.md). Do not build native migration automation until real user demand and upstream OpenClaw portable-state guidance justify it.
+
 The repo should now move in this order:
 
 1. Keep the release/channel image path and public landing page current for external review.
