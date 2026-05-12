@@ -10,8 +10,7 @@ import {
 describe('requirement checks', () => {
   it('builds Docker ps args for checking published ports', () => {
     expect(buildDockerPsPortCheckArgs()).toEqual([
-      '--format',
-      '{{.ID}}\t{{.Names}}\t{{.Ports}}',
+      '--format={{json .}}',
     ]);
   });
 
@@ -31,6 +30,33 @@ describe('requirement checks', () => {
         id: 'def456',
         name: 'other-service',
         ports: '0.0.0.0:18789->8080/tcp',
+      },
+    ]);
+  });
+
+  it('detects Docker port conflicts from JSON-line ps output', () => {
+    const conflicts = parseDockerPublishedPortConflicts(
+      [
+        JSON.stringify({
+          ID: 'abc123',
+          Names: 'openclaw-docker-extension-service',
+          Ports: '127.0.0.1:18789->18790/tcp',
+        }),
+        JSON.stringify({
+          ID: 'def456',
+          Names: 'other-service',
+          Ports: '127.0.0.1:18789->8080/tcp, [::]:18789->8080/tcp',
+        }),
+      ].join('\n'),
+      18789,
+      'openclaw-docker-extension-service',
+    );
+
+    expect(conflicts).toEqual([
+      {
+        id: 'def456',
+        name: 'other-service',
+        ports: '127.0.0.1:18789->8080/tcp, [::]:18789->8080/tcp',
       },
     ]);
   });

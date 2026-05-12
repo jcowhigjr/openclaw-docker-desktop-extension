@@ -14,6 +14,14 @@ Submission review packet: [docs/submission-readiness.md](docs/submission-readine
 make install-dev
 ```
 
+Optional local push guard:
+
+```bash
+make install-hooks
+```
+
+This installs the repo pre-push hook, which runs `make test-pre-push` before allowing a push.
+
 Then:
 
 1. Open the `OpenClaw` extension in Docker Desktop.

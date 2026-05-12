@@ -82,6 +82,7 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
   - UI build for frontend changes
   - Docker image build for runtime or packaging changes
   - PR checks before merge
+- Before pushing, run the repo pre-push path with `make test-pre-push` or the installed `.githooks/pre-push`. Do not bypass it with `--no-verify` unless the maintainer explicitly approves the bypass and the PR states what verification replaced it.
 - Use manual UI testing plus screenshots when:
   - establishing a baseline before a meaningful UI or UX change
   - acting as QA after merging a user-facing change
