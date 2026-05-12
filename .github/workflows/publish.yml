@@ -17,7 +17,6 @@ on:
       - 'v*'
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   REGISTRY: ghcr.io
   EXTENSION_IMAGE_NAME: jcowhigjr/openclaw-docker-desktop-extension
   RUNTIME_IMAGE_NAME: jcowhigjr/openclaw-docker-desktop-extension-runtime
@@ -30,7 +29,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout workflow revision
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Resolve release metadata
         id: release-context
@@ -57,7 +56,7 @@ jobs:
           ./scripts/release-channel.sh "${release_tag}" "${{ github.event_name }}" "${INPUT_PROMOTE_CHANNEL}" >> "${GITHUB_OUTPUT}"
 
       - name: Checkout release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: refs/tags/${{ env.RELEASE_TAG }}
 
