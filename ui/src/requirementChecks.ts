@@ -5,7 +5,7 @@ export type PortConflict = {
 };
 
 export function buildDockerPsPortCheckArgs(): string[] {
-  return ['--format={{json .}}'];
+  return ['--format={{.ID}}|{{.Names}}|{{.Ports}}'];
 }
 
 export function parseDockerPublishedPortConflicts(
@@ -35,6 +35,8 @@ export function parseDockerPublishedPortConflicts(
       } catch {
         continue;
       }
+    } else if (trimmed.includes('|')) {
+      [id = '', name = '', ports = ''] = trimmed.split('|');
     } else {
       [id = '', name = '', ports = ''] = trimmed.split('\t');
     }
