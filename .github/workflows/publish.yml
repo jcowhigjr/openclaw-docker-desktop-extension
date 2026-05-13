@@ -112,6 +112,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.EXTENSION_IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.title=OpenClaw
           tags: |
             type=raw,value=${{ env.RELEASE_TAG }}
             type=raw,value=${{ env.RELEASE_VERSION }}
