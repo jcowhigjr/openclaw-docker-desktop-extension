@@ -3,6 +3,7 @@
 set -eu
 
 release_tag="${1:-${RELEASE_TAG:-}}"
+release_version="${release_tag#v}"
 repo_owner="${REPO_OWNER:-jcowhigjr}"
 ghcr_owner="${GHCR_OWNER:-$repo_owner}"
 verify_image="${VERIFY_IMAGE:-openclaw-docker-extension-release-check}"
@@ -19,7 +20,7 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-expected_runtime_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension-runtime:${release_tag}"
+expected_runtime_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension-runtime:${release_version}"
 image_ref="${verify_image}:${verify_tag}"
 
 if [ "$dry_run" = "1" ]; then

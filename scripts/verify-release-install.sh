@@ -3,11 +3,12 @@
 set -eu
 
 release_tag="${1:-${RELEASE_TAG:-}}"
+release_version="${release_tag#v}"
 repo_owner="${REPO_OWNER:-jcowhigjr}"
 repo_name="${REPO_NAME:-openclaw-docker-desktop-extension}"
 ghcr_owner="${GHCR_OWNER:-$repo_owner}"
 dry_run="${DRY_RUN:-0}"
-extension_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension:${release_tag}"
+extension_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension:${release_version}"
 
 if [ -z "$release_tag" ]; then
   echo "RELEASE_TAG is required, for example: make verify-release-install RELEASE_TAG=v0.1.0" >&2
