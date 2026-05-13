@@ -34,6 +34,7 @@ import {
   type OllamaModel,
 } from './ollamaSetup';
 import { buildControlUiLaunchUrl } from './controlUiLaunch';
+import { appendDebugEntry } from './debugLog';
 import { readGatewayTokenWithRetry } from './tokenRetry';
 import {
   buildExecModeReadScript,
@@ -208,8 +209,7 @@ export function App() {
 
   const appendDebug = useCallback((entry: string) => {
     setDebugLog((current) => {
-      const next = current ? `${current}\n${entry}` : entry;
-      return next.slice(-12000);
+      return appendDebugEntry(current, entry);
     });
   }, []);
 
@@ -232,6 +232,7 @@ export function App() {
 
       const conflicts = await findPortConflicts();
       if (conflicts.length > 0) {
+        appendDebug(`requirements check found port conflict on ${config.port}`);
         setRequirementsSeverity('warning');
         setRequirementsStatus(
           `Docker is ready, but host port ${config.port} is already published by ${conflicts.map((conflict) => conflict.name || conflict.id).join(', ')}. Change the Host Port or stop the other container before starting OpenClaw.`,
@@ -246,6 +247,7 @@ export function App() {
             await ddClient.docker.cli.exec('exec', [container.id, ...buildOllamaTagsFetchArgs()]);
           }
           setRequirementsSeverity('success');
+          appendDebug(`requirements check passed: Docker, host port ${config.port}, and Ollama are ready`);
           setRequirementsStatus(
             `Docker is ready, host port ${config.port} is available, and host Ollama is reachable for ${configuredOllamaModel}.`,
           );
@@ -262,6 +264,7 @@ export function App() {
       }
 
       setRequirementsSeverity('success');
+      appendDebug(`requirements check passed: Docker is ready and host port ${config.port} is available`);
       setRequirementsStatus(
         `Docker is ready and host port ${config.port} is available. Ollama is only required for Local Model Setup or an ollama/<model> default.`,
       );
@@ -1120,7 +1123,17 @@ export function App() {
         <Card>
           <CardContent>
             <Stack spacing={1.5}>
-              <Typography variant="h5">Debug Output</Typography>
+              <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                <Typography variant="h5">Debug Output</Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setDebugLog('')}
+                  disabled={!debugLog}
+                >
+                  Clear Debug
+                </Button>
+              </Stack>
               <TextField
                 value={debugLog}
                 multiline
