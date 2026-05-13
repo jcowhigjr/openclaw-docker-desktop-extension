@@ -3,12 +3,15 @@
 set -eu
 
 release_tag="${1:-${RELEASE_TAG:-}}"
+release_version="${release_tag#v}"
 repo_owner="${REPO_OWNER:-jcowhigjr}"
 repo_name="${REPO_NAME:-openclaw-docker-desktop-extension}"
 ghcr_owner="${GHCR_OWNER:-$repo_owner}"
 dry_run="${DRY_RUN:-0}"
 extension_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension:${release_tag}"
 runtime_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension-runtime:${release_tag}"
+extension_semver_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension:${release_version}"
+runtime_semver_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension-runtime:${release_version}"
 
 if [ -z "$release_tag" ]; then
   echo "RELEASE_TAG is required, for example: make verify-release-tag RELEASE_TAG=v0.1.0" >&2
@@ -20,6 +23,8 @@ if [ "$dry_run" = "1" ]; then
 dry run: gh api /repos/${repo_owner}/${repo_name}/releases/tags/${release_tag}
 dry run: docker manifest inspect ${extension_image}
 dry run: docker manifest inspect ${runtime_image}
+dry run: docker manifest inspect ${extension_semver_image}
+dry run: docker manifest inspect ${runtime_semver_image}
 EOF
   exit 0
 fi
@@ -74,6 +79,8 @@ require_anonymous_manifest() {
 require_release
 require_anonymous_manifest "${extension_image}"
 require_anonymous_manifest "${runtime_image}"
+require_anonymous_manifest "${extension_semver_image}"
+require_anonymous_manifest "${runtime_semver_image}"
 
 cat <<EOF
 Release install path is ready for this tag:

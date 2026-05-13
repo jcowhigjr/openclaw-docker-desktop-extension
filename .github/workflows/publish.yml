@@ -53,6 +53,7 @@ jobs:
           esac
 
           echo "RELEASE_TAG=${release_tag}" >> "${GITHUB_ENV}"
+          echo "RELEASE_VERSION=${release_tag#v}" >> "${GITHUB_ENV}"
           ./scripts/release-channel.sh "${release_tag}" "${{ github.event_name }}" "${INPUT_PROMOTE_CHANNEL}" >> "${GITHUB_OUTPUT}"
 
       - name: Checkout release tag
@@ -80,6 +81,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.RUNTIME_IMAGE_NAME }}
           tags: |
             type=raw,value=${{ env.RELEASE_TAG }}
+            type=raw,value=${{ env.RELEASE_VERSION }}
             type=raw,value=${{ steps.release-context.outputs.channel_tag }},enable=${{ steps.release-context.outputs.has_channel_tag }}
             type=sha,prefix=sha-
 
@@ -88,7 +90,7 @@ jobs:
         with:
           context: runtime
           file: runtime/Dockerfile
-          platforms: linux/arm64
+          platforms: linux/arm64,linux/amd64
           push: true
           tags: ${{ steps.runtime-meta.outputs.tags }}
           labels: ${{ steps.runtime-meta.outputs.labels }}
@@ -112,6 +114,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.EXTENSION_IMAGE_NAME }}
           tags: |
             type=raw,value=${{ env.RELEASE_TAG }}
+            type=raw,value=${{ env.RELEASE_VERSION }}
             type=raw,value=${{ steps.release-context.outputs.channel_tag }},enable=${{ steps.release-context.outputs.has_channel_tag }}
             type=sha,prefix=sha-
 
@@ -120,12 +123,12 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          platforms: linux/arm64
+          platforms: linux/arm64,linux/amd64
           push: true
           tags: ${{ steps.extension-meta.outputs.tags }}
           labels: ${{ steps.extension-meta.outputs.labels }}
           build-args: |
-            VITE_DEFAULT_RUNTIME_IMAGE=${{ env.REGISTRY }}/${{ env.RUNTIME_IMAGE_NAME }}:${{ steps.runtime-meta.outputs.version }}
+            VITE_DEFAULT_RUNTIME_IMAGE=${{ env.REGISTRY }}/${{ env.RUNTIME_IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
 
       - name: Run Trivy vulnerability scanner (extension)
         uses: aquasecurity/trivy-action@master

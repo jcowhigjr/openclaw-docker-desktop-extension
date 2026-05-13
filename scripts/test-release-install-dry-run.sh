@@ -29,14 +29,14 @@ assert_case() {
 assert_case \
   "install-release dry run prints install command" \
   "install-release" \
-  "dry run: docker manifest inspect ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:v1.2.3" \
-  "dry run: docker extension install -f ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:v1.2.3"
+  "dry run: docker manifest inspect ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3" \
+  "dry run: docker extension install -f ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3"
 
 assert_case \
   "update-release dry run prints update command" \
   "update-release" \
-  "dry run: docker manifest inspect ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:v1.2.3" \
-  "dry run: docker extension update ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:v1.2.3"
+  "dry run: docker manifest inspect ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3" \
+  "dry run: docker extension update ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3"
 
 assert_case \
   "install-channel dry run prints channel install command" \
