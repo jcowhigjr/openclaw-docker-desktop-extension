@@ -60,10 +60,11 @@ test-release-channel: ; @./scripts/test-release-channel.sh
 test-runtime-bridge: ; @sh ./scripts/test-runtime-bridge.sh
 test-extension-metadata: ; @./scripts/test-extension-metadata.sh
 test-release-tag-dry-run: ; @./scripts/test-release-tag-dry-run.sh
+test-verify-release-tag-title: ; @./scripts/test-verify-release-tag-title.sh
 test-release-install-dry-run: ; @./scripts/test-release-install-dry-run.sh
 test-release-channel-dry-run: ; @./scripts/test-release-channel-dry-run.sh
 test-ui: ; @cd ui && npm test && npm run build
-test-pre-push: test-ui test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-release-install-dry-run test-release-channel-dry-run
+test-pre-push: test-ui test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run
 install-hooks: ; @git config core.hooksPath .githooks && chmod +x .githooks/pre-push && echo "installed repo git hooks from .githooks"
 
 verify-release-bundle:
@@ -89,4 +90,4 @@ capture-readme-screenshot:
 	npx --yes playwright screenshot --device="Desktop Chrome" --color-scheme=light --wait-for-selector="text=OpenClaw Extension" --wait-for-timeout=1000 "$(SCREENSHOT_URL)" "$(SCREENSHOT_PATH)"
 	kill $$(cat /tmp/openclaw-vite-preview.pid) && rm -f /tmp/openclaw-vite-preview.pid
 
-.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-release-install-dry-run test-release-channel-dry-run test-ui test-pre-push install-hooks verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot
+.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-ui test-pre-push install-hooks verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot
