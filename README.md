@@ -38,7 +38,7 @@ Use these commands depending on where you are in the flow:
 
 - `make install-dev`: build both local images and install the extension into Docker Desktop
 - `make update-extension`: rebuild both local images and refresh an existing local install
-- `make verify-release-tag RELEASE_TAG=vX.Y.Z`: maintainer check that the GitHub release and both GHCR tags exist
+- `make verify-release-tag RELEASE_TAG=vX.Y.Z`: maintainer check that the GitHub release exists, both GHCR tags are public, and the published extension title label stayed validator-safe
 - `make verify-release-bundle RELEASE_TAG=vX.Y.Z`: maintainer check that a release extension build points at the matching GHCR runtime image
 - `make verify-release-install RELEASE_TAG=vX.Y.Z`: maintainer check that Docker Desktop can install and uninstall the GHCR extension image
 - `make publish-release RELEASE_TAG=vX.Y.Z`: maintainer fallback if a tag exists but the GitHub release needs to be repaired manually
@@ -120,6 +120,8 @@ make verify-release-bundle RELEASE_TAG=vX.Y.Z
 make publish-release RELEASE_TAG=vX.Y.Z
 make verify-release-tag RELEASE_TAG=vX.Y.Z
 ```
+
+`make verify-release-tag` now reads the published extension image config from GHCR, so it can catch release-only metadata drift such as a workflow overriding `org.opencontainers.image.title` after the Dockerfile labels were already correct in `main`.
 
 If the GitHub Actions publish job needs to be re-run for an existing tag, use the `Publish` workflow's manual dispatch and pass `release_tag=vX.Y.Z` so it rebuilds the matching GHCR artifacts instead of publishing the default branch state.
 
