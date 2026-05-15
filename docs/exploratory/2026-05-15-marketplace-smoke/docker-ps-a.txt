@@ -1,0 +1,13 @@
+CONTAINER ID   NAMES                                                            IMAGE                                                        STATUS                          PORTS
+0421bf90dbe8   openclaw-docker-extension-service                                ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest   Up 38 minutes (healthy)         127.0.0.1:18789->18790/tcp
+ba070db140ea   openclaw-docker-extension-desktop-extension-service              alpine:latest                                                Up 39 minutes                   
+d444bd6e5605   openwebui-extension-service                                      a6da0c292081                                                 Exited (137) 5 days ago         
+97dd74fa2659   localstack_localstack-docker-desktop-desktop-extension-service   localstack/localstack-docker-desktop:2026.4.1                Up 16 hours                     
+a3b57b4ce188   openwebui-extension-mcp-gateway                                  docker/mcp-gateway:v2                                        Restarting (1) 53 seconds ago   
+5e6b8dc34332   mcp-docker                                                       mcp/docker                                                   Up 16 hours                     127.0.0.1:8811->8811/tcp, [::]:8811->8811/tcp
+e753d7c879a6   mcp-openapi-schema                                               mcp/openapi-schema                                           Restarting (0) 22 seconds ago   
+41d338171650   mcp-playwright                                                   mcp/playwright                                               Restarting (0) 40 seconds ago   
+c3ecddd9de37   mcp-memory                                                       mcp/memory                                                   Restarting (0) 40 seconds ago   
+a22fb77a9d01   mcp-context7                                                     mcp/context7                                                 Up 16 hours                     127.0.0.1:8812->8812/tcp, [::]:8812->8812/tcp
+60eb35b9a70e   jesulonimii_portless-extension-desktop-extension-service         jesulonimii/portless-extension:1.0.0                         Up 16 hours                     127.0.0.1:1355->1355/tcp, [::]:1355->1355/tcp
+62ffe5a9b61d   rw4lll_openwebui-docker-extension-desktop-extension-service      alpine:latest                                                Up 16 hours                     
