@@ -35,6 +35,7 @@ import {
 } from './ollamaSetup';
 import { buildControlUiLaunchUrl } from './controlUiLaunch';
 import { appendDebugEntry } from './debugLog';
+import { buildSdkSafeNodeEvalArgs } from './dockerExec';
 import { readGatewayTokenWithRetry } from './tokenRetry';
 import {
   buildExecModeReadScript,
@@ -50,6 +51,7 @@ import {
   formatUnknownError,
   parseDockerPublishedPortConflicts,
 } from './requirementChecks';
+import { updateActionButtonSx } from './updateActionButton';
 
 type ContainerPhase = 'missing' | 'running' | 'stopped' | 'starting' | 'error';
 type TokenStatus = 'unknown' | 'checking' | 'ready' | 'empty' | 'error';
@@ -289,9 +291,9 @@ export function App() {
   const fetchGatewayToken = useCallback(async (containerId: string) => {
     const result = (await ddClient.docker.cli.exec('exec', [
       containerId,
-      'node',
-      '-e',
-      'const fs=require("fs"); const file="/home/node/.openclaw/openclaw.json"; if (!fs.existsSync(file)) { process.exit(0); } const cfg=JSON.parse(fs.readFileSync(file,"utf8")); process.stdout.write(cfg.gateway?.auth?.token || "");',
+      ...buildSdkSafeNodeEvalArgs(
+        'const fs=require("fs"); const file="/home/node/.openclaw/openclaw.json"; if (!fs.existsSync(file)) { process.exit(0); } const cfg=JSON.parse(fs.readFileSync(file,"utf8")); process.stdout.write(cfg.gateway?.auth?.token || "");',
+      ),
     ])) as CliExecResult;
     return asText(result.stdout).trim();
   }, [asText, ddClient]);
@@ -592,9 +594,7 @@ export function App() {
 
       const result = (await ddClient.docker.cli.exec('exec', [
         container.id,
-        'node',
-        '-e',
-        buildExecModeReadScript(),
+        ...buildSdkSafeNodeEvalArgs(buildExecModeReadScript()),
       ])) as CliExecResult;
       const stderr = asText(result.stderr).trim();
       if (stderr) {
@@ -635,9 +635,7 @@ export function App() {
       appendDebug(`applying OpenClaw execution mode: ${executionMode}`);
       await ddClient.docker.cli.exec('exec', [
         container.id,
-        'node',
-        '-e',
-        buildExecModeWriteScript(executionMode),
+        ...buildSdkSafeNodeEvalArgs(buildExecModeWriteScript(executionMode)),
       ]);
       setExecutionModeStatus(
         `Applied ${executionMode === 'full' ? 'Full access' : 'Safer'} mode. Restarting OpenClaw...`,
@@ -679,8 +677,14 @@ export function App() {
       }
 
       appendDebug(`configuring OpenClaw Ollama provider for ${model}`);
-      await ddClient.docker.cli.exec('exec', [container.id, 'node', '-e', buildOllamaConfigWriteScript(model)]);
-      await ddClient.docker.cli.exec('exec', [container.id, 'node', '-e', buildOllamaAuthProfilesWriteScript()]);
+      await ddClient.docker.cli.exec('exec', [
+        container.id,
+        ...buildSdkSafeNodeEvalArgs(buildOllamaConfigWriteScript(model)),
+      ]);
+      await ddClient.docker.cli.exec('exec', [
+        container.id,
+        ...buildSdkSafeNodeEvalArgs(buildOllamaAuthProfilesWriteScript()),
+      ]);
       await ddClient.docker.cli.exec('exec', [
         container.id,
         'node',
@@ -851,6 +855,7 @@ export function App() {
               <Button
                 color="inherit"
                 size="small"
+                sx={updateActionButtonSx}
                 startIcon={<SystemUpdateAltIcon />}
                 onClick={() => void updateAndRestart()}
                 disabled={busy || updateChecking}
