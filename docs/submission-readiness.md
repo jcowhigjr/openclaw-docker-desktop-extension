@@ -19,6 +19,8 @@ The project is a credible local trial path, not a hardened security boundary and
 ## Reviewer Smoke Test
 
 Use this path for a 5-10 minute functional review on macOS with Docker Desktop.
+The extension is not listed in the Docker Extensions Marketplace yet, so this
+review path uses the GHCR stable channel.
 
 1. Start Docker Desktop and wait for the Docker Engine to become ready.
 2. Confirm Docker Desktop allows local or non-Marketplace extension installs.
@@ -48,6 +50,7 @@ Use `DRY_RUN=1` when you want to validate command construction without mutating 
 ## What Is Ready
 
 - Install/update: GHCR release and channel paths are documented and validated by repository scripts.
+- Marketplace metadata: required labels, semver aliases, multi-arch images, and Docker's documented `utility-tools` category are covered by the pre-push metadata guard.
 - Startup UX: the extension exposes `Check Requirements`, start/stop/restart, update/restart, and debug output.
 - Control UI bootstrap: `Open Control UI` launches the canonical localhost URL and passes the gateway token via URL fragment.
 - Local model path: host Ollama detection and configuration are supported through `Local Model Setup`.

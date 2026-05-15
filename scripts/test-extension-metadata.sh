@@ -23,6 +23,7 @@ require_file_contains "$dockerfile" 'com.docker.extension.publisher-url="https:/
 require_file_contains "$dockerfile" 'com.docker.extension.detailed-description=' "detailed description label"
 require_file_contains "$dockerfile" 'com.docker.extension.changelog=' "changelog label"
 require_file_contains "$dockerfile" 'com.docker.extension.screenshots=' "screenshots label"
+require_file_contains "$dockerfile" 'com.docker.extension.categories="utility-tools"' "Docker Marketplace category label"
 
 require_file_contains "$workflow" 'RELEASE_VERSION=${release_tag#v}' "semver alias derivation"
 require_file_contains "$workflow" 'org.opencontainers.image.title=OpenClaw' "published validator-safe OCI title override"
