@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildDockerPsPortCheckArgs,
+  formatOllamaRequirementStatus,
   formatStartFailure,
   formatUnknownError,
   parseDockerPublishedPortConflicts,
@@ -101,5 +102,31 @@ describe('requirement checks', () => {
     expect(formatUnknownError({ stderr: 'docker daemon unavailable\n' })).toBe('docker daemon unavailable');
     expect(formatUnknownError({ message: 'Docker command failed' })).toBe('Docker command failed');
     expect(formatUnknownError({ code: 1 })).toBe('{"code":1}');
+  });
+
+  it('reports host Ollama readiness for local model setup even before a model is configured', () => {
+    expect(formatOllamaRequirementStatus({
+      hostPort: 18789,
+      configuredOllamaModel: '',
+      ollamaReachable: true,
+    })).toEqual({
+      severity: 'success',
+      debug: 'requirements check passed: Docker, host port 18789, and host Ollama are ready',
+      status:
+        'Docker is ready, host port 18789 is available, and host Ollama is reachable for Local Model Setup.',
+    });
+  });
+
+  it('warns when host Ollama is not reachable before local model setup', () => {
+    expect(formatOllamaRequirementStatus({
+      hostPort: 18789,
+      configuredOllamaModel: '',
+      ollamaReachable: false,
+    })).toEqual({
+      severity: 'info',
+      debug: 'requirements check passed: Docker is ready and host port 18789 is available',
+      status:
+        'Docker is ready and host port 18789 is available. Host Ollama was not reachable yet, so start Ollama before using Local Model Setup.',
+    });
   });
 });

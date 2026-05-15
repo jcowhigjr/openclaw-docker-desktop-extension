@@ -45,6 +45,7 @@ import {
 import { buildRuntimeRunArgs } from './runtimeContainer';
 import {
   buildDockerPsPortCheckArgs,
+  formatOllamaRequirementStatus,
   formatStartFailure,
   formatUnknownError,
   parseDockerPublishedPortConflicts,
@@ -240,26 +241,33 @@ export function App() {
         return;
       }
 
-      if (configuredOllamaModel && phase === 'running') {
-        try {
-          const container = await findContainer();
-          if (container?.state === 'running') {
+      if (phase === 'running') {
+        const container = await findContainer();
+        if (container?.state === 'running') {
+          try {
             await ddClient.docker.cli.exec('exec', [container.id, ...buildOllamaTagsFetchArgs()]);
+            const ollamaStatus = formatOllamaRequirementStatus({
+              hostPort: config.port,
+              configuredOllamaModel,
+              ollamaReachable: true,
+            });
+            setRequirementsSeverity(ollamaStatus.severity);
+            appendDebug(ollamaStatus.debug);
+            setRequirementsStatus(ollamaStatus.status);
+            return;
+          } catch (err) {
+            const text = formatUnknownError(err);
+            appendDebug(`requirements Ollama check failed: ${text}`);
+            const ollamaStatus = formatOllamaRequirementStatus({
+              hostPort: config.port,
+              configuredOllamaModel,
+              ollamaReachable: false,
+            });
+            setRequirementsSeverity(ollamaStatus.severity);
+            appendDebug(ollamaStatus.debug);
+            setRequirementsStatus(ollamaStatus.status);
+            return;
           }
-          setRequirementsSeverity('success');
-          appendDebug(`requirements check passed: Docker, host port ${config.port}, and Ollama are ready`);
-          setRequirementsStatus(
-            `Docker is ready, host port ${config.port} is available, and host Ollama is reachable for ${configuredOllamaModel}.`,
-          );
-          return;
-        } catch (err) {
-          const text = formatUnknownError(err);
-          appendDebug(`requirements Ollama check failed: ${text}`);
-          setRequirementsSeverity('warning');
-          setRequirementsStatus(
-            `Docker is ready and host port ${config.port} is available, but host Ollama was not reachable. Start Ollama before using the configured local model ${configuredOllamaModel}.`,
-          );
-          return;
         }
       }
 

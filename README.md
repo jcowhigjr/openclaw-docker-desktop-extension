@@ -377,7 +377,7 @@ The developer-only local update path remains `make update-extension`. The releas
 - Basic startup workflow:
   - Open Docker Desktop and wait for it to finish starting.
   - Open the OpenClaw extension in Docker Desktop.
-  - Click `Check Requirements` if you want to confirm Docker is responsive and the configured host port is not already used by another Docker container.
+  - Click `Check Requirements` if you want to confirm Docker is responsive, the configured host port is not already used by another Docker container, and host Ollama is reachable whenever OpenClaw is already running.
   - Click `Start`; if the service already exists, use `Restart`.
   - Click `Open Control UI` after the status says `OpenClaw is ready`.
   - For local/offline model use, start Ollama on the host Mac first, then click `Detect Ollama Models` in `Local Model Setup`.
