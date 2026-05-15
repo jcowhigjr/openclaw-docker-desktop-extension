@@ -23,7 +23,7 @@ import {
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { getDDClient } from './dockerDesktopClient';
+import { getDDClient, isDemoMode } from './dockerDesktopClient';
 import {
   buildOllamaAuthProfilesWriteScript,
   buildOllamaConfigWriteScript,
@@ -138,6 +138,7 @@ function statusTone(phase: ContainerPhase): 'success' | 'warning' | 'error' | 'd
 
 export function App() {
   const ddClient = useMemo(() => getDDClient(), []);
+  const demoMode = useMemo(() => isDemoMode(), []);
   const [config, setConfig] = useState<ExtensionConfig>(loadConfig);
   const [phase, setPhase] = useState<ContainerPhase>('missing');
   const [statusText, setStatusText] = useState('No OpenClaw container yet');
@@ -315,6 +316,10 @@ export function App() {
   }, [appendDebug, fetchGatewayToken]);
 
   const checkReady = useCallback(async () => {
+    if (demoMode) {
+      return true;
+    }
+
     try {
       const response = await fetch(`${openUrl}/healthz`, { cache: 'no-store' });
       if (!response.ok) {
@@ -326,7 +331,7 @@ export function App() {
     } catch {
       return false;
     }
-  }, [openUrl]);
+  }, [demoMode, openUrl]);
 
   const refresh = useCallback(async (): Promise<RefreshResult> => {
     try {
