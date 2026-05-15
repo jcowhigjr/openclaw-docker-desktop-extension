@@ -40,11 +40,17 @@ jobs:
       - name: Verify runtime bridge wiring
         run: make test-runtime-bridge
 
+      - name: Verify extension marketplace metadata
+        run: make test-extension-metadata
+
       - name: Verify release channel mapping
         run: make test-release-channel
 
       - name: Verify release tag dry-run
         run: make test-release-tag-dry-run
+
+      - name: Verify release title dry-run
+        run: make test-verify-release-tag-title
 
       - name: Verify release install dry-run wrappers
         run: make test-release-install-dry-run
