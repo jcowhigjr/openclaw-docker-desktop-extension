@@ -20,7 +20,9 @@ assert_contains "$output" "dry run: docker manifest inspect ghcr.io/jcowhigjr/op
 assert_contains "$output" "dry run: docker manifest inspect ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:v1.2.3"
 assert_contains "$output" "dry run: docker manifest inspect ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3"
 assert_contains "$output" "dry run: docker manifest inspect ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:1.2.3"
+assert_contains "$output" "dry run: docker manifest inspect docker.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3"
 assert_contains "$output" "dry run: verify extension label org.opencontainers.image.title=OpenClaw on ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:v1.2.3"
 assert_contains "$output" "dry run: verify extension label org.opencontainers.image.title=OpenClaw on ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3"
+assert_contains "$output" "dry run: verify extension label org.opencontainers.image.title=OpenClaw on docker.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3"
 
 echo "release tag dry-run checks passed"

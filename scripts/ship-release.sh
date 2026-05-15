@@ -6,6 +6,7 @@ release_tag="${1:-${RELEASE_TAG:-}}"
 repo_owner="${REPO_OWNER:-jcowhigjr}"
 repo_name="${REPO_NAME:-openclaw-docker-desktop-extension}"
 ghcr_owner="${GHCR_OWNER:-$repo_owner}"
+dockerhub_owner="${DOCKERHUB_OWNER:-$repo_owner}"
 dry_run="${DRY_RUN:-0}"
 
 if [ -z "$release_tag" ]; then
@@ -26,11 +27,11 @@ run_step "Publish GitHub release if needed" \
   ./scripts/publish-release.sh
 
 run_step "Verify GitHub release and GHCR tags" \
-  env RELEASE_TAG="$release_tag" REPO_OWNER="$repo_owner" REPO_NAME="$repo_name" GHCR_OWNER="$ghcr_owner" DRY_RUN="$dry_run" \
+  env RELEASE_TAG="$release_tag" REPO_OWNER="$repo_owner" REPO_NAME="$repo_name" GHCR_OWNER="$ghcr_owner" DOCKERHUB_OWNER="$dockerhub_owner" DRY_RUN="$dry_run" \
   ./scripts/verify-release-tag.sh
 
 run_step "Validate Docker Desktop install/uninstall" \
-  env RELEASE_TAG="$release_tag" REPO_OWNER="$repo_owner" REPO_NAME="$repo_name" GHCR_OWNER="$ghcr_owner" DRY_RUN="$dry_run" \
+  env RELEASE_TAG="$release_tag" REPO_OWNER="$repo_owner" REPO_NAME="$repo_name" GHCR_OWNER="$ghcr_owner" DOCKERHUB_OWNER="$dockerhub_owner" DRY_RUN="$dry_run" \
   ./scripts/verify-release-install.sh
 
 cat <<EOF
@@ -38,4 +39,7 @@ Release shipping flow completed for ${release_tag}
 
 End-user install command:
   docker extension install ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension:${release_tag}
+
+Marketplace submission image:
+  docker.io/${dockerhub_owner}/openclaw-docker-desktop-extension:${release_tag#v}
 EOF

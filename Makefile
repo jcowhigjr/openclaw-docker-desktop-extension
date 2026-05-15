@@ -3,6 +3,7 @@ TAG ?= dev
 RUNTIME_IMAGE ?= openclaw-docker-extension-runtime
 RUNTIME_TAG ?= dev
 GHCR_OWNER ?= jcowhigjr
+DOCKERHUB_OWNER ?= jcowhigjr
 RELEASE_TAG ?=
 RELEASE_VERSION ?= $(patsubst v%,%,$(RELEASE_TAG))
 RELEASE_CHANNEL ?= stable
@@ -52,7 +53,7 @@ install-channel: ; @test -n "$(RELEASE_CHANNEL)" || (echo "RELEASE_CHANNEL is re
 update-channel: ; @test -n "$(RELEASE_CHANNEL)" || (echo "RELEASE_CHANNEL is required, for example: make update-channel RELEASE_CHANNEL=stable" && exit 1); IMAGE_TAG="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" IMAGE_NAME="openclaw-docker-desktop-extension" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-image.sh; if [ "$(DRY_RUN)" = "1" ]; then echo "dry run: docker extension update $(CHANNEL_EXTENSION_IMAGE)"; else docker extension update $(CHANNEL_EXTENSION_IMAGE); fi
 
 verify-release-tag:
-	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" ./scripts/verify-release-tag.sh
+	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" DOCKERHUB_OWNER="$(DOCKERHUB_OWNER)" ./scripts/verify-release-tag.sh
 
 verify-release-channel: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" ./scripts/verify-release-channel.sh
 
@@ -70,7 +71,7 @@ install-hooks: ; @git config core.hooksPath .githooks && chmod +x .githooks/pre-
 verify-release-bundle:
 	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" GHCR_OWNER="$(GHCR_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-bundle.sh
 
-verify-release-install: ; @RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-install.sh
+verify-release-install: ; @RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" DOCKERHUB_OWNER="$(DOCKERHUB_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-install.sh
 
 verify-channel-install: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-channel-install.sh
 
@@ -78,7 +79,7 @@ publish-release:
 	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" DRY_RUN="$(DRY_RUN)" ./scripts/publish-release.sh
 
 ship-release:
-	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/ship-release.sh
+	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" DOCKERHUB_OWNER="$(DOCKERHUB_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/ship-release.sh
 
 uninstall:
 	docker extension rm $(IMAGE)

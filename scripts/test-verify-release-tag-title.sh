@@ -56,6 +56,10 @@ if [ "$1" = "manifest" ] && [ "$2" = "inspect" ] && [ "$3" = "ghcr.io/jcowhigjr/
   exit 0
 fi
 
+if [ "$1" = "manifest" ] && [ "$2" = "inspect" ] && [ "$3" = "docker.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3" ]; then
+  exit 0
+fi
+
 if [ "$1" = "manifest" ] && [ "$2" = "inspect" ] && [ "$3" = "--verbose" ] && [ "$4" = "ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:v1.2.3" ]; then
   cat <<'JSON'
 [
@@ -117,6 +121,18 @@ case "$*" in
   *"https://ghcr.io/v2/jcowhigjr/openclaw-docker-desktop-extension/blobs/sha256:testconfigsemver"*)
     printf '%s\n' '{"config":{"Labels":{"org.opencontainers.image.title":"OpenClaw"}}}'
     ;;
+  *"https://auth.docker.io/token?service=registry.docker.io&scope=repository:jcowhigjr/openclaw-docker-desktop-extension:pull"*)
+    printf '%s\n' '{"token":"test-token"}'
+    ;;
+  *"https://registry-1.docker.io/v2/jcowhigjr/openclaw-docker-desktop-extension/manifests/1.2.3"*)
+    printf '%s\n' '{"config":{"digest":"sha256:testconfigdockerhub"}}'
+    ;;
+  *"https://registry-1.docker.io/v2/jcowhigjr/openclaw-docker-desktop-extension/manifests/sha256:testconfigdockerhub"*)
+    printf '%s\n' '{"config":{"digest":"sha256:testconfigdockerhub"}}'
+    ;;
+  *"https://registry-1.docker.io/v2/jcowhigjr/openclaw-docker-desktop-extension/blobs/sha256:testconfigdockerhub"*)
+    printf '%s\n' '{"config":{"Labels":{"org.opencontainers.image.title":"OpenClaw"}}}'
+    ;;
   *)
     echo "unexpected curl invocation: $*" >&2
     exit 1
@@ -132,6 +148,7 @@ output="$(
 
 printf '%s\n' "$output" | grep -F "published OCI title matches expected value: ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:v1.2.3" >/dev/null
 printf '%s\n' "$output" | grep -F "published OCI title matches expected value: ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3" >/dev/null
+printf '%s\n' "$output" | grep -F "published OCI title matches expected value: docker.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3" >/dev/null
 printf '%s\n' "$output" | grep -F "Release install path is ready for this tag:" >/dev/null
 
 echo "release tag title verification checks passed"

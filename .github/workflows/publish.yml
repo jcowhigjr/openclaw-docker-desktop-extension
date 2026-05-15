@@ -20,6 +20,7 @@ env:
   REGISTRY: ghcr.io
   EXTENSION_IMAGE_NAME: jcowhigjr/openclaw-docker-desktop-extension
   RUNTIME_IMAGE_NAME: jcowhigjr/openclaw-docker-desktop-extension-runtime
+  DOCKERHUB_EXTENSION_IMAGE_NAME: jcowhigjr/openclaw-docker-desktop-extension
 
 jobs:
   publish:
@@ -74,6 +75,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Docker metadata for runtime
         id: runtime-meta
         uses: docker/metadata-action@v5
@@ -111,7 +118,9 @@ jobs:
         id: extension-meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.EXTENSION_IMAGE_NAME }}
+          images: |
+            ${{ env.REGISTRY }}/${{ env.EXTENSION_IMAGE_NAME }}
+            ${{ env.DOCKERHUB_EXTENSION_IMAGE_NAME }}
           labels: |
             org.opencontainers.image.title=OpenClaw
           tags: |
