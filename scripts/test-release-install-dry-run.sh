@@ -50,4 +50,8 @@ assert_case \
   "dry run: docker manifest inspect ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable" \
   "dry run: docker extension update ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable"
 
+output="$(make verify-release-install RELEASE_TAG=v1.2.3 DRY_RUN=1 2>&1)"
+assert_contains "$output" "dry run: docker extension validate --validate-install-uninstall ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3"
+assert_contains "$output" "dry run: docker extension validate --validate-install-uninstall docker.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3"
+
 echo "release install dry-run checks passed"

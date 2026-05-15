@@ -7,8 +7,10 @@ release_version="${release_tag#v}"
 repo_owner="${REPO_OWNER:-jcowhigjr}"
 repo_name="${REPO_NAME:-openclaw-docker-desktop-extension}"
 ghcr_owner="${GHCR_OWNER:-$repo_owner}"
+dockerhub_owner="${DOCKERHUB_OWNER:-$repo_owner}"
 dry_run="${DRY_RUN:-0}"
 extension_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension:${release_version}"
+dockerhub_extension_image="docker.io/${dockerhub_owner}/openclaw-docker-desktop-extension:${release_version}"
 
 if [ -z "$release_tag" ]; then
   echo "RELEASE_TAG is required, for example: make verify-release-install RELEASE_TAG=v0.1.0" >&2
@@ -21,8 +23,9 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 if [ "$dry_run" = "1" ]; then
-  echo "dry run: RELEASE_TAG=${release_tag} REPO_OWNER=${repo_owner} REPO_NAME=${repo_name} GHCR_OWNER=${ghcr_owner} ./scripts/verify-release-tag.sh"
+  echo "dry run: RELEASE_TAG=${release_tag} REPO_OWNER=${repo_owner} REPO_NAME=${repo_name} GHCR_OWNER=${ghcr_owner} DOCKERHUB_OWNER=${dockerhub_owner} ./scripts/verify-release-tag.sh"
   echo "dry run: docker extension validate --validate-install-uninstall ${extension_image}"
+  echo "dry run: docker extension validate --validate-install-uninstall ${dockerhub_extension_image}"
   exit 0
 fi
 
@@ -36,13 +39,18 @@ RELEASE_TAG="$release_tag" \
   REPO_OWNER="$repo_owner" \
   REPO_NAME="$repo_name" \
   GHCR_OWNER="$ghcr_owner" \
+  DOCKERHUB_OWNER="$dockerhub_owner" \
   ./scripts/verify-release-tag.sh
 
 docker extension validate --validate-install-uninstall "$extension_image"
+docker extension validate --validate-install-uninstall "$dockerhub_extension_image"
 
 cat <<EOF
 Release install validation passed for this image:
   ${extension_image}
+
+Marketplace submission validation passed for this Docker Hub image:
+  ${dockerhub_extension_image}
 
 End-user install command:
   docker extension install ${extension_image}

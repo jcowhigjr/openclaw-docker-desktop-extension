@@ -38,11 +38,11 @@ Use these commands depending on where you are in the flow:
 
 - `make install-dev`: build both local images and install the extension into Docker Desktop
 - `make update-extension`: rebuild both local images and refresh an existing local install
-- `make verify-release-tag RELEASE_TAG=vX.Y.Z`: maintainer check that the GitHub release exists, both GHCR tags are public, and the published extension title label stayed validator-safe
+- `make verify-release-tag RELEASE_TAG=vX.Y.Z`: maintainer check that the GitHub release exists, the GHCR tags and Docker Hub extension semver tag are public, and the published extension title label stayed validator-safe
 - `make verify-release-bundle RELEASE_TAG=vX.Y.Z`: maintainer check that a release extension build points at the matching GHCR runtime image
-- `make verify-release-install RELEASE_TAG=vX.Y.Z`: maintainer check that Docker Desktop can install and uninstall the GHCR extension image
+- `make verify-release-install RELEASE_TAG=vX.Y.Z`: maintainer check that Docker Desktop can install and uninstall the GHCR extension image and Docker Hub Marketplace semver image
 - `make publish-release RELEASE_TAG=vX.Y.Z`: maintainer fallback if a tag exists but the GitHub release needs to be repaired manually
-- `make ship-release RELEASE_TAG=vX.Y.Z`: maintainer repair path that publishes the GitHub release if needed, verifies the GHCR tags, then validates Docker Desktop install/uninstall
+- `make ship-release RELEASE_TAG=vX.Y.Z`: maintainer repair path that publishes the GitHub release if needed, verifies release tags, then validates Docker Desktop install/uninstall
 - `make install-release RELEASE_TAG=vX.Y.Z`: install a tagged GHCR-published extension image after an anonymous GHCR preflight
 - `make update-release RELEASE_TAG=vX.Y.Z`: update an installed GHCR-published extension image after the same preflight
 - `make verify-release-channel RELEASE_CHANNEL=stable`: maintainer check that the floating channel tags are publicly readable
@@ -59,7 +59,14 @@ Tagged releases now publish both images to GHCR through GitHub Actions and creat
 
 - extension image: `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:<tag>`
 - runtime image: `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:<tag>`
-- published architecture today: `linux/arm64` (Apple Silicon path first)
+- published architectures: `linux/arm64` and `linux/amd64`
+
+The release workflow also publishes the extension image to Docker Hub for Docker Marketplace validation:
+
+- Marketplace image: `docker.io/jcowhigjr/openclaw-docker-desktop-extension:<semver>`
+- required GitHub Actions secrets: `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`
+
+Docker's automated Marketplace submission validates the greatest semver tag on Docker Hub, so the non-`v` semver tag, for example `0.3.4`, must be public before submission.
 
 Release builds of the extension UI default the runtime image field to the matching GHCR runtime tag. Local development still defaults to `openclaw-docker-extension-runtime:dev`.
 
@@ -95,13 +102,15 @@ make verify-release-bundle RELEASE_TAG=vX.Y.Z
 
 That build-time check proves the extension bundle is wired to the matching GHCR runtime tag instead of falling back to the local dev runtime image.
 
-That check verifies all three requirements for the documented install path:
+That check verifies the requirements for the documented install path and Marketplace submission:
 
 - the GitHub release exists for the tag
 - both GHCR image tags exist
 - both GHCR packages are public to anonymous users
+- the Docker Hub extension semver tag exists for Marketplace validation
+- the published extension title label remains validator-safe on GHCR and Docker Hub
 
-If you want the full maintainer handoff in one command after the tag is published to GHCR:
+If you want the full maintainer handoff in one command after the tag is published:
 
 ```bash
 make ship-release RELEASE_TAG=vX.Y.Z
