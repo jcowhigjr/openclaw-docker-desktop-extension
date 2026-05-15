@@ -4,6 +4,14 @@ export type PortConflict = {
   ports: string;
 };
 
+export type RequirementSeverity = 'success' | 'warning' | 'info';
+
+export type OllamaRequirementStatus = {
+  severity: RequirementSeverity;
+  debug: string;
+  status: string;
+};
+
 export function buildDockerPsPortCheckArgs(): string[] {
   return ['--format={{.ID}}|{{.Names}}|{{.Ports}}'];
 }
@@ -63,6 +71,46 @@ export function formatStartFailure(message: string, hostPort: number): string {
   }
 
   return message;
+}
+
+export function formatOllamaRequirementStatus({
+  hostPort,
+  configuredOllamaModel,
+  ollamaReachable,
+}: {
+  hostPort: number;
+  configuredOllamaModel: string;
+  ollamaReachable: boolean;
+}): OllamaRequirementStatus {
+  if (configuredOllamaModel) {
+    if (ollamaReachable) {
+      return {
+        severity: 'success',
+        debug: `requirements check passed: Docker, host port ${hostPort}, and Ollama are ready`,
+        status: `Docker is ready, host port ${hostPort} is available, and host Ollama is reachable for ${configuredOllamaModel}.`,
+      };
+    }
+
+    return {
+      severity: 'warning',
+      debug: `requirements check passed: Docker is ready and host port ${hostPort} is available`,
+      status: `Docker is ready and host port ${hostPort} is available, but host Ollama was not reachable. Start Ollama before using the configured local model ${configuredOllamaModel}.`,
+    };
+  }
+
+  if (ollamaReachable) {
+    return {
+      severity: 'success',
+      debug: `requirements check passed: Docker, host port ${hostPort}, and host Ollama are ready`,
+      status: `Docker is ready, host port ${hostPort} is available, and host Ollama is reachable for Local Model Setup.`,
+    };
+  }
+
+  return {
+    severity: 'info',
+    debug: `requirements check passed: Docker is ready and host port ${hostPort} is available`,
+    status: `Docker is ready and host port ${hostPort} is available. Host Ollama was not reachable yet, so start Ollama before using Local Model Setup.`,
+  };
 }
 
 export function formatUnknownError(error: unknown): string {
