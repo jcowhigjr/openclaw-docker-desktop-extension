@@ -16,6 +16,8 @@ This repository provides a Docker Desktop extension for trying OpenClaw on macOS
 
 The project is a credible local trial path, not a hardened security boundary and not a full native OpenClaw installer.
 
+Marketplace listing copy is drafted in [marketplace-listing.md](marketplace-listing.md).
+
 ## Reviewer Smoke Test
 
 Use this path for a 5-10 minute functional review on macOS with Docker Desktop.
