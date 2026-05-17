@@ -66,8 +66,9 @@ test-verify-release-tag-dockerhub-error: ; @./scripts/test-verify-release-tag-do
 test-verify-release-tag-title: ; @./scripts/test-verify-release-tag-title.sh
 test-release-install-dry-run: ; @./scripts/test-release-install-dry-run.sh
 test-release-channel-dry-run: ; @./scripts/test-release-channel-dry-run.sh
+test-create-smoke-report: ; @sh ./scripts/test-create-smoke-report.sh
 test-ui: ; @cd ui && npm test && npm run build
-test-pre-push: test-ui test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run
+test-pre-push: test-ui test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-create-smoke-report
 install-hooks: ; @git config core.hooksPath .githooks && chmod +x .githooks/pre-push && echo "installed repo git hooks from .githooks"
 
 verify-release-bundle:
@@ -89,4 +90,7 @@ uninstall:
 capture-readme-screenshot:
 	SCREENSHOT_PORT="$(SCREENSHOT_PORT)" SCREENSHOT_URL="$(SCREENSHOT_URL)" SCREENSHOT_PATH="$(SCREENSHOT_PATH)" ./scripts/capture-readme-screenshot.sh
 
-.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-ui test-pre-push install-hooks verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot
+create-smoke-report:
+	@REPORT_DATE="$(REPORT_DATE)" RELEASE_CHANNEL="$(RELEASE_CHANNEL)" RELEASE_TAG="$(RELEASE_TAG)" REPORT_DIR="$(REPORT_DIR)" sh ./scripts/create-smoke-report.sh
+
+.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-create-smoke-report test-ui test-pre-push install-hooks verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot create-smoke-report
