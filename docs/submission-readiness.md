@@ -45,6 +45,7 @@ Maintainer release-channel validation:
 
 ```bash
 make verify-channel-install RELEASE_CHANNEL=stable
+make verify-channel-install RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=v0.3.4
 ```
 
 Use `DRY_RUN=1` when you want to validate command construction without mutating Docker Desktop.

@@ -46,7 +46,9 @@ Use these commands depending on where you are in the flow:
 - `make install-release RELEASE_TAG=vX.Y.Z`: install a tagged GHCR-published extension image after an anonymous GHCR preflight
 - `make update-release RELEASE_TAG=vX.Y.Z`: update an installed GHCR-published extension image after the same preflight
 - `make verify-release-channel RELEASE_CHANNEL=stable`: maintainer check that the floating channel tags are publicly readable
+- `make verify-release-channel RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=vX.Y.Z`: maintainer check that the floating channel still points at the intended release tag
 - `make verify-channel-install RELEASE_CHANNEL=stable`: maintainer check that Docker Desktop can install and uninstall the floating channel image
+- `make verify-channel-install RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=vX.Y.Z`: maintainer check that the installable floating channel also matches the intended release tag
 - `make install-channel RELEASE_CHANNEL=stable`: install the current published GHCR channel image with the same preflight
 - `make update-channel RELEASE_CHANNEL=stable`: update an installed GHCR channel image with the same preflight
 - add `DRY_RUN=1` to `install-release`, `update-release`, or `ship-release` to rehearse the documented release path without mutating Docker Desktop
@@ -172,6 +174,7 @@ If you are maintaining the floating channel path, verify the anonymous channel t
 ```bash
 make verify-release-channel RELEASE_CHANNEL=stable
 make verify-release-channel RELEASE_CHANNEL=stable DRY_RUN=1
+make verify-release-channel RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=vX.Y.Z
 ```
 
 To rehearse the same install wrapper without changing Docker Desktop state:
