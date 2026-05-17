@@ -87,14 +87,16 @@ require_release() {
 
 require_anonymous_manifest() {
   image_ref="$1"
+  registry_name="$2"
+  next_step="$3"
 
   if DOCKER_CONFIG="$anonymous_docker_config" docker manifest inspect "$image_ref" >/dev/null 2>&1; then
-    echo "ghcr tag is publicly readable: ${image_ref}"
+    echo "${registry_name} tag is publicly readable: ${image_ref}"
     return 0
   fi
 
-  echo "ghcr tag is missing or not publicly readable: ${image_ref}" >&2
-  echo "Next step: confirm the publish workflow completed and the GHCR package is public." >&2
+  echo "${registry_name} tag is missing or not publicly readable: ${image_ref}" >&2
+  echo "Next step: ${next_step}" >&2
   return 1
 }
 
@@ -229,11 +231,11 @@ require_dockerhub_registry_label() {
 }
 
 require_release
-require_anonymous_manifest "${extension_image}"
-require_anonymous_manifest "${runtime_image}"
-require_anonymous_manifest "${extension_semver_image}"
-require_anonymous_manifest "${runtime_semver_image}"
-require_anonymous_manifest "${dockerhub_extension_semver_image}"
+require_anonymous_manifest "${extension_image}" "ghcr" "confirm the publish workflow completed and the GHCR package is public."
+require_anonymous_manifest "${runtime_image}" "ghcr" "confirm the publish workflow completed and the GHCR package is public."
+require_anonymous_manifest "${extension_semver_image}" "ghcr" "confirm the publish workflow completed and the GHCR package is public."
+require_anonymous_manifest "${runtime_semver_image}" "ghcr" "confirm the publish workflow completed and the GHCR package is public."
+require_anonymous_manifest "${dockerhub_extension_semver_image}" "docker.io" "confirm the publish workflow completed and the Docker Hub repository/tag is public."
 require_registry_label "${extension_repo}" "${release_tag}" "org.opencontainers.image.title" "${expected_extension_title}"
 require_registry_label "${extension_repo}" "${release_version}" "org.opencontainers.image.title" "${expected_extension_title}"
 require_dockerhub_registry_label "${dockerhub_extension_repo}" "${release_version}" "org.opencontainers.image.title" "${expected_extension_title}"

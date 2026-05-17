@@ -56,17 +56,18 @@ update-channel: ; @test -n "$(RELEASE_CHANNEL)" || (echo "RELEASE_CHANNEL is req
 verify-release-tag:
 	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" DOCKERHUB_OWNER="$(DOCKERHUB_OWNER)" ./scripts/verify-release-tag.sh
 
-verify-release-channel: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" ./scripts/verify-release-channel.sh
+verify-release-channel: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" EXPECTED_RELEASE_TAG="$(EXPECTED_RELEASE_TAG)" ./scripts/verify-release-channel.sh
 
 test-release-channel: ; @./scripts/test-release-channel.sh
 test-runtime-bridge: ; @sh ./scripts/test-runtime-bridge.sh
 test-extension-metadata: ; @./scripts/test-extension-metadata.sh
 test-release-tag-dry-run: ; @./scripts/test-release-tag-dry-run.sh
+test-verify-release-tag-dockerhub-error: ; @./scripts/test-verify-release-tag-dockerhub-error.sh
 test-verify-release-tag-title: ; @./scripts/test-verify-release-tag-title.sh
 test-release-install-dry-run: ; @./scripts/test-release-install-dry-run.sh
 test-release-channel-dry-run: ; @./scripts/test-release-channel-dry-run.sh
 test-ui: ; @cd ui && npm test && npm run build
-test-pre-push: test-ui test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run
+test-pre-push: test-ui test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run
 install-hooks: ; @git config core.hooksPath .githooks && chmod +x .githooks/pre-push && echo "installed repo git hooks from .githooks"
 
 verify-release-bundle:
@@ -74,7 +75,7 @@ verify-release-bundle:
 
 verify-release-install: ; @RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" DOCKERHUB_OWNER="$(DOCKERHUB_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-install.sh
 
-verify-channel-install: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-channel-install.sh
+verify-channel-install: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" EXPECTED_RELEASE_TAG="$(EXPECTED_RELEASE_TAG)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-channel-install.sh
 
 publish-release:
 	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" DRY_RUN="$(DRY_RUN)" ./scripts/publish-release.sh
@@ -88,4 +89,4 @@ uninstall:
 capture-readme-screenshot:
 	SCREENSHOT_PORT="$(SCREENSHOT_PORT)" SCREENSHOT_URL="$(SCREENSHOT_URL)" SCREENSHOT_PATH="$(SCREENSHOT_PATH)" ./scripts/capture-readme-screenshot.sh
 
-.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-ui test-pre-push install-hooks verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot
+.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-ui test-pre-push install-hooks verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot
