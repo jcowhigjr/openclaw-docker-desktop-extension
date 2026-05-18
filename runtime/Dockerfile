@@ -13,7 +13,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY openclaw-bridge.sh /usr/local/bin/openclaw-bridge.sh
-RUN chmod 755 /usr/local/bin/openclaw-bridge.sh
+COPY openclaw-extension-helper.js /usr/local/bin/openclaw-extension-helper.js
+RUN chmod 755 /usr/local/bin/openclaw-bridge.sh /usr/local/bin/openclaw-extension-helper.js
 
 USER node
 

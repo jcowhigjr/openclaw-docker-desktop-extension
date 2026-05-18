@@ -4,8 +4,6 @@ import {
   buildOllamaAuthConfigProfile,
   buildOllamaAuthOrder,
   buildOllamaAuthProfilesStore,
-  buildOllamaAuthProfilesWriteScript,
-  buildOllamaConfigWriteScript,
   buildOllamaProviderPatch,
   buildOllamaTagsFetchArgs,
   chooseRecommendedOllamaModel,
@@ -82,21 +80,6 @@ describe('ollamaSetup helpers', () => {
       },
     });
     expect(buildOllamaAuthOrder()).toEqual(['ollama:manual']);
-  });
-
-  it('builds Docker SDK-safe Node scripts for Ollama setup', () => {
-    const scripts = [
-      buildOllamaConfigWriteScript('gemma4:latest'),
-      buildOllamaAuthProfilesWriteScript(),
-    ];
-
-    for (const script of scripts) {
-      expect(script).not.toContain('=>');
-      expect(script).not.toContain('`');
-    }
-
-    expect(buildOllamaConfigWriteScript('gemma4:latest')).toContain('gemma4:latest');
-    expect(buildOllamaAuthProfilesWriteScript()).toContain('auth-profiles.json');
   });
 
   it('builds Docker SDK-safe argv for fetching host Ollama tags', () => {

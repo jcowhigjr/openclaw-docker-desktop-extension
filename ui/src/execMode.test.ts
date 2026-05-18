@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildExecModeReadScript,
-  buildExecModeWriteScript,
   buildExecutionModeConfig,
   detectExecutionMode,
   mergeExecApprovals,
   mergeOpenClawExecConfig,
+  parseExecModeReadOutput,
 } from './execMode';
 
 describe('execution mode config', () => {
@@ -132,23 +131,8 @@ describe('execution mode config', () => {
     ).toBe('safer');
   });
 
-  it('builds a Docker SDK-safe write script for both config files', () => {
-    const script = buildExecModeWriteScript('full');
-
-    expect(script).toContain('/home/node/.openclaw/exec-approvals.json');
-    expect(script).toContain('/home/node/.openclaw/openclaw.json');
-    expect(script).toContain('copyFileSync');
-    expect(script).not.toContain('&&');
-    expect(script).not.toContain('|');
-  });
-
-  it('builds a read script that does not return socket token fields', () => {
-    const script = buildExecModeReadScript();
-
-    expect(script).toContain('approvals:{defaults:approvals.defaults');
-    expect(script).not.toContain('socket');
-    expect(script).not.toContain('token');
-    expect(script).not.toContain('&&');
-    expect(script).not.toContain('|');
+  it('treats empty or invalid helper output as safer mode', () => {
+    expect(parseExecModeReadOutput('')).toEqual({ approvals: {}, config: {}, mode: 'safer' });
+    expect(parseExecModeReadOutput('not-json')).toEqual({ approvals: {}, config: {}, mode: 'safer' });
   });
 });

@@ -25,8 +25,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getDDClient, isDemoMode } from './dockerDesktopClient';
 import {
-  buildOllamaAuthProfilesWriteScript,
-  buildOllamaConfigWriteScript,
   buildOllamaTagsFetchArgs,
   chooseRecommendedOllamaModel,
   normalizeOllamaModelName,
@@ -35,15 +33,14 @@ import {
 } from './ollamaSetup';
 import { buildControlUiLaunchUrl } from './controlUiLaunch';
 import { appendDebugEntry } from './debugLog';
-import { buildSdkSafeNodeEvalArgs } from './dockerExec';
+import { buildRuntimeHelperArgs } from './dockerExec';
 import { readGatewayTokenWithRetry } from './tokenRetry';
 import {
-  buildExecModeReadScript,
-  buildExecModeWriteScript,
   parseExecModeReadOutput,
   type ExecutionMode,
 } from './execMode';
 import { buildRuntimeRunArgs } from './runtimeContainer';
+import { getGatewayTokenHelperText, type TokenStatus } from './tokenStatus';
 import {
   buildDockerPsPortCheckArgs,
   formatOllamaRequirementStatus,
@@ -54,7 +51,6 @@ import {
 import { updateActionButtonSx } from './updateActionButton';
 
 type ContainerPhase = 'missing' | 'running' | 'stopped' | 'starting' | 'error';
-type TokenStatus = 'unknown' | 'checking' | 'ready' | 'empty' | 'error';
 
 type ExtensionConfig = {
   image: string;
@@ -292,9 +288,7 @@ export function App() {
   const fetchGatewayToken = useCallback(async (containerId: string) => {
     const result = (await ddClient.docker.cli.exec('exec', [
       containerId,
-      ...buildSdkSafeNodeEvalArgs(
-        'const fs=require("fs"); const file="/home/node/.openclaw/openclaw.json"; if (!fs.existsSync(file)) { process.exit(0); } const cfg=JSON.parse(fs.readFileSync(file,"utf8")); process.stdout.write(cfg.gateway?.auth?.token || "");',
-      ),
+      ...buildRuntimeHelperArgs('gateway-token'),
     ])) as CliExecResult;
     return asText(result.stdout).trim();
   }, [asText, ddClient]);
@@ -308,12 +302,43 @@ export function App() {
       );
       setToken(nextToken);
       setTokenStatus(nextToken ? 'ready' : 'empty');
+      return nextToken;
     } catch (err) {
       appendDebug(`token read failed: ${formatUnknownError(err)}`);
       setToken('');
       setTokenStatus('error');
+      return '';
     }
   }, [appendDebug, fetchGatewayToken]);
+
+  const refreshToken = useCallback(async () => {
+    setError('');
+    setMessage('');
+    try {
+      const container = await findContainer();
+      if (!container || container.state !== 'running') {
+        setToken('');
+        setTokenStatus('error');
+        setError('Start OpenClaw before refreshing the gateway token.');
+        return '';
+      }
+
+      const nextToken = await readToken(container.id);
+      setMessage(
+        nextToken
+          ? 'Gateway token refreshed.'
+          : 'Gateway token is still blank. Restart OpenClaw if Refresh Token does not recover it.',
+      );
+      return nextToken;
+    } catch (err) {
+      const text = formatUnknownError(err);
+      appendDebug(`token refresh failed: ${text}`);
+      setToken('');
+      setTokenStatus('error');
+      setError(`Could not refresh gateway token: ${text}`);
+      return '';
+    }
+  }, [appendDebug, findContainer, readToken]);
 
   const checkReady = useCallback(async () => {
     if (demoMode) {
@@ -510,7 +535,10 @@ export function App() {
     try {
       const container = await findContainer();
       if (container?.state === 'running') {
-        launchToken = await fetchGatewayToken(container.id);
+        launchToken = await readGatewayTokenWithRetry(
+          () => fetchGatewayToken(container.id),
+          { attempts: 5, delayMs: 1000 },
+        );
         setToken(launchToken);
         setTokenStatus(launchToken ? 'ready' : 'empty');
       }
@@ -524,7 +552,7 @@ export function App() {
     setMessage(
       launchToken
         ? 'Opened OpenClaw Control with gateway token bootstrap.'
-        : 'Opened OpenClaw Control. Paste the gateway token if the dashboard asks for one.',
+        : 'Opened OpenClaw Control without a token. Click Refresh Token, then Open Control UI again if the dashboard asks.',
     );
   }, [appendDebug, checkReady, ddClient, fetchGatewayToken, findContainer, openUrl, token]);
 
@@ -599,7 +627,7 @@ export function App() {
 
       const result = (await ddClient.docker.cli.exec('exec', [
         container.id,
-        ...buildSdkSafeNodeEvalArgs(buildExecModeReadScript()),
+        ...buildRuntimeHelperArgs('exec-mode-read'),
       ])) as CliExecResult;
       const stderr = asText(result.stderr).trim();
       if (stderr) {
@@ -640,7 +668,7 @@ export function App() {
       appendDebug(`applying OpenClaw execution mode: ${executionMode}`);
       await ddClient.docker.cli.exec('exec', [
         container.id,
-        ...buildSdkSafeNodeEvalArgs(buildExecModeWriteScript(executionMode)),
+        ...buildRuntimeHelperArgs('exec-mode-write', [executionMode]),
       ]);
       setExecutionModeStatus(
         `Applied ${executionMode === 'full' ? 'Full access' : 'Safer'} mode. Restarting OpenClaw...`,
@@ -684,11 +712,11 @@ export function App() {
       appendDebug(`configuring OpenClaw Ollama provider for ${model}`);
       await ddClient.docker.cli.exec('exec', [
         container.id,
-        ...buildSdkSafeNodeEvalArgs(buildOllamaConfigWriteScript(model)),
+        ...buildRuntimeHelperArgs('ollama-config-write', [model]),
       ]);
       await ddClient.docker.cli.exec('exec', [
         container.id,
-        ...buildSdkSafeNodeEvalArgs(buildOllamaAuthProfilesWriteScript()),
+        ...buildRuntimeHelperArgs('ollama-auth-profiles-write'),
       ]);
       await ddClient.docker.cli.exec('exec', [
         container.id,
@@ -821,21 +849,7 @@ export function App() {
     };
   }, [phase, checkForUpdate]);
 
-  const tokenHelperText = (() => {
-    if (token) {
-      return 'Open Control UI passes this token in the URL fragment. Use Copy only if the dashboard asks again.';
-    }
-    if (tokenStatus === 'checking') {
-      return 'Waiting for OpenClaw to write the gateway token. This should resolve shortly after startup.';
-    }
-    if (tokenStatus === 'empty') {
-      return 'Gateway token is still blank after retries. Open Control UI can still launch; paste the token manually if asked.';
-    }
-    if (tokenStatus === 'error') {
-      return 'Could not read the gateway token. Open Control UI can still launch; use manual fallback if asked.';
-    }
-    return 'Gateway token appears here after the OpenClaw service is ready.';
-  })();
+  const tokenHelperText = getGatewayTokenHelperText(token, tokenStatus);
 
   return (
     <Box sx={{ p: 3, maxWidth: 1100, mx: 'auto' }}>
@@ -963,6 +977,14 @@ export function App() {
                   InputProps={{ readOnly: true }}
                   helperText={tokenHelperText}
                 />
+                <Button
+                  variant="outlined"
+                  startIcon={tokenStatus === 'checking' ? <CircularProgress size={20} /> : <RefreshIcon />}
+                  onClick={() => void refreshToken()}
+                  disabled={busy || tokenStatus === 'checking' || phase !== 'running'}
+                >
+                  Refresh Token
+                </Button>
                 <Button
                   variant="outlined"
                   startIcon={<ContentCopyIcon />}

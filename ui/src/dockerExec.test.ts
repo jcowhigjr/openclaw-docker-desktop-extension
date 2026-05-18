@@ -1,19 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildSdkSafeNodeEvalArgs } from './dockerExec';
+import { buildRuntimeHelperArgs } from './dockerExec';
 
 describe('Docker Desktop exec helpers', () => {
-  it('wraps Node scripts without shell operators in the SDK command argument', () => {
-    const args = buildSdkSafeNodeEvalArgs('const fs=require("fs"); process.stdout.write("ok");');
+  it('builds runtime helper argv without inline JavaScript for Docker Desktop SDK', () => {
+    const args = buildRuntimeHelperArgs('exec-mode-read');
 
-    expect(args.slice(0, 3)).toEqual([
+    expect(args).toEqual([
       'node',
-      '-e',
-      'eval(Buffer.from(process.argv[1],"base64").toString("utf8"))',
+      '/usr/local/bin/openclaw-extension-helper.js',
+      'exec-mode-read',
     ]);
-    expect(args[2]).not.toContain(';');
-    expect(args[2]).not.toContain('&&');
-    expect(args[2]).not.toContain('|');
-    expect(args[3]).toMatch(/^[A-Za-z0-9+/=]+$/);
+    expect(args.join(' ')).not.toContain(' -e ');
+    expect(args.join(' ')).not.toContain('eval(');
+    expect(args.join(' ')).not.toContain(';');
+    expect(args.join(' ')).not.toContain('&&');
+    expect(args.join(' ')).not.toContain('|');
   });
 });

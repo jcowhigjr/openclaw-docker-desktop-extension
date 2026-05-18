@@ -1,17 +1,5 @@
-function encodeBase64Utf8(value: string): string {
-  const bytes = new TextEncoder().encode(value);
-  let binary = '';
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-  return btoa(binary);
-}
+const RUNTIME_HELPER_PATH = '/usr/local/bin/openclaw-extension-helper.js';
 
-export function buildSdkSafeNodeEvalArgs(script: string): string[] {
-  return [
-    'node',
-    '-e',
-    'eval(Buffer.from(process.argv[1],"base64").toString("utf8"))',
-    encodeBase64Utf8(script),
-  ];
+export function buildRuntimeHelperArgs(command: string, args: string[] = []): string[] {
+  return ['node', RUNTIME_HELPER_PATH, command, ...args];
 }
