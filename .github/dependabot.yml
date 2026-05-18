@@ -1,20 +1,32 @@
 version: 2
 updates:
-  - package-ecosystem: npm
-    directory: /ui
+  - package-ecosystem: "npm"
+    directory: "/ui"
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    allow:
+      - dependency-type: "direct"
+    ignore:
+      - dependency-name: "react"
+        update-types:
+          - "version-update:semver-major"
+    labels:
+      - "dependencies"
+      - "dependabot"
     groups:
       ui-dependencies:
         patterns:
           - "*"
 
-  - package-ecosystem: github-actions
-    directory: /
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
     groups:
       github-actions:
         patterns:

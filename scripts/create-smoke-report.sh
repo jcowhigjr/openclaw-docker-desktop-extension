@@ -63,6 +63,7 @@ cat >"$report_file" <<EOF
 
 - \`docker-extension-ls.txt\`
 - \`docker-ps-a.txt\`
+- \`docker-image-ls.txt\`
 - \`openclaw-service.log\`
 - \`control-ui-healthz.txt\`
 - \`control-ui.png\`
@@ -93,17 +94,40 @@ cat >"$capture_script" <<EOF
 set -eu
 
 # Capture smoke-test CLI artifacts into this packet directory.
+# Keep gathering evidence even when one command fails.
 report_dir="\$(CDPATH= cd -- "\$(dirname "\$0")" && pwd)"
 
-docker extension ls >"\${report_dir}/docker-extension-ls.txt"
-docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' >"\${report_dir}/docker-ps-a.txt"
-docker logs openclaw-docker-extension-service >"\${report_dir}/openclaw-service.log" 2>&1
-curl -fsS http://127.0.0.1:18789/healthz >"\${report_dir}/control-ui-healthz.txt"
+capture_cmd() {
+  output_file="\$1"
+  shift
+
+  if "\$@" >"\${report_dir}/\${output_file}" 2>&1; then
+    return 0
+  fi
+
+  status="\$?"
+  {
+    printf 'capture failed with exit %s\\n' "\$status"
+    printf 'command:'
+    for arg in "\$@"; do
+      printf ' %s' "\$arg"
+    done
+    printf '\\n\\n'
+    cat "\${report_dir}/\${output_file}"
+  } >"\${report_dir}/\${output_file}.tmp"
+  mv "\${report_dir}/\${output_file}.tmp" "\${report_dir}/\${output_file}"
+}
+
+capture_cmd docker-extension-ls.txt docker extension ls
+capture_cmd docker-ps-a.txt docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+capture_cmd docker-image-ls.txt docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}'
+capture_cmd openclaw-service.log docker logs openclaw-docker-extension-service
+capture_cmd control-ui-healthz.txt curl -fsS http://127.0.0.1:18789/healthz
 EOF
 
 chmod +x "$capture_script"
 
-for artifact in docker-extension-ls.txt docker-ps-a.txt openclaw-service.log control-ui-healthz.txt; do
+for artifact in docker-extension-ls.txt docker-ps-a.txt docker-image-ls.txt openclaw-service.log control-ui-healthz.txt; do
   : >"${report_dir}/${artifact}"
 done
 
