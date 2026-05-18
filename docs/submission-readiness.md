@@ -24,6 +24,16 @@ Use this path for a 5-10 minute functional review on macOS with Docker Desktop.
 The extension is not listed in the Docker Extensions Marketplace yet, so this
 review path uses the GHCR stable channel.
 
+If you want a timestamped evidence packet before starting, run:
+
+```bash
+make create-smoke-report RELEASE_CHANNEL=stable RELEASE_TAG=v0.3.4
+```
+
+That scaffolds a report under `docs/exploratory/` with the preflight commands,
+manual steps, artifact checklist, and a `capture-artifacts.sh` helper for the
+CLI evidence files already filled in.
+
 1. Start Docker Desktop and wait for the Docker Engine to become ready.
 2. Confirm Docker Desktop allows local or non-Marketplace extension installs.
 3. Install the current stable channel:

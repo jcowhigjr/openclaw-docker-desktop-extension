@@ -49,6 +49,7 @@ Use these commands depending on where you are in the flow:
 - `make verify-release-channel RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=vX.Y.Z`: maintainer check that the floating channel still points at the intended release tag
 - `make verify-channel-install RELEASE_CHANNEL=stable`: maintainer check that Docker Desktop can install and uninstall the floating channel image
 - `make verify-channel-install RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=vX.Y.Z`: maintainer check that the installable floating channel also matches the intended release tag
+- `make create-smoke-report RELEASE_CHANNEL=stable RELEASE_TAG=vX.Y.Z`: scaffold a timestamped manual smoke-test packet under `docs/exploratory/`, including a `capture-artifacts.sh` helper
 - `make install-channel RELEASE_CHANNEL=stable`: install the current published GHCR channel image with the same preflight
 - `make update-channel RELEASE_CHANNEL=stable`: update an installed GHCR channel image with the same preflight
 - add `DRY_RUN=1` to `install-release`, `update-release`, or `ship-release` to rehearse the documented release path without mutating Docker Desktop
