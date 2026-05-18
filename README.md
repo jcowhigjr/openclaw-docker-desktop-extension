@@ -21,6 +21,7 @@ make install-hooks
 ```
 
 This installs the repo pre-push hook, which runs `make test-pre-push` before allowing a push.
+The pre-push target also runs local security preflights where possible: Gitleaks when installed and `npm audit --audit-level=critical` for the UI package.
 
 Then:
 
@@ -358,7 +359,7 @@ Safe extension-level diagnostics are limited to project-specific state: containe
 
 ## Current limitations
 
-- If the gateway token field is blank, open the Control UI and paste the token manually after retrieving it from the service container or volume.
+- If the gateway token field is blank, click `Refresh Token`, then open the Control UI again. If it stays blank, restart OpenClaw from the extension and retry.
 - If `Open Control UI` reports that localhost is not reachable, start or restart OpenClaw before retrying.
 - The runtime can spend a short warm-up period in `starting` even after the host health check is already passing.
 - Provider auth beyond the Ollama setup flow should be managed through OpenClaw's own auth/onboarding paths or `/home/node/.openclaw/.env`.
@@ -398,7 +399,7 @@ The developer-only local update path remains `make update-extension`. The releas
 - If no models appear, pull a practical model in Ollama first, then run detection again.
 - If `Start` reports that the host port is already in use, change `Host Port` in Settings or stop the other container using that port.
 - If the extension says `RUNNING` but the browser page does not open, check `http://127.0.0.1:18789/healthz`.
-- If the token field is empty, inspect the debug panel in the extension and fetch the token from the service container or volume.
+- If the token field is empty, click `Refresh Token`, then `Open Control UI` again. If it stays empty, restart OpenClaw and retry.
 - If local installation fails, confirm Docker Desktop allows local extensions.
 - If Docker Desktop frequently stops after sleep or restart, start Docker Desktop first and then reopen the extension. Existing OpenClaw state remains in the named Docker volume.
 

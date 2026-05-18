@@ -8,8 +8,6 @@ export type JsonObject = Record<string, unknown>;
 const DEFAULT_OLLAMA_BASE_URL = 'http://host.docker.internal:11434';
 const DEFAULT_OLLAMA_API_KEY = 'ollama-local';
 const OLLAMA_AUTH_PROFILE_ID = 'ollama:manual';
-const OPENCLAW_CONFIG_PATH = '/home/node/.openclaw/openclaw.json';
-const OPENCLAW_AUTH_PROFILES_PATH = '/home/node/.openclaw/agents/main/agent/auth-profiles.json';
 const RECOMMENDED_MODEL_ORDER = [
   'gemma4:latest',
   'gemma4',
@@ -127,47 +125,6 @@ export function buildOllamaTagsFetchArgs(): string[] {
     '5',
     `${DEFAULT_OLLAMA_BASE_URL}/api/tags`,
   ];
-}
-
-export function buildOllamaConfigWriteScript(model: string): string {
-  const selectedModel = model.trim();
-  if (!selectedModel) {
-    throw new Error('Choose an Ollama model before applying local setup.');
-  }
-
-  return [
-    'const fs=require("fs");',
-    'const configPath=' + JSON.stringify(OPENCLAW_CONFIG_PATH) + ';',
-    'const model=' + JSON.stringify(selectedModel) + ';',
-    'var config={};',
-    'if(fs.existsSync(configPath)){config=JSON.parse(fs.readFileSync(configPath,"utf8"));}',
-    'config.agents=config.agents||{};',
-    'config.agents.defaults=config.agents.defaults||{};',
-    'config.agents.defaults.model=config.agents.defaults.model||{};',
-    'config.agents.defaults.model.primary="ollama/"+model;',
-    'config.agents.defaults.timeoutSeconds=300;',
-    'config.models=config.models||{};',
-    'config.models.providers=config.models.providers||{};',
-    'config.models.providers.ollama={api:"ollama",apiKey:"ollama-local",baseUrl:"http://host.docker.internal:11434",models:[{id:model,name:model,reasoning:false}]};',
-    'config.auth=config.auth||{};',
-    'config.auth.profiles=config.auth.profiles||{};',
-    'config.auth.profiles["ollama:manual"]=' + JSON.stringify(buildOllamaAuthConfigProfile()) + ';',
-    'config.auth.order=config.auth.order||{};',
-    'config.auth.order.ollama=["ollama:manual"];',
-    'if(fs.existsSync(configPath)){fs.copyFileSync(configPath,configPath+".bak");}',
-    'fs.writeFileSync(configPath,JSON.stringify(config,null,2)+"\\n");',
-  ].join(' ');
-}
-
-export function buildOllamaAuthProfilesWriteScript(): string {
-  return [
-    'const fs=require("fs");',
-    'const path=require("path");',
-    'const file=' + JSON.stringify(OPENCLAW_AUTH_PROFILES_PATH) + ';',
-    'const data=' + JSON.stringify(buildOllamaAuthProfilesStore()) + ';',
-    'fs.mkdirSync(path.dirname(file),{recursive:true});',
-    'fs.writeFileSync(file,JSON.stringify(data,null,2)+"\\n");',
-  ].join(' ');
 }
 
 export function chooseRecommendedOllamaModel(models: OllamaModel[]): string {
