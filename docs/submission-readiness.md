@@ -31,7 +31,8 @@ make create-smoke-report RELEASE_CHANNEL=stable RELEASE_TAG=v0.3.4
 ```
 
 That scaffolds a report under `docs/exploratory/` with the preflight commands,
-manual steps, and artifact checklist already filled in.
+manual steps, artifact checklist, and a `capture-artifacts.sh` helper for the
+CLI evidence files already filled in.
 
 1. Start Docker Desktop and wait for the Docker Engine to become ready.
 2. Confirm Docker Desktop allows local or non-Marketplace extension installs.

@@ -8,6 +8,7 @@ release_tag="${RELEASE_TAG:-}"
 report_slug="${REPORT_SLUG:-${release_channel}-channel-smoke}"
 report_dir="${REPORT_DIR:-${repo_root}/docs/exploratory/${report_date}-${report_slug}}"
 report_file="${report_dir}/report.md"
+capture_script="${report_dir}/capture-artifacts.sh"
 
 if [ -e "$report_file" ]; then
   echo "Smoke report already exists: ${report_file}" >&2
@@ -86,5 +87,24 @@ cat >"$report_file" <<EOF
 
 _State whether this smoke pass blocks release or Marketplace submission._
 EOF
+
+cat >"$capture_script" <<EOF
+#!/bin/sh
+set -eu
+
+# Capture smoke-test CLI artifacts into this packet directory.
+report_dir="\$(CDPATH= cd -- "\$(dirname "\$0")" && pwd)"
+
+docker extension ls >"\${report_dir}/docker-extension-ls.txt"
+docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' >"\${report_dir}/docker-ps-a.txt"
+docker logs openclaw-docker-extension-service >"\${report_dir}/openclaw-service.log" 2>&1
+curl -fsS http://127.0.0.1:18789/healthz >"\${report_dir}/control-ui-healthz.txt"
+EOF
+
+chmod +x "$capture_script"
+
+for artifact in docker-extension-ls.txt docker-ps-a.txt openclaw-service.log control-ui-healthz.txt; do
+  : >"${report_dir}/${artifact}"
+done
 
 printf '%s\n' "$report_file"
