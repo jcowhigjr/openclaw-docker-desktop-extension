@@ -87,7 +87,7 @@ fetch_registry_digest() {
     -H "Authorization: Bearer ${token}" \
     -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
     "https://ghcr.io/v2/${repo_path}/manifests/${reference}" \
-    | awk 'BEGIN { IGNORECASE = 1 } /^Docker-Content-Digest:/ { sub(/\r$/, "", $2); print $2; exit }'
+    | awk 'tolower($1) == "docker-content-digest:" { sub(/\r$/, "", $2); print $2; exit }'
 }
 
 require_matching_tag() {
