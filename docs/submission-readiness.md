@@ -32,9 +32,9 @@ make create-smoke-report RELEASE_CHANNEL=stable RELEASE_TAG=v0.3.4
 
 That scaffolds a report under `docs/exploratory/` with the preflight commands,
 manual steps, artifact checklist, and a best-effort `capture-artifacts.sh`
-helper for the CLI evidence files already filled in, including release-channel
-preflight output, Docker image inventory, and partial-failure notes when one
-capture command fails.
+helper for the CLI evidence files already filled in, including macOS/Docker
+environment details, release-channel preflight output, Docker image inventory,
+and partial-failure notes when one capture command fails.
 
 1. Start Docker Desktop and wait for the Docker Engine to become ready.
 2. Confirm Docker Desktop allows local or non-Marketplace extension installs.

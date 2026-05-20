@@ -61,6 +61,7 @@ cat >"$report_file" <<EOF
 
 ## Artifacts
 
+- \`environment.txt\`
 - \`verify-release-channel.txt\`
 - \`verify-channel-install-dry-run.txt\`
 - \`docker-extension-ls.txt\`
@@ -123,6 +124,33 @@ capture_cmd() {
   mv "\${report_dir}/\${output_file}.tmp" "\${report_dir}/\${output_file}"
 }
 
+capture_environment() {
+  output_file="\${report_dir}/environment.txt"
+
+  {
+    printf 'captured_at=%s\n' "\$(date -u +%FT%TZ)"
+    printf 'repo_root=%s\n' "\$repo_root"
+    printf 'release_channel=%s\n' "\$release_channel"
+    printf 'release_tag=%s\n' "\${release_tag:-}"
+    printf '\n[sw_vers]\n'
+    sw_vers
+    printf '\n[uname]\n'
+    uname -a
+    printf '\n[docker version]\n'
+    docker version
+  } >"\$output_file" 2>&1 || {
+    status="\$?"
+    {
+      printf 'capture failed with exit %s\n' "\$status"
+      printf 'command: capture_environment\n\n'
+      cat "\$output_file"
+    } >"\${output_file}.tmp"
+    mv "\${output_file}.tmp" "\$output_file"
+  }
+}
+
+capture_environment
+
 if [ -n "\$release_tag" ]; then
   capture_cmd verify-release-channel.txt make -C "\$repo_root" verify-release-channel RELEASE_CHANNEL="\$release_channel" EXPECTED_RELEASE_TAG="\$release_tag"
   capture_cmd verify-channel-install-dry-run.txt make -C "\$repo_root" verify-channel-install RELEASE_CHANNEL="\$release_channel" EXPECTED_RELEASE_TAG="\$release_tag" DRY_RUN=1
@@ -140,7 +168,7 @@ EOF
 
 chmod +x "$capture_script"
 
-for artifact in verify-release-channel.txt verify-channel-install-dry-run.txt docker-extension-ls.txt docker-ps-a.txt docker-image-ls.txt openclaw-service.log control-ui-healthz.txt; do
+for artifact in environment.txt verify-release-channel.txt verify-channel-install-dry-run.txt docker-extension-ls.txt docker-ps-a.txt docker-image-ls.txt openclaw-service.log control-ui-healthz.txt; do
   : >"${report_dir}/${artifact}"
 done
 
