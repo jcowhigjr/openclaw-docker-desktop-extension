@@ -61,6 +61,8 @@ cat >"$report_file" <<EOF
 
 ## Artifacts
 
+- \`verify-release-channel.txt\`
+- \`verify-channel-install-dry-run.txt\`
 - \`docker-extension-ls.txt\`
 - \`docker-ps-a.txt\`
 - \`docker-image-ls.txt\`
@@ -96,6 +98,9 @@ set -eu
 # Capture smoke-test CLI artifacts into this packet directory.
 # Keep gathering evidence even when one command fails.
 report_dir="\$(CDPATH= cd -- "\$(dirname "\$0")" && pwd)"
+repo_root="${repo_root}"
+release_channel="${release_channel}"
+release_tag="${release_tag}"
 
 capture_cmd() {
   output_file="\$1"
@@ -118,6 +123,14 @@ capture_cmd() {
   mv "\${report_dir}/\${output_file}.tmp" "\${report_dir}/\${output_file}"
 }
 
+if [ -n "\$release_tag" ]; then
+  capture_cmd verify-release-channel.txt make -C "\$repo_root" verify-release-channel RELEASE_CHANNEL="\$release_channel" EXPECTED_RELEASE_TAG="\$release_tag"
+  capture_cmd verify-channel-install-dry-run.txt make -C "\$repo_root" verify-channel-install RELEASE_CHANNEL="\$release_channel" EXPECTED_RELEASE_TAG="\$release_tag" DRY_RUN=1
+else
+  capture_cmd verify-release-channel.txt make -C "\$repo_root" verify-release-channel RELEASE_CHANNEL="\$release_channel"
+  capture_cmd verify-channel-install-dry-run.txt make -C "\$repo_root" verify-channel-install RELEASE_CHANNEL="\$release_channel" DRY_RUN=1
+fi
+
 capture_cmd docker-extension-ls.txt docker extension ls
 capture_cmd docker-ps-a.txt docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
 capture_cmd docker-image-ls.txt docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}'
@@ -127,7 +140,7 @@ EOF
 
 chmod +x "$capture_script"
 
-for artifact in docker-extension-ls.txt docker-ps-a.txt docker-image-ls.txt openclaw-service.log control-ui-healthz.txt; do
+for artifact in verify-release-channel.txt verify-channel-install-dry-run.txt docker-extension-ls.txt docker-ps-a.txt docker-image-ls.txt openclaw-service.log control-ui-healthz.txt; do
   : >"${report_dir}/${artifact}"
 done
 
