@@ -65,8 +65,10 @@ cat >"$report_file" <<EOF
 - \`verify-release-channel.txt\`
 - \`verify-channel-install-dry-run.txt\`
 - \`docker-extension-ls.txt\`
+- \`docker-extension-inspect.txt\`
 - \`docker-ps-a.txt\`
 - \`docker-image-ls.txt\`
+- \`openclaw-service-inspect.txt\`
 - \`openclaw-service.log\`
 - \`control-ui-healthz.txt\`
 - \`control-ui.png\`
@@ -160,15 +162,17 @@ else
 fi
 
 capture_cmd docker-extension-ls.txt docker extension ls
+capture_cmd docker-extension-inspect.txt docker extension inspect openclaw-docker-extension
 capture_cmd docker-ps-a.txt docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
 capture_cmd docker-image-ls.txt docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}'
+capture_cmd openclaw-service-inspect.txt docker inspect openclaw-docker-extension-service
 capture_cmd openclaw-service.log docker logs openclaw-docker-extension-service
 capture_cmd control-ui-healthz.txt curl -fsS http://127.0.0.1:18789/healthz
 EOF
 
 chmod +x "$capture_script"
 
-for artifact in environment.txt verify-release-channel.txt verify-channel-install-dry-run.txt docker-extension-ls.txt docker-ps-a.txt docker-image-ls.txt openclaw-service.log control-ui-healthz.txt; do
+for artifact in environment.txt verify-release-channel.txt verify-channel-install-dry-run.txt docker-extension-ls.txt docker-extension-inspect.txt docker-ps-a.txt docker-image-ls.txt openclaw-service-inspect.txt openclaw-service.log control-ui-healthz.txt; do
   : >"${report_dir}/${artifact}"
 done
 
