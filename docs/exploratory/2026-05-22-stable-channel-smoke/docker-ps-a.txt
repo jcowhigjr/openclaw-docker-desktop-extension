@@ -1,0 +1,14 @@
+NAMES                                                                           IMAGE                                                        STATUS                          PORTS
+ghcr-io_jcowhigjr_openclaw-docker-desktop-extension-desktop-extension-service   alpine:latest                                                Up 16 seconds                   
+localstack_localstack-docker-desktop-desktop-extension-service                  localstack/localstack-docker-desktop:2026.4.1                Up 25 minutes                   
+openclaw-docker-extension-service                                               ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest   Up 27 minutes (healthy)         127.0.0.1:18789->18790/tcp
+openclaw-docker-extension-desktop-extension-service                             alpine:latest                                                Up 27 minutes                   
+openwebui-extension-service                                                     a6da0c292081                                                 Exited (137) 12 days ago        
+openwebui-extension-mcp-gateway                                                 docker/mcp-gateway:v2                                        Restarting (1) 44 seconds ago   
+mcp-docker                                                                      mcp/docker                                                   Up 27 minutes                   127.0.0.1:8811->8811/tcp, [::]:8811->8811/tcp
+mcp-openapi-schema                                                              mcp/openapi-schema                                           Restarting (0) 41 seconds ago   
+mcp-playwright                                                                  mcp/playwright                                               Restarting (0) 38 seconds ago   
+mcp-memory                                                                      mcp/memory                                                   Restarting (0) 43 seconds ago   
+mcp-context7                                                                    mcp/context7                                                 Up 27 minutes                   127.0.0.1:8812->8812/tcp, [::]:8812->8812/tcp
+jesulonimii_portless-extension-desktop-extension-service                        jesulonimii/portless-extension:1.0.0                         Up 27 minutes                   127.0.0.1:1355->1355/tcp, [::]:1355->1355/tcp
+rw4lll_openwebui-docker-extension-desktop-extension-service                     alpine:latest                                                Up 27 minutes                   
