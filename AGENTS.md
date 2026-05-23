@@ -21,8 +21,8 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 ## Current Roadmap
 
 - Treat issue [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12) as the source of truth for roadmap and decision gates.
-- MVP foundations are complete enough for external review: GHCR/channel install path, update/restart flow, localhost Control UI bootstrap, token retry UX, host Ollama setup, execution mode UX, repo metadata, `.env` documentation, readiness checks, and build validation.
-- Active pre-submission priority is manual stable-channel smoke testing on a real Docker Desktop install.
+- MVP is complete enough to share: GHCR/channel install path, update/restart flow, localhost Control UI bootstrap, token retry UX, host Ollama setup, execution mode UX, repo metadata, `.env` documentation, readiness checks, build validation, and a real Docker Desktop stable-channel smoke pass for `v0.3.4`.
+- Default post-MVP posture is pause unless outside traction appears or a release/distribution gate fails and needs a small reproducible fix.
 - Remaining roadmap work is investigation or long-term hardening:
   1. [#64](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/64) native migration after Docker Desktop trial; keep this manual/documentation-only unless user demand justifies automation.
   2. [#65](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/65) longer-term security, hardening, supply-chain, and network migration epic.
