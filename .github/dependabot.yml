@@ -1,10 +1,12 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
+  - package-ecosystem: "npm_and_yarn"
     directory: "/ui"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 3
+    # Conservative: only one Dependabot PR at a time
+    open-pull-requests-limit: 1
+    # Only open PRs for direct (top-level) dependencies by default
     allow:
       - dependency-type: "direct"
     ignore:
@@ -19,11 +21,18 @@ updates:
         patterns:
           - "*"
 
+  # Ensure security updates for UI npm packages appear immediately
+  - package-ecosystem: "npm_and_yarn"
+    directory: "/ui"
+    schedule:
+      interval: "weekly"
+    security-updates-only: true
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 1
     labels:
       - "dependencies"
       - "github-actions"
