@@ -30,21 +30,6 @@
 7. Confirm the Control UI opens on localhost without manual token editing.
 8. If testing the local-model path, confirm host Ollama is already running with a model pulled, then finish one chat prompt through `Local Model Setup`.
 
-## Artifacts
-
-- `environment.txt`
-- `verify-release-channel.txt`
-- `verify-channel-install-dry-run.txt`
-- `docker-extension-ls.txt`
-- `docker-extension-inspect.txt`
-- `docker-ps-a.txt`
-- `docker-image-ls.txt`
-- `openclaw-service-inspect.txt`
-- `openclaw-service.log`
-- `control-ui-healthz.txt`
-- `control-ui.png`
-- `extension-ui.png` or note why Docker Desktop UI capture was blocked
-
 ## Results
 
 | Flow | Result | Evidence |
