@@ -4,7 +4,7 @@ set -eu
 # Capture smoke-test CLI artifacts into this packet directory.
 # Keep gathering evidence even when one command fails.
 report_dir="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
-repo_root="/Users/temp/workspace/openclaw-docker-desktop-extension-repo"
+repo_root="$(git rev-parse --show-toplevel)"
 release_channel="stable"
 release_tag="v0.3.4"
 
