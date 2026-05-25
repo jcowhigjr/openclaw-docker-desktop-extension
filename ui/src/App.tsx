@@ -837,8 +837,9 @@ export function App() {
     if (phase === 'running') {
       void checkForUpdate();
       void detectExecutionMode();
+      void detectOllamaModels();
     }
-  }, [phase, checkForUpdate, detectExecutionMode]);
+  }, [phase, checkForUpdate, detectExecutionMode, detectOllamaModels]);
 
   useEffect(() => {
     if (phase !== 'running') {
@@ -881,9 +882,37 @@ export function App() {
                 <Typography variant="body2" color="text.secondary">
                   3. Click <strong>Open Control UI</strong> to launch OpenClaw (token is auto-attached)
                 </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  4. Enable a local model in <strong>Local Model Setup</strong> below
+                </Typography>
               </Stack>
             </CardContent>
           </Card>
+        )}
+
+        {phase === 'running' && ollamaModels.length > 0 && !configuredOllamaModel && (
+          <Alert
+            severity="info"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => {
+                  const recommended = chooseRecommendedOllamaModel(ollamaModels);
+                  if (recommended) {
+                    setSelectedOllamaModel(recommended);
+                    setMessage(`Recommended model ${recommended} selected. Click Apply and Restart to activate.`);
+                  }
+                }}
+                disabled={busy}
+              >
+                Select Recommended Model
+              </Button>
+            }
+          >
+            Host Ollama detected {ollamaModels.length} model{ollamaModels.length === 1 ? '' : 's'}.
+            No local model configured yet. Select a model in Local Model Setup below and click Apply and Restart.
+          </Alert>
         )}
 
         {error && <Alert severity="error">{error}</Alert>}
