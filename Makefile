@@ -13,7 +13,7 @@ REGISTRY_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-extension-runtime
 REGISTRY_TAG ?= latest
 # For release builds, use the tagged registry image. Otherwise use the published latest.
 ifeq ($(RELEASE_TAG),)
-  DEFAULT_RUNTIME_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-extension-runtime:latest
+  DEFAULT_RUNTIME_IMAGE ?= $(RUNTIME_IMAGE):$(RUNTIME_TAG)
 else
   DEFAULT_RUNTIME_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-extension-runtime:$(RELEASE_TAG)
 endif
@@ -69,9 +69,10 @@ test-release-channel-dry-run: ; @./scripts/test-release-channel-dry-run.sh
 test-verify-release-channel-digest: ; @./scripts/test-verify-release-channel-digest.sh
 test-create-smoke-report: ; @sh ./scripts/test-create-smoke-report.sh
 test-runtime-helper: ; @sh ./scripts/test-runtime-helper.sh
+test-runtime-image-helper: ; @RUNTIME_IMAGE="$(RUNTIME_IMAGE)" RUNTIME_TAG="$(RUNTIME_TAG)" sh ./scripts/test-runtime-image-helper.sh
 test-security-local: ; @sh ./scripts/test-security-local.sh
 test-ui: ; @cd ui && npm test && npm run build
-test-pre-push: test-ui test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-security-local
+test-pre-push: test-ui test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-runtime-image-helper test-security-local
 install-hooks: ; @git config core.hooksPath .githooks && chmod +x .githooks/pre-push && echo "installed repo git hooks from .githooks"
 
 verify-release-bundle:
