@@ -23,9 +23,9 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 - Treat issue [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12) as the source of truth for roadmap and decision gates.
 - MVP is complete enough to share: GHCR/channel install path, update/restart flow, localhost Control UI bootstrap, token retry UX, host Ollama setup, execution mode UX, repo metadata, `.env` documentation, readiness checks, build validation, and a real Docker Desktop stable-channel smoke pass for `v0.3.4`.
 - Default post-MVP posture is pause unless outside traction appears or a release/distribution gate fails and needs a small reproducible fix.
-- Remaining roadmap work is investigation or long-term hardening:
-  1. [#64](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/64) native migration after Docker Desktop trial; keep this manual/documentation-only unless user demand justifies automation.
-  2. [#65](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/65) longer-term security, hardening, supply-chain, and network migration epic.
+- Remaining roadmap work is long-term hardening:
+  1. [#65](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/65) longer-term security, hardening, supply-chain, and network migration epic.
+- Native migration after a successful Docker Desktop trial is documented in `docs/native-migration-investigation.md`; keep it manual/documentation-only unless real user demand justifies reopening implementation work.
 - Treat [#2](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/2) and [#13](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/13) as historical execution-mode context, not active implementation tracks.
 - Do not start new feature branches from stale priority notes. Re-check #12, open issues, and the latest merged PRs first.
 
