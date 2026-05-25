@@ -39,20 +39,26 @@ one capture command fails.
 
 1. Start Docker Desktop and wait for the Docker Engine to become ready.
 2. Confirm Docker Desktop allows local or non-Marketplace extension installs.
-3. Install the current stable channel:
+3. Install or update the current stable channel:
 
    ```bash
    docker extension install ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable
    ```
 
 4. Open the `OpenClaw` extension in Docker Desktop.
-5. Click `Check Requirements`.
-6. Click `Start`.
-7. Wait for `OpenClaw is ready`.
-8. Click `Open Control UI`.
-9. Confirm the Control UI opens at localhost and does not require manual URL/token editing.
-10. If testing local models, start Ollama on the host Mac, ensure a model is already pulled, then use `Local Model Setup`.
-11. Send a basic chat prompt in the Control UI.
+5. Confirm the first visible panel includes the `Quick Start` card with four steps: install Docker Desktop, wait for the gateway token, open the Control UI, and optionally use host Ollama.
+6. Click `Check Requirements`.
+7. Click `Start`.
+8. Wait for `OpenClaw is ready`.
+9. Confirm the `Gateway Token` field fills automatically, shows the `Auto-attached` chip, and uses the success styling. If it remains blank, click `Refresh Token` once and record the result.
+10. Click `Open Control UI`.
+11. Confirm the Control UI opens at localhost and does not require manual URL/token editing.
+12. Confirm the extension does not repeatedly switch update status while idle after startup.
+13. If testing local models, start Ollama on the host Mac, ensure a model is already pulled, then reopen or refresh the extension.
+14. Confirm `Local Model Setup` auto-detects installed host Ollama models after startup or after clicking `Detect Ollama Models`.
+15. If no Ollama model is configured yet, confirm the setup banner appears when models are detected, click `Select Recommended Model`, then click `Apply and Restart`.
+16. Reopen the extension and confirm the Ollama setup banner stays dismissed only after using its dismiss control.
+17. Send a basic chat prompt in the Control UI.
 
 Maintainer release-channel validation:
 
@@ -69,7 +75,8 @@ Use `DRY_RUN=1` when you want to validate command construction without mutating 
 - Marketplace metadata: required labels, semver aliases, multi-arch images, and Docker's documented `utility-tools` category are covered by the pre-push metadata guard.
 - Startup UX: the extension exposes `Check Requirements`, start/stop/restart, update/restart, and debug output.
 - Control UI bootstrap: `Open Control UI` launches the canonical localhost URL and passes the gateway token via URL fragment.
-- Local model path: host Ollama detection and configuration are supported through `Local Model Setup`.
+- Local model path: host Ollama model detection runs on startup and remains available through `Local Model Setup`.
+- First-run UX: the Quick Start card, token auto-attached status, and Ollama setup banner guide the primary review path.
 - Offline-first story: after Ollama and the selected model are installed, the local model path does not depend on hosted-provider network access for core local chat.
 - Execution mode: `Safer` and `Full access` modes write the OpenClaw exec policy and approvals file, then restart OpenClaw so cached policy reloads.
 - Runtime hardening: newly created service containers use localhost binding, read-only root filesystem, tmpfs `/tmp`, dropped Linux capabilities, `no-new-privileges`, and a nofile ulimit.

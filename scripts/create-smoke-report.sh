@@ -52,12 +52,19 @@ cat >"$report_file" <<EOF
 
 1. Install the channel image in Docker Desktop if it is not already installed.
 2. Open the \`OpenClaw\` extension.
-3. Click \`Check Requirements\`.
-4. Click \`Start\`.
-5. Wait for \`OpenClaw is ready\`.
-6. Click \`Open Control UI\`.
-7. Confirm the Control UI opens on localhost without manual token editing.
-8. If testing the local-model path, confirm host Ollama is already running with a model pulled, then finish one chat prompt through \`Local Model Setup\`.
+3. Confirm the \`Quick Start\` card lists the expected four-step flow.
+4. Click \`Check Requirements\`.
+5. Click \`Start\`.
+6. Wait for \`OpenClaw is ready\`.
+7. Confirm the \`Gateway Token\` field fills automatically, shows \`Auto-attached\`, and uses success styling. If it remains blank, click \`Refresh Token\` once and record the result.
+8. Click \`Open Control UI\`.
+9. Confirm the Control UI opens on localhost without manual token editing.
+10. Confirm update status does not flicker or repeatedly switch after startup while the extension is idle.
+11. If testing the local-model path, confirm host Ollama is already running with a model pulled, then reopen or refresh the extension.
+12. Confirm \`Local Model Setup\` detects installed host Ollama models automatically or after clicking \`Detect Ollama Models\`.
+13. If no Ollama model is configured yet, confirm the setup banner appears, click \`Select Recommended Model\`, then click \`Apply and Restart\`.
+14. Reopen the extension and confirm the Ollama setup banner stays dismissed only after using its dismiss control.
+15. Finish one basic chat prompt in the Control UI.
 
 ## Artifacts
 
@@ -82,8 +89,12 @@ cat >"$report_file" <<EOF
 | Extension registered in Docker Desktop | TODO | |
 | Runtime container running | TODO | |
 | Localhost exposure | TODO | |
+| Quick Start onboarding | TODO | |
+| Gateway token auto-attached UX | TODO | |
 | Control UI bootstrap from extension button | TODO | |
+| Runtime update status stability | TODO | |
 | Local-model flow (if used) | TODO | |
+| Ollama setup banner persistence (if used) | TODO | |
 
 ## Findings
 
