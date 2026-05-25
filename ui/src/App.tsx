@@ -75,6 +75,7 @@ type RefreshResult = {
 };
 
 const STORAGE_KEY = 'openclaw-docker-extension-config';
+const OLLAMA_BANNER_DISMISS_KEY = 'openclaw-docker-extension-ollama-banner-dismissed';
 const CONTAINER_NAME = 'openclaw-docker-extension-service';
 const VOLUME_NAME = 'openclaw-docker-extension-home';
 const BRIDGE_PORT = 18790;
@@ -158,6 +159,9 @@ export function App() {
   const [ollamaChecking, setOllamaChecking] = useState(false);
   const [ollamaStatus, setOllamaStatus] = useState('');
   const [ollamaAlertSeverity, setOllamaAlertSeverity] = useState<'success' | 'info' | 'error'>('info');
+  const [ollamaBannerDismissed, setOllamaBannerDismissed] = useState(
+    () => window.localStorage.getItem(OLLAMA_BANNER_DISMISS_KEY) === 'true',
+  );
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('safer');
   const [appliedExecutionMode, setAppliedExecutionMode] = useState<ExecutionMode>('safer');
   const [executionModeChecking, setExecutionModeChecking] = useState(false);
@@ -837,8 +841,9 @@ export function App() {
     if (phase === 'running') {
       void checkForUpdate();
       void detectExecutionMode();
+      void detectOllamaModels();
     }
-  }, [phase, checkForUpdate, detectExecutionMode]);
+  }, [phase, checkForUpdate, detectExecutionMode, detectOllamaModels]);
 
   useEffect(() => {
     if (phase !== 'running') {
@@ -881,9 +886,41 @@ export function App() {
                 <Typography variant="body2" color="text.secondary">
                   3. Click <strong>Open Control UI</strong> to launch OpenClaw (token is auto-attached)
                 </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  4. Enable a local model in <strong>Local Model Setup</strong> below
+                </Typography>
               </Stack>
             </CardContent>
           </Card>
+        )}
+
+        {phase === 'running' && ollamaModels.length > 0 && !configuredOllamaModel && !ollamaBannerDismissed && (
+          <Alert
+            severity="info"
+            onClose={() => {
+              window.localStorage.setItem(OLLAMA_BANNER_DISMISS_KEY, 'true');
+              setOllamaBannerDismissed(true);
+            }}
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => {
+                  const recommended = chooseRecommendedOllamaModel(ollamaModels);
+                  if (recommended) {
+                    setSelectedOllamaModel(recommended);
+                    setMessage(`Recommended model ${recommended} selected. Click Apply and Restart to activate.`);
+                  }
+                }}
+                disabled={busy}
+              >
+                Select Recommended Model
+              </Button>
+            }
+          >
+            Host Ollama detected {ollamaModels.length} model{ollamaModels.length === 1 ? '' : 's'}.
+            No local model configured yet. Select a model in Local Model Setup below and click Apply and Restart.
+          </Alert>
         )}
 
         {error && <Alert severity="error">{error}</Alert>}
