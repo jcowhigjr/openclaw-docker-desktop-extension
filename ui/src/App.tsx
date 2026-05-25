@@ -21,7 +21,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getDDClient, isDemoMode } from './dockerDesktopClient';
 import {
@@ -148,6 +148,8 @@ export function App() {
   const [requirementsStatus, setRequirementsStatus] = useState('');
   const [requirementsSeverity, setRequirementsSeverity] = useState<AlertColor>('info');
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const configImageRef = useRef(config.image);
+  configImageRef.current = config.image;
   const [updateChecking, setUpdateChecking] = useState(false);
   const [updateError, setUpdateError] = useState('');
   const [ollamaModels, setOllamaModels] = useState<OllamaModel[]>([]);
@@ -748,7 +750,8 @@ export function App() {
   }, [appendDebug, ddClient, findContainer, restart, selectedOllamaModel]);
 
   const checkForUpdate = useCallback(async () => {
-    if (!config.image.startsWith('ghcr.io/')) {
+    const image = configImageRef.current;
+    if (!image.startsWith('ghcr.io/')) {
       return;
     }
     setUpdateChecking(true);
@@ -770,13 +773,13 @@ export function App() {
       }
       appendDebug(`running container image SHA: ${runningImageSha}`);
 
-      appendDebug(`pulling ${config.image} to check for updates...`);
-      await ddClient.docker.cli.exec('pull', [config.image]);
+      appendDebug(`pulling ${image} to check for updates...`);
+      await ddClient.docker.cli.exec('pull', [image]);
 
       const inspectImage = (await ddClient.docker.cli.exec('inspect', [
         '--format',
         '{{.Id}}',
-        config.image,
+        image,
       ])) as CliExecResult;
       const latestImageSha = asText(inspectImage.stdout).trim();
       appendDebug(`latest image SHA: ${latestImageSha}`);
@@ -795,7 +798,7 @@ export function App() {
     } finally {
       setUpdateChecking(false);
     }
-  }, [appendDebug, asText, config.image, ddClient, findContainer]);
+  }, [appendDebug, asText, ddClient, findContainer]);
 
   const updateAndRestart = useCallback(async () => {
     setError('');
@@ -863,6 +866,25 @@ export function App() {
             Control UI reachable on localhost.
           </Typography>
         </Box>
+
+        {phase === 'missing' && !busy && (
+          <Card>
+            <CardContent>
+              <Stack spacing={1}>
+                <Typography variant="h5">Quick Start</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  1. Click <strong>Start</strong> below to create the OpenClaw container
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  2. Wait for the gateway token to appear in the Connection card
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  3. Click <strong>Open Control UI</strong> to launch OpenClaw (token is auto-attached)
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
+        )}
 
         {error && <Alert severity="error">{error}</Alert>}
         {message && <Alert severity="success">{message}</Alert>}
@@ -976,7 +998,9 @@ export function App() {
                   fullWidth
                   InputProps={{ readOnly: true }}
                   helperText={tokenHelperText}
+                  sx={token ? { '& .MuiInputBase-root': { borderColor: 'success.main' } } : undefined}
                 />
+                {token && <Chip label="Auto-attached" color="success" size="small" sx={{ mt: 2 }} />}
                 <Button
                   variant="outlined"
                   startIcon={tokenStatus === 'checking' ? <CircularProgress size={20} /> : <RefreshIcon />}
