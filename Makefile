@@ -71,7 +71,7 @@ test-create-smoke-report: ; @sh ./scripts/test-create-smoke-report.sh
 test-runtime-helper: ; @sh ./scripts/test-runtime-helper.sh
 test-runtime-image-helper: ; @RUNTIME_IMAGE="$(RUNTIME_IMAGE)" RUNTIME_TAG="$(RUNTIME_TAG)" sh ./scripts/test-runtime-image-helper.sh
 test-security-local: ; @sh ./scripts/test-security-local.sh
-test-ui: ; @cd ui && npm test && npm run build
+test-ui: ; @cd ui && npm ci && npm test && npm run build
 test-pre-push: test-ui test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-runtime-image-helper test-security-local
 install-hooks: ; @git config core.hooksPath .githooks && chmod +x .githooks/pre-push && echo "installed repo git hooks from .githooks"
 
