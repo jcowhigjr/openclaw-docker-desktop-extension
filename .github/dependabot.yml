@@ -10,12 +10,25 @@ updates:
     allow:
       - dependency-type: "direct"
     ignore:
+      # Docker's current extension theme package peers with MUI 5-6.
+      # Keep this lane on compatible UI majors until that package supports newer MUI.
+      - dependency-name: "@mui/material"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "@mui/icons-material"
+        update-types:
+          - "version-update:semver-major"
       - dependency-name: "react"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "react-dom"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "@types/react-dom"
         update-types:
           - "version-update:semver-major"
     labels:
       - "dependencies"
-      - "dependabot"
     groups:
       ui-dependencies:
         patterns:
