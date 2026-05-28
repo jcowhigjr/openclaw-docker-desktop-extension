@@ -99,6 +99,7 @@ jobs:
           file: runtime/Dockerfile
           platforms: linux/arm64,linux/amd64
           push: true
+          provenance: false
           tags: ${{ steps.runtime-meta.outputs.tags }}
           labels: ${{ steps.runtime-meta.outputs.labels }}
 
@@ -136,6 +137,7 @@ jobs:
           file: Dockerfile
           platforms: linux/arm64,linux/amd64
           push: true
+          provenance: false
           tags: ${{ steps.extension-meta.outputs.tags }}
           labels: ${{ steps.extension-meta.outputs.labels }}
           build-args: |
