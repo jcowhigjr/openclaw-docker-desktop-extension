@@ -35,58 +35,26 @@ cat >"${fakebin}/docker" <<'EOF'
 #!/bin/sh
 set -eu
 
-if [ -z "${DOCKER_CONFIG:-}" ]; then
-  echo "expected DOCKER_CONFIG for anonymous GHCR reads" >&2
-  exit 1
+if [ "$1" = "manifest" ] && [ "$2" = "inspect" ]; then
+  case "${DOCKER_CONFIG:-}" in
+    '') echo "expected DOCKER_CONFIG for anonymous GHCR reads" >&2; exit 1 ;;
+  esac
+  case "$3" in
+    ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:v1.2.3|\
+    ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:v1.2.3|\
+    ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3|\
+    ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:1.2.3|\
+    docker.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3)
+      exit 0 ;;
+  esac
 fi
 
-if [ "$1" = "manifest" ] && [ "$2" = "inspect" ] && [ "$3" = "ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:v1.2.3" ]; then
+if [ "$1" = "pull" ] && [ "$3" = "docker.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3" ]; then
   exit 0
 fi
 
-if [ "$1" = "manifest" ] && [ "$2" = "inspect" ] && [ "$3" = "ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:v1.2.3" ]; then
-  exit 0
-fi
-
-if [ "$1" = "manifest" ] && [ "$2" = "inspect" ] && [ "$3" = "ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3" ]; then
-  exit 0
-fi
-
-if [ "$1" = "manifest" ] && [ "$2" = "inspect" ] && [ "$3" = "ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:1.2.3" ]; then
-  exit 0
-fi
-
-if [ "$1" = "manifest" ] && [ "$2" = "inspect" ] && [ "$3" = "docker.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3" ]; then
-  exit 0
-fi
-
-if [ "$1" = "manifest" ] && [ "$2" = "inspect" ] && [ "$3" = "--verbose" ] && [ "$4" = "ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:v1.2.3" ]; then
-  cat <<'JSON'
-[
-  {
-    "OCIManifest": {
-      "config": {
-        "digest": "sha256:testconfigv"
-      }
-    }
-  }
-]
-JSON
-  exit 0
-fi
-
-if [ "$1" = "manifest" ] && [ "$2" = "inspect" ] && [ "$3" = "--verbose" ] && [ "$4" = "ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3" ]; then
-  cat <<'JSON'
-[
-  {
-    "OCIManifest": {
-      "config": {
-        "digest": "sha256:testconfigsemver"
-      }
-    }
-  }
-]
-JSON
+if [ "$1" = "inspect" ] && [ "$2" = "docker.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3" ]; then
+  printf '%s\n' '[{"Config":{"Labels":{"org.opencontainers.image.title":"OpenClaw"}}}]'
   exit 0
 fi
 
@@ -119,18 +87,6 @@ case "$*" in
     printf '%s\n' '{"config":{"Labels":{"org.opencontainers.image.title":"OpenClaw"}}}'
     ;;
   *"https://ghcr.io/v2/jcowhigjr/openclaw-docker-desktop-extension/blobs/sha256:testconfigsemver"*)
-    printf '%s\n' '{"config":{"Labels":{"org.opencontainers.image.title":"OpenClaw"}}}'
-    ;;
-  *"https://auth.docker.io/token?service=registry.docker.io&scope=repository:jcowhigjr/openclaw-docker-desktop-extension:pull"*)
-    printf '%s\n' '{"token":"test-token"}'
-    ;;
-  *"https://registry-1.docker.io/v2/jcowhigjr/openclaw-docker-desktop-extension/manifests/1.2.3"*)
-    printf '%s\n' '{"config":{"digest":"sha256:testconfigdockerhub"}}'
-    ;;
-  *"https://registry-1.docker.io/v2/jcowhigjr/openclaw-docker-desktop-extension/manifests/sha256:testconfigdockerhub"*)
-    printf '%s\n' '{"config":{"digest":"sha256:testconfigdockerhub"}}'
-    ;;
-  *"https://registry-1.docker.io/v2/jcowhigjr/openclaw-docker-desktop-extension/blobs/sha256:testconfigdockerhub"*)
     printf '%s\n' '{"config":{"Labels":{"org.opencontainers.image.title":"OpenClaw"}}}'
     ;;
   *)

@@ -197,27 +197,17 @@ require_dockerhub_registry_label() {
   label_key="$3"
   expected_value="$4"
 
-  token="$(fetch_dockerhub_token "$repo_path")"
-  manifest_json="$(
-    curl -fsSL \
-      -H "Authorization: Bearer ${token}" \
-      -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
-      "https://registry-1.docker.io/v2/${repo_path}/manifests/${reference}"
-  )"
-  manifest_digest="$(printf '%s' "$manifest_json" | resolve_config_digest)"
-  image_manifest_json="$(
-    curl -fsSL \
-      -H "Authorization: Bearer ${token}" \
-      -H 'Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
-      "https://registry-1.docker.io/v2/${repo_path}/manifests/${manifest_digest}"
-  )"
-  config_digest="$(
-    printf '%s' "$image_manifest_json" \
-      | python3 -c 'import json,sys; print(json.load(sys.stdin)["config"]["digest"])'
-  )"
+  image_ref="docker.io/${repo_path}:${reference}"
+
+  if ! docker pull --quiet "${image_ref}" >/dev/null 2>&1; then
+    echo "docker pull failed for ${image_ref}" >&2
+    echo "Next step: confirm Docker Hub login and that the image is publicly accessible." >&2
+    return 1
+  fi
+
   actual_value="$(
-    curl -fsSL -H "Authorization: Bearer ${token}" "https://registry-1.docker.io/v2/${repo_path}/blobs/${config_digest}" \
-      | python3 -c 'import json,sys; obj=json.load(sys.stdin); value=obj.get("config", {}).get("Labels", {}).get(sys.argv[1]); print("" if value is None else value)' "${label_key}"
+    docker inspect "${image_ref}" \
+      | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0].get("Config",{}).get("Labels",{}).get(sys.argv[1],""))' "${label_key}"
   )"
 
   if [ "$actual_value" = "$expected_value" ]; then
