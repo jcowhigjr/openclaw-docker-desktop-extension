@@ -14,3 +14,7 @@ OpenClaw Foundation trademark or logo.
 
 Docker and Docker Desktop are trademarks of Docker, Inc. This project is not
 affiliated with or endorsed by Docker, Inc.
+
+If the holder of any trademark referenced in this file requests a good-faith
+rename or change to reduce confusion, we will make reasonable efforts to
+comply.
