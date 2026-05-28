@@ -4,7 +4,7 @@ LABEL org.opencontainers.image.title="OpenClaw Docker Desktop Extension Runtime"
     org.opencontainers.image.description="OpenClaw runtime wrapper with a localhost bridge for the Docker Desktop extension." \
     org.opencontainers.image.vendor="jcowhigjr/openclaw-docker-desktop-extension" \
     org.opencontainers.image.source="https://github.com/jcowhigjr/openclaw-docker-desktop-extension" \
-    org.opencontainers.image.licenses="MIT"
+    org.opencontainers.image.licenses="MIT AND Apache-2.0"
 
 USER root
 

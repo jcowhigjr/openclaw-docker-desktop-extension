@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2025-2026 John Cowhig Jr.
 export type UpdatePolicy = 'check-only' | 'auto-before-launch';
 
 export type RuntimeUpdateCheckResult = {
