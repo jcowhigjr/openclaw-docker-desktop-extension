@@ -1,4 +1,6 @@
 #!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2025-2026 John Cowhig Jr.
 set -eu
 
 tmp_dir="/tmp/openclaw-$(id -u)"

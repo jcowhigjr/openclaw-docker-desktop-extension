@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2025-2026 John Cowhig Jr.
 export function buildControlUiLaunchUrl(baseUrl: string, token: string): string {
   const trimmedBaseUrl = baseUrl.trim();
   const trimmedToken = token.trim();

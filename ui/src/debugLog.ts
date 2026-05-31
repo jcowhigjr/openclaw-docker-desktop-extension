@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2025-2026 John Cowhig Jr.
 const DEFAULT_DEBUG_LOG_LIMIT = 12000;
 
 export function formatDebugEntry(entry: string, date = new Date()): string {

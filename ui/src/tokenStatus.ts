@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2025-2026 John Cowhig Jr.
 export type TokenStatus = 'unknown' | 'checking' | 'ready' | 'empty' | 'error';
 
 export function getGatewayTokenHelperText(token: string, tokenStatus: TokenStatus): string {
