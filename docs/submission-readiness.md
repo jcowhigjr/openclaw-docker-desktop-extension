@@ -24,10 +24,14 @@ Use this path for a 5-10 minute functional review on macOS with Docker Desktop.
 The extension is not listed in the Docker Extensions Marketplace yet, so this
 review path uses the GHCR stable channel.
 
+Current validated release/install tag: `v0.3.5`.
+Latest committed manual stable-channel smoke packet: `v0.3.4` at
+`docs/exploratory/2026-05-22-stable-channel-smoke/`.
+
 If you want a timestamped evidence packet before starting, run:
 
 ```bash
-make create-smoke-report RELEASE_CHANNEL=stable RELEASE_TAG=v0.3.4
+make create-smoke-report RELEASE_CHANNEL=stable RELEASE_TAG=v0.3.5
 ```
 
 That scaffolds a report under `docs/exploratory/` with the preflight commands,
@@ -64,7 +68,7 @@ Maintainer release-channel validation:
 
 ```bash
 make verify-channel-install RELEASE_CHANNEL=stable
-make verify-channel-install RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=v0.3.4
+make verify-channel-install RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=v0.3.5
 ```
 
 Use `DRY_RUN=1` when you want to validate command construction without mutating Docker Desktop.
