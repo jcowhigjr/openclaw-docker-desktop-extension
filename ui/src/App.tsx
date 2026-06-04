@@ -34,6 +34,8 @@ import {
 import { runDetect } from './ollamaDetect';
 import { buildControlUiLaunchUrl } from './controlUiLaunch';
 import { appendDebugEntry } from './debugLog';
+import { resetDiagEvents } from './diag/events';
+import { useDiagLogText } from './diag/useDiagEvents';
 import { buildRuntimeHelperArgs } from './dockerExec';
 import { readGatewayTokenWithRetry } from './tokenRetry';
 import {
@@ -146,6 +148,7 @@ export function App() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [debugLog, setDebugLog] = useState('');
+  const diagLogText = useDiagLogText();
   const [requirementsChecking, setRequirementsChecking] = useState(false);
   const [requirementsStatus, setRequirementsStatus] = useState('');
   const [requirementsSeverity, setRequirementsSeverity] = useState<AlertColor>('info');
@@ -1215,14 +1218,17 @@ export function App() {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => setDebugLog('')}
-                  disabled={!debugLog}
+                  onClick={() => {
+                    setDebugLog('');
+                    resetDiagEvents();
+                  }}
+                  disabled={!debugLog && !diagLogText}
                 >
                   Clear Debug
                 </Button>
               </Stack>
               <TextField
-                value={debugLog}
+                value={diagLogText}
                 multiline
                 minRows={8}
                 fullWidth
