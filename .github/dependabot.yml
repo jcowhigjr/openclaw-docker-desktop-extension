@@ -38,13 +38,6 @@ updates:
           - "minor"
           - "patch"
 
-  # Ensure security updates for UI npm packages appear immediately
-  - package-ecosystem: "npm"
-    directory: "/ui"
-    schedule:
-      interval: "weekly"
-    security-updates-only: true
-
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
