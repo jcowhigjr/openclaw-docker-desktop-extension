@@ -33,6 +33,10 @@ updates:
       ui-dependencies:
         patterns:
           - "*"
+        # Keep grouped UI update PRs compatible with Docker's extension theme peer range.
+        update-types:
+          - "minor"
+          - "patch"
 
   # Ensure security updates for UI npm packages appear immediately
   - package-ecosystem: "npm_and_yarn"
