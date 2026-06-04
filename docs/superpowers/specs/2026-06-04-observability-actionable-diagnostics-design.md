@@ -2,8 +2,8 @@
 
 - **Issue:** [#130](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/130)
 - **Date:** 2026-06-04
-- **Status:** Approved design (v2, incorporates GPT-5.5 spec review), pre-implementation
-- **Depends on:** PR [#131](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/131) and PR [#133](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/133) — see **Dependencies & Sequencing**.
+- **Status:** Approved design (v2, incorporates GPT-5.5 spec review), ready for implementation
+- **Depends on:** PR [#131](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/131) and PR [#133](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/133), both merged on 2026-06-04 — see **Dependencies & Sequencing**.
 
 ## Context
 
@@ -27,16 +27,16 @@ heavyweight infrastructure.
 
 ## Dependencies & Sequencing (read first — this is the risky part)
 
-Branch/PR chain at design time:
+Branch/PR chain at design time, now merged:
 
 ```
 main
- └─ fix/ollama-detect-config-path        PR #131 (open)
-     └─ fix/132-ollama-tags-parse-error  PR #133 (open, stacked on #131)
+ ├─ fix/ollama-detect-config-path        PR #131 (merged)
+ └─ fix/132-ollama-tags-parse-error      PR #133 (merged)
 ```
 
-Implementation of this design **must not branch from `main` as it stands today**
-because:
+Implementation of this design now starts from `main`. The merged dependencies
+matter because:
 
 1. **#133 provides `parseOllamaTags` → `OllamaTagsResult` (discriminated `empty`
    vs `invalid`).** Without it, error codes `OLM-004` (empty) and `OLM-005`
@@ -46,17 +46,13 @@ because:
 
 **Required sequencing:**
 
-- **Preferred:** merge #131, then #133, to `main`. Then create the
-  implementation branch `feat/130-observability` **from `main`**.
-- **If work must start before merge:** branch `feat/130-observability` **from
-  `fix/132-ollama-tags-parse-error`** (the tip of the stack), and rebase it onto
-  `main` once #131 and #133 land. Do **not** open the implementation PR for
-  merge until #131 and #133 are merged; keep it draft.
-- The implementation plan (writing-plans) must begin with a **gate task** that
+- Create the implementation branch `feat/130-observability` **from current
+  `main`**.
+- The implementation plan (writing-plans) begins with a **gate task** that
   verifies `OllamaTagsResult` exists in `ui/src/ollamaSetup.ts` and the cleared-
   selection behavior is present in `detectOllamaModels` before any code is
-  written. If absent, stop and resolve the dependency first.
-- If #131/#133 change materially during review, rebase and re-run the gate task
+  written. If absent, stop and update from `main` before continuing.
+- If #131/#133 are later amended materially, rebase and re-run the gate task
   before continuing.
 
 ## Scope & Non-Goals
@@ -248,8 +244,8 @@ exported callbacks directly if that avoids a new dep).
 
 ## Rollout Order (for the implementation plan)
 
-0. **Gate:** confirm #131/#133 merged (or branch from #133 tip); verify
-   `OllamaTagsResult` + cleared-selection present. Stop if absent.
+0. **Gate:** start from current `main`; verify `OllamaTagsResult` +
+   cleared-selection present. Stop if absent.
 1. `diag/events.ts` + `diag/trace.ts` + tests (no UI change).
 2. `diag/errorCodes.ts` + `classifyError` (consuming `OllamaTagsResult`) +
    migrate `formatStartFailure` remediation + tests.
@@ -262,8 +258,8 @@ exported callbacks directly if that avoids a new dep).
 
 ## Acceptance Criteria
 
-- [ ] Implementation branch is based on #133 (or `main` post-merge); a gate
-      verified `OllamaTagsResult` + cleared-selection before coding.
+- [ ] Implementation branch is based on current `main`; a gate verified
+      `OllamaTagsResult` + cleared-selection before coding.
 - [ ] Structured `DiagEvent` (with `schema`, `runId`) ring buffer is the source
       of truth for migrated flows; Debug panel renders from it with the current
       time-prefixed format preserved.
@@ -286,5 +282,4 @@ exported callbacks directly if that avoids a new dep).
 - [ ] No new runtime dependencies; `exportEvent` is an inert, env-gated,
       redacted, best-effort, schema-versioned seam.
 - [ ] Full Vitest suite + `tsc --noEmit` + `npm run build` green; PR carries
-      test artifacts and a cross-model adversarial review; PR stays **draft**
-      until #131 and #133 are merged.
+      test artifacts and a cross-model adversarial review.

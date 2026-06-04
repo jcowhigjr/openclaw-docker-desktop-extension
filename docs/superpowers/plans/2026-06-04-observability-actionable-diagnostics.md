@@ -26,31 +26,24 @@
 
 ---
 
-### Task 0: Dependency gate (BLOCKING — do not skip)
+### Task 0: Dependency gate (do not skip)
 
 **Files:** none (verification only).
 
-- [ ] **Step 1: Confirm dependency PRs are merged**
+- [ ] **Step 1: Confirm the dependency PRs are merged**
 
 Run:
 ```bash
 gh pr view 131 --json state -q .state
 gh pr view 133 --json state -q .state
 ```
-Expected: both `MERGED`. If not merged, **stop** — either wait, or branch from the stack tip in Step 2.
+Expected: both `MERGED`. If not merged, **stop** and resolve the dependency state before branching.
 
 - [ ] **Step 2: Create the implementation branch from the correct base**
 
-If #131 and #133 are merged:
 ```bash
 git checkout main && git pull
 git checkout -b feat/130-observability
-```
-If they are NOT yet merged (work-ahead mode):
-```bash
-git checkout fix/132-ollama-tags-parse-error && git pull
-git checkout -b feat/130-observability
-# REBASE onto main after #131+#133 land; keep the PR draft until then.
 ```
 
 - [ ] **Step 3: Verify the dependency APIs exist (gate assertion)**
@@ -61,7 +54,7 @@ grep -n "export type OllamaTagsResult" ui/src/ollamaSetup.ts
 grep -n "reason: 'empty'" ui/src/ollamaSetup.ts
 grep -n "setSelectedOllamaModel('')" ui/src/App.tsx
 ```
-Expected: `OllamaTagsResult` discriminated union present in `ollamaSetup.ts`, and `setSelectedOllamaModel('')` present in the failure/catch paths of `detectOllamaModels`. If any are missing, **stop** — the base branch is wrong; return to Step 2.
+Expected: `OllamaTagsResult` discriminated union present in `ollamaSetup.ts`, and `setSelectedOllamaModel('')` present in the failure/catch paths of `detectOllamaModels`. If any are missing, **stop** — update from `main` and re-run this gate.
 
 - [ ] **Step 4: Baseline green**
 
@@ -1181,28 +1174,28 @@ git commit -m "feat(diag): Copy diagnostics bundle button + migrate start/restar
 
 ---
 
-### Task 11: Finalize PR (draft until deps merge)
+### Task 11: Finalize PR
 
-- [ ] **Step 1: Push and open a DRAFT PR**
+- [ ] **Step 1: Push and open a PR**
 
 ```bash
 git push -u origin feat/130-observability
-gh pr create --draft --base main --head feat/130-observability \
+gh pr create --base main --head feat/130-observability \
   --title "feat(#130): right-sized observability & actionable diagnostics" \
-  --body "Closes #130. DRAFT until #131 and #133 merge. See spec; includes test artifacts + adversarial-review request."
+  --body "Closes #130. See spec; includes test artifacts + adversarial-review request."
 ```
 
 - [ ] **Step 2: Paste test artifacts** (tsc/vitest/build output) and an **adversarial-review request** into the PR body, calling out: `runDetect` finalize/clear logic, classifier drift, redaction completeness, concurrency `actionSeq` correctness.
 
-- [ ] **Step 3: Request a cross-model adversarial review** (Codex/GPT) per the established workflow once #131/#133 are merged and the branch is rebased. Mark the PR ready only after the deps merge, the branch rebases cleanly, and the review findings are resolved.
+- [ ] **Step 3: Request a cross-model adversarial review** (Codex/GPT) per the established workflow. Merge only after required checks pass and material review findings are resolved.
 
 ---
 
 ## Self-Review
 
-**Spec coverage:** events/ring (T1), trace+runId+seq (T2), errorCodes+OllamaTagsResult+formatStartFailure migration (T3, T10), snapshot+invariants (T4), redaction (T5), bundle best-effort health (T6), detect wiring + App-level mocked-runner tests (T7), concurrency + resilience (T8), useSyncExternalStore persistence + Debug panel (T9), Copy button + start/restart/requirements migration (T10), draft-PR + adversarial review (T11), dependency gate (T0). All spec AC mapped.
+**Spec coverage:** events/ring (T1), trace+runId+seq (T2), errorCodes+OllamaTagsResult+formatStartFailure migration (T3, T10), snapshot+invariants (T4), redaction (T5), bundle best-effort health (T6), detect wiring + App-level mocked-runner tests (T7), concurrency + resilience (T8), useSyncExternalStore persistence + Debug panel (T9), Copy button + start/restart/requirements migration (T10), PR + adversarial review (T11), dependency gate (T0). All spec AC mapped.
 
-**Placeholder scan:** Tasks 7/9/10 wire `App.tsx` setters in prose (not a full file rewrite) because the surrounding `App.tsx` is large and its exact shape depends on the merged #131/#133 diff; the *new* extracted logic (`ollamaDetect.ts`, hooks, bundle, registry) is given as complete code. The engineer maps named `DetectOutput` fields to named existing setters. No `TODO`/`TBD` left.
+**Placeholder scan:** Tasks 7/9/10 wire `App.tsx` setters in prose (not a full file rewrite) because the surrounding `App.tsx` is large and recently changed in #131/#133; the *new* extracted logic (`ollamaDetect.ts`, hooks, bundle, registry) is given as complete code. The engineer maps named `DetectOutput` fields to named existing setters. No `TODO`/`TBD` left.
 
 **Type consistency:** `DiagEvent`/`DiagOutcome`/`DiagAttrValue` (T1) reused in T2/T4/T6/T9; `OllamaTagsResult` (dep) consumed in T3/T7; `OllamaState`/`captureOllamaSnapshot`/`hasOllamaInvariantViolation` (T4) reused in T7/T10; `classifyError`/`classifyOllamaTags`/`getRemedy`/`getTitle` (T3) reused in T7. The detect runner uses `run`/`CommandRunner` consistently across T7/T8. Names align across tasks.
 
