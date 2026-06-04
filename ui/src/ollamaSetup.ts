@@ -149,7 +149,7 @@ export function normalizeOllamaModelName(model: string): string {
 // is not set yet (fresh install with no model configured). That is an expected
 // state, not an Ollama reachability failure.
 export function isConfigPathMissing(text: string): boolean {
-  return text.includes('Config path not found');
+  return text.toLowerCase().includes('config path not found');
 }
 
 function isJsonObject(value: unknown): value is JsonObject {

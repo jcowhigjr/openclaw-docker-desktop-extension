@@ -43,6 +43,11 @@ describe('ollamaSetup helpers', () => {
     expect(isConfigPathMissing('  Config path not found: agents.defaults.model.primary\n')).toBe(true);
   });
 
+  it('matches the config-path-missing message regardless of casing', () => {
+    expect(isConfigPathMissing('config path not found: agents.defaults.model.primary')).toBe(true);
+    expect(isConfigPathMissing('Error: CONFIG PATH NOT FOUND')).toBe(true);
+  });
+
   it('does not treat a configured model or empty output as a missing path', () => {
     expect(isConfigPathMissing('ollama/qwen3.5:latest')).toBe(false);
     expect(isConfigPathMissing('')).toBe(false);

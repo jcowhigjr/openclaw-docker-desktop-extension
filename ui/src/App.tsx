@@ -161,7 +161,7 @@ export function App() {
   const [configuredOllamaModel, setConfiguredOllamaModel] = useState('');
   const [ollamaChecking, setOllamaChecking] = useState(false);
   const [ollamaStatus, setOllamaStatus] = useState('');
-  const [ollamaAlertSeverity, setOllamaAlertSeverity] = useState<'success' | 'info' | 'error'>('info');
+  const [ollamaAlertSeverity, setOllamaAlertSeverity] = useState<'success' | 'info' | 'warning' | 'error'>('info');
   const [ollamaBannerDismissed, setOllamaBannerDismissed] = useState(
     () => window.localStorage.getItem(OLLAMA_BANNER_DISMISS_KEY) === 'true',
   );
@@ -599,6 +599,7 @@ export function App() {
       // is unset and `config get` exits non-zero. That must not abort detection
       // or be reported as an Ollama reachability failure.
       let currentModel = '';
+      let modelReadWarning = '';
       try {
         const currentModelResult = (await ddClient.docker.cli.exec('exec', [
           container.id,
@@ -614,6 +615,9 @@ export function App() {
         if (isConfigPathMissing(modelText)) {
           appendDebug('ollama detect: no model configured yet (agents.defaults.model.primary unset)');
         } else {
+          // Unexpected read failure (e.g. malformed config, permission error):
+          // models are still valid, but surface it rather than silently succeed.
+          modelReadWarning = modelText;
           appendDebug(`ollama detect: could not read configured model: ${modelText}`);
         }
       }
@@ -621,12 +625,18 @@ export function App() {
       setOllamaModels(models);
       setConfiguredOllamaModel(currentModel);
       setSelectedOllamaModel((current) => current || currentModel || chooseRecommendedOllamaModel(models));
-      setOllamaAlertSeverity(models.length > 0 ? 'success' : 'info');
-      setOllamaStatus(
+
+      const baseStatus =
         models.length > 0
           ? `Detected ${models.length} host Ollama model${models.length === 1 ? '' : 's'}${currentModel ? `; configured model is ${currentModel}.` : '.'}`
-          : 'Host Ollama responded, but no models were installed.',
-      );
+          : 'Host Ollama responded, but no models were installed.';
+      if (modelReadWarning) {
+        setOllamaAlertSeverity('warning');
+        setOllamaStatus(`${baseStatus} Could not read the currently configured model: ${modelReadWarning}`);
+      } else {
+        setOllamaAlertSeverity(models.length > 0 ? 'success' : 'info');
+        setOllamaStatus(baseStatus);
+      }
     } catch (err) {
       const text = formatUnknownError(err);
       appendDebug(`ollama detect failed: ${text}`);
