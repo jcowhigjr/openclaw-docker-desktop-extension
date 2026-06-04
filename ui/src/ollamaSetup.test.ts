@@ -44,6 +44,8 @@ describe('ollamaSetup helpers', () => {
     expect(parseOllamaTags('<html>not json</html>')).toEqual({ ok: false, reason: 'invalid' });
     expect(parseOllamaTags('ollama request timed out')).toEqual({ ok: false, reason: 'invalid' });
     expect(parseOllamaTags(JSON.stringify({ models: 'nope' }))).toEqual({ ok: false, reason: 'invalid' });
+    expect(parseOllamaTags('\uFEFF{}')).toEqual({ ok: false, reason: 'invalid' });
+    expect(parseOllamaTags('{"models": [')).toEqual({ ok: false, reason: 'invalid' });
   });
 
   it('flags an empty tags body distinctly from a parse failure', () => {

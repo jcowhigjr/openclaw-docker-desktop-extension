@@ -596,16 +596,28 @@ export function App() {
       const tags = parseOllamaTags(asText(result.stdout));
       if (!tags.ok) {
         // The tags fetch succeeded at the transport level but the body was not a
-        // readable model list. Surface that distinctly from "no models installed".
+        // readable model list. Surface that distinctly from "no models installed",
+        // and clear stale selection so Apply cannot run against a vanished model.
         appendDebug(`ollama detect: unreadable /api/tags response (${tags.reason})`);
         setOllamaModels([]);
         setConfiguredOllamaModel('');
+        setSelectedOllamaModel('');
         setOllamaAlertSeverity('warning');
-        setOllamaStatus(
-          tags.reason === 'empty'
-            ? 'Host Ollama returned an empty response. Confirm Ollama is serving the model API and try again.'
-            : 'Host Ollama returned an unexpected response that could not be read as a model list.',
-        );
+        let unreadableStatus: string;
+        switch (tags.reason) {
+          case 'empty':
+            unreadableStatus =
+              'Host Ollama returned an empty response. Confirm Ollama is serving the model API and try again.';
+            break;
+          case 'invalid':
+            unreadableStatus = 'Host Ollama returned an unexpected response that could not be read as a model list.';
+            break;
+          default:
+            unreadableStatus = ((reason: never) => `Host Ollama returned an unreadable response (${reason}).`)(
+              tags.reason,
+            );
+        }
+        setOllamaStatus(unreadableStatus);
         return;
       }
       const models = tags.models;
@@ -656,6 +668,8 @@ export function App() {
       const text = formatUnknownError(err);
       appendDebug(`ollama detect failed: ${text}`);
       setOllamaModels([]);
+      setConfiguredOllamaModel('');
+      setSelectedOllamaModel('');
       setOllamaAlertSeverity('error');
       setOllamaStatus(`Could not reach host Ollama from OpenClaw: ${text}`);
     } finally {

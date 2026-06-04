@@ -48,7 +48,7 @@ export function createDemoDDClient(): DemoDockerDesktopClient {
       return { stdout: '', stderr: '' };
     }
 
-    if (command === 'exec' && args.some((arg) => arg.includes('/api/tags'))) {
+    if (command === 'exec' && args.some((arg) => arg.endsWith('/api/tags'))) {
       return {
         stdout: JSON.stringify({
           models: [
