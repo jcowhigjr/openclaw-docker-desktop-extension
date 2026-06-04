@@ -9,6 +9,7 @@ import {
   buildOllamaProviderPatch,
   buildOllamaTagsFetchArgs,
   chooseRecommendedOllamaModel,
+  isConfigPathMissing,
   mergeOllamaProviderConfig,
   normalizeOllamaModelName,
   parseOllamaTags,
@@ -35,6 +36,21 @@ describe('ollamaSetup helpers', () => {
   it('treats invalid Ollama tags output as no detected models', () => {
     expect(parseOllamaTags('<html>not json</html>')).toEqual([]);
     expect(parseOllamaTags('ollama request timed out')).toEqual([]);
+  });
+
+  it('detects an unset config path from openclaw config get output', () => {
+    expect(isConfigPathMissing('Config path not found: agents.defaults.model.primary')).toBe(true);
+    expect(isConfigPathMissing('  Config path not found: agents.defaults.model.primary\n')).toBe(true);
+  });
+
+  it('does not treat a configured model or empty output as a missing path', () => {
+    expect(isConfigPathMissing('ollama/qwen3.5:latest')).toBe(false);
+    expect(isConfigPathMissing('')).toBe(false);
+    expect(isConfigPathMissing('some unrelated error')).toBe(false);
+  });
+
+  it('keeps an unconfigured model name empty when normalized', () => {
+    expect(normalizeOllamaModelName('')).toBe('');
   });
 
   it('builds a native Ollama provider patch for OpenClaw', () => {

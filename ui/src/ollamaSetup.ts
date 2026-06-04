@@ -145,6 +145,13 @@ export function normalizeOllamaModelName(model: string): string {
   return trimmed.startsWith('ollama/') ? trimmed.slice('ollama/'.length) : trimmed;
 }
 
+// `openclaw config get` exits non-zero with this message when the requested path
+// is not set yet (fresh install with no model configured). That is an expected
+// state, not an Ollama reachability failure.
+export function isConfigPathMissing(text: string): boolean {
+  return text.includes('Config path not found');
+}
+
 function isJsonObject(value: unknown): value is JsonObject {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }

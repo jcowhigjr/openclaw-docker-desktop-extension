@@ -29,6 +29,7 @@ import { getDDClient, isDemoMode } from './dockerDesktopClient';
 import {
   buildOllamaTagsFetchArgs,
   chooseRecommendedOllamaModel,
+  isConfigPathMissing,
   normalizeOllamaModelName,
   parseOllamaTags,
   type OllamaModel,
@@ -593,15 +594,30 @@ export function App() {
       }
 
       const models = parseOllamaTags(asText(result.stdout));
-      const currentModelResult = (await ddClient.docker.cli.exec('exec', [
-        container.id,
-        'node',
-        'openclaw.mjs',
-        'config',
-        'get',
-        'agents.defaults.model.primary',
-      ])) as CliExecResult;
-      const currentModel = normalizeOllamaModelName(asText(currentModelResult.stdout));
+
+      // Reading the configured model is best-effort: on a fresh install the path
+      // is unset and `config get` exits non-zero. That must not abort detection
+      // or be reported as an Ollama reachability failure.
+      let currentModel = '';
+      try {
+        const currentModelResult = (await ddClient.docker.cli.exec('exec', [
+          container.id,
+          'node',
+          'openclaw.mjs',
+          'config',
+          'get',
+          'agents.defaults.model.primary',
+        ])) as CliExecResult;
+        currentModel = normalizeOllamaModelName(asText(currentModelResult.stdout));
+      } catch (modelErr) {
+        const modelText = formatUnknownError(modelErr);
+        if (isConfigPathMissing(modelText)) {
+          appendDebug('ollama detect: no model configured yet (agents.defaults.model.primary unset)');
+        } else {
+          appendDebug(`ollama detect: could not read configured model: ${modelText}`);
+        }
+      }
+
       setOllamaModels(models);
       setConfiguredOllamaModel(currentModel);
       setSelectedOllamaModel((current) => current || currentModel || chooseRecommendedOllamaModel(models));
