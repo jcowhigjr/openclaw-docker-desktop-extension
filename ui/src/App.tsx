@@ -593,7 +593,22 @@ export function App() {
         appendDebug(`ollama detect stderr: ${stderr}`);
       }
 
-      const models = parseOllamaTags(asText(result.stdout));
+      const tags = parseOllamaTags(asText(result.stdout));
+      if (!tags.ok) {
+        // The tags fetch succeeded at the transport level but the body was not a
+        // readable model list. Surface that distinctly from "no models installed".
+        appendDebug(`ollama detect: unreadable /api/tags response (${tags.reason})`);
+        setOllamaModels([]);
+        setConfiguredOllamaModel('');
+        setOllamaAlertSeverity('warning');
+        setOllamaStatus(
+          tags.reason === 'empty'
+            ? 'Host Ollama returned an empty response. Confirm Ollama is serving the model API and try again.'
+            : 'Host Ollama returned an unexpected response that could not be read as a model list.',
+        );
+        return;
+      }
+      const models = tags.models;
 
       // Reading the configured model is best-effort: on a fresh install the path
       // is unset and `config get` exits non-zero. That must not abort detection
