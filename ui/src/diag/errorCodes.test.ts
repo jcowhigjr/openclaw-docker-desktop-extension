@@ -24,8 +24,19 @@ describe('error code registry', () => {
   });
 
   it('exposes a remedy for every registered code', () => {
-    for (const code of ['OLM-001', 'OLM-002', 'OLM-003', 'OLM-004', 'OLM-005', 'GEN-000']) {
+    for (const code of [
+      'OLM-001',
+      'OLM-002',
+      'OLM-003',
+      'OLM-004',
+      'OLM-005',
+      'START-001',
+      'START-002',
+      'GEN-000',
+    ]) {
       expect(getRemedy(code)).toBeTruthy();
     }
+    expect(getRemedy('START-001')).toMatch(/Host port/);
+    expect(getRemedy('START-002')).toMatch(/Docker Desktop/);
   });
 });

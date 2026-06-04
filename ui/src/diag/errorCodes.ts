@@ -2,7 +2,15 @@
 // Copyright 2025-2026 John Cowhig Jr.
 import { isConfigPathMissing, type OllamaTagsResult } from '../ollamaSetup';
 
-export type DiagCode = 'OLM-001' | 'OLM-002' | 'OLM-003' | 'OLM-004' | 'OLM-005' | 'GEN-000';
+export type DiagCode =
+  | 'OLM-001'
+  | 'OLM-002'
+  | 'OLM-003'
+  | 'OLM-004'
+  | 'OLM-005'
+  | 'START-001'
+  | 'START-002'
+  | 'GEN-000';
 
 type RegistryEntry = {
   title: string;
@@ -29,6 +37,14 @@ const REGISTRY: Record<DiagCode, RegistryEntry> = {
   'OLM-005': {
     title: 'Host Ollama response unreadable',
     remedy: 'The /api/tags response was not a model list. Check the Ollama version, then Detect.',
+  },
+  'START-001': {
+    title: 'Host port unavailable',
+    remedy: 'Host port {hostPort} is already in use. Change the Host Port in Settings or stop the other process, then try Start again.',
+  },
+  'START-002': {
+    title: 'Docker Desktop not ready',
+    remedy: 'Docker Desktop is not ready yet. Start Docker Desktop, wait until it finishes starting, then try again.',
   },
   'GEN-000': {
     title: 'Unexpected error',
