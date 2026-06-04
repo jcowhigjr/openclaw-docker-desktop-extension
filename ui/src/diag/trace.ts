@@ -27,6 +27,7 @@ export type TraceContext = {
   runId: string;
   actionSeq: number;
   step: StepFn;
+  setTerminalAttrs: (attrs: Record<string, DiagAttrValue>) => void;
 };
 
 function toErrorPayload(error: unknown): { message: string; stack?: string } {
@@ -43,6 +44,7 @@ export async function traceAction<T>(
   const runId = makeRunId();
   const seq = nextActionSeq();
   const started = Date.now();
+  let terminalAttrs: Record<string, DiagAttrValue> = {};
   const step: StepFn = (name, outcome, extra = {}) => {
     appendDiagEvent({
       ts: Date.now(),
@@ -57,14 +59,21 @@ export async function traceAction<T>(
   };
 
   try {
-    const result = await body({ runId, actionSeq: seq, step });
+    const result = await body({
+      runId,
+      actionSeq: seq,
+      step,
+      setTerminalAttrs: (attrs) => {
+        terminalAttrs = attrs;
+      },
+    });
     appendDiagEvent({
       ts: Date.now(),
       runId,
       action,
       outcome: 'ok',
       durationMs: Date.now() - started,
-      attrs: { actionSeq: seq },
+      attrs: { actionSeq: seq, ...terminalAttrs },
     });
     return result;
   } catch (error) {
@@ -74,7 +83,7 @@ export async function traceAction<T>(
       action,
       outcome: 'error',
       durationMs: Date.now() - started,
-      attrs: { actionSeq: seq },
+      attrs: { actionSeq: seq, ...terminalAttrs },
       error: toErrorPayload(error),
     });
     throw error;
