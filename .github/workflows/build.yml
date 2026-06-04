@@ -31,6 +31,9 @@ jobs:
         run: npm run build
         working-directory: ui
 
+      - name: Verify docs landing page
+        run: make test-docs-landing-page
+
       - name: Build runtime image
         run: docker build -t openclaw-docker-extension-runtime:test -f runtime/Dockerfile runtime
 

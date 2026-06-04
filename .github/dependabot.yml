@@ -1,6 +1,6 @@
 version: 2
 updates:
-  - package-ecosystem: "npm_and_yarn"
+  - package-ecosystem: "npm"
     directory: "/ui"
     schedule:
       interval: "weekly"
@@ -39,7 +39,7 @@ updates:
           - "patch"
 
   # Ensure security updates for UI npm packages appear immediately
-  - package-ecosystem: "npm_and_yarn"
+  - package-ecosystem: "npm"
     directory: "/ui"
     schedule:
       interval: "weekly"

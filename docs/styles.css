@@ -214,6 +214,37 @@ h3 {
   line-height: 1.55;
 }
 
+.status-list {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+}
+
+.status-list div {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.status-list dt,
+.status-list dd {
+  margin: 0;
+}
+
+.status-list dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.status-list dd {
+  font-weight: 900;
+}
+
 .proof-section,
 .screenshot-section,
 .quick-start,
@@ -353,5 +384,10 @@ h3 {
 
   .button {
     width: 100%;
+  }
+
+  .status-list div {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }
