@@ -48,6 +48,18 @@ export function createDemoDDClient(): DemoDockerDesktopClient {
       return { stdout: '', stderr: '' };
     }
 
+    if (command === 'exec' && args.some((arg) => arg.endsWith('/api/tags'))) {
+      return {
+        stdout: JSON.stringify({
+          models: [
+            { name: 'llama3.2:latest', size: 2019393189 },
+            { name: 'qwen3.5:latest', size: 6594474711 },
+          ],
+        }),
+        stderr: '',
+      };
+    }
+
     if (command === 'exec' && args.includes('agents.defaults.model.primary')) {
       return { stdout: 'llama3.2:latest\n', stderr: '' };
     }

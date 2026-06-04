@@ -17,7 +17,7 @@ import {
 
 describe('ollamaSetup helpers', () => {
   it('parses installed Ollama models from the host tags API', () => {
-    const models = parseOllamaTags(
+    const result = parseOllamaTags(
       JSON.stringify({
         models: [
           { name: 'qwen3.5:latest', size: 6594474711 },
@@ -27,15 +27,30 @@ describe('ollamaSetup helpers', () => {
       }),
     );
 
-    expect(models).toEqual([
-      { name: 'qwen3.5:latest', size: 6594474711 },
-      { name: 'gemma4-fast:latest', size: 9608350718 },
-    ]);
+    expect(result).toEqual({
+      ok: true,
+      models: [
+        { name: 'qwen3.5:latest', size: 6594474711 },
+        { name: 'gemma4-fast:latest', size: 9608350718 },
+      ],
+    });
   });
 
-  it('treats invalid Ollama tags output as no detected models', () => {
-    expect(parseOllamaTags('<html>not json</html>')).toEqual([]);
-    expect(parseOllamaTags('ollama request timed out')).toEqual([]);
+  it('treats a valid response with zero models as a successful empty list', () => {
+    expect(parseOllamaTags(JSON.stringify({ models: [] }))).toEqual({ ok: true, models: [] });
+  });
+
+  it('flags an unparseable tags body as invalid, distinct from an empty list', () => {
+    expect(parseOllamaTags('<html>not json</html>')).toEqual({ ok: false, reason: 'invalid' });
+    expect(parseOllamaTags('ollama request timed out')).toEqual({ ok: false, reason: 'invalid' });
+    expect(parseOllamaTags(JSON.stringify({ models: 'nope' }))).toEqual({ ok: false, reason: 'invalid' });
+    expect(parseOllamaTags('\uFEFF{}')).toEqual({ ok: false, reason: 'invalid' });
+    expect(parseOllamaTags('{"models": [')).toEqual({ ok: false, reason: 'invalid' });
+  });
+
+  it('flags an empty tags body distinctly from a parse failure', () => {
+    expect(parseOllamaTags('')).toEqual({ ok: false, reason: 'empty' });
+    expect(parseOllamaTags('   \n')).toEqual({ ok: false, reason: 'empty' });
   });
 
   it('detects an unset config path from openclaw config get output', () => {

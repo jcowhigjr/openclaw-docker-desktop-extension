@@ -27,20 +27,28 @@ type OllamaTagsResponse = {
   }>;
 };
 
-export function parseOllamaTags(stdout: string): OllamaModel[] {
+// Result of parsing an Ollama /api/tags body. A valid response with zero
+// models (`ok: true, models: []`) is deliberately distinct from a missing body
+// (`reason: 'empty'`) or an unparseable/wrong-shape body (`reason: 'invalid'`),
+// so callers can avoid reporting a corrupt response as "no models installed".
+export type OllamaTagsResult =
+  | { ok: true; models: OllamaModel[] }
+  | { ok: false; reason: 'empty' | 'invalid' };
+
+export function parseOllamaTags(stdout: string): OllamaTagsResult {
   if (!stdout.trim()) {
-    return [];
+    return { ok: false, reason: 'empty' };
   }
 
   let payload: OllamaTagsResponse;
   try {
     payload = JSON.parse(stdout) as OllamaTagsResponse;
   } catch {
-    return [];
+    return { ok: false, reason: 'invalid' };
   }
 
   if (!Array.isArray(payload.models)) {
-    return [];
+    return { ok: false, reason: 'invalid' };
   }
 
   const models: OllamaModel[] = [];
@@ -58,7 +66,7 @@ export function parseOllamaTags(stdout: string): OllamaModel[] {
     models.push(model);
   }
 
-  return models;
+  return { ok: true, models };
 }
 
 export function buildOllamaProviderPatch(model: string): JsonObject {
