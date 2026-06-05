@@ -31,6 +31,7 @@ import {
   chooseRecommendedOllamaModel,
   type OllamaModel,
 } from './ollamaSetup';
+import { ollamaApplyButtonLabel } from './ollamaUiState';
 import { runDetect } from './ollamaDetect';
 import { buildControlUiLaunchUrl } from './controlUiLaunch';
 import { appendDebugEntry } from './debugLog';
@@ -85,7 +86,7 @@ const OLLAMA_BANNER_DISMISS_KEY = 'openclaw-docker-extension-ollama-banner-dismi
 const CONTAINER_NAME = 'openclaw-docker-extension-service';
 const VOLUME_NAME = 'openclaw-docker-extension-home';
 const BRIDGE_PORT = 18790;
-const DEFAULT_RUNTIME_IMAGE = (import.meta.env.VITE_DEFAULT_RUNTIME_IMAGE || 'ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest') as string;
+const DEFAULT_RUNTIME_IMAGE = (import.meta.env.VITE_DEFAULT_RUNTIME_IMAGE || 'ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest') as string;
 const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const DEFAULT_CONFIG: ExtensionConfig = {
   image: DEFAULT_RUNTIME_IMAGE,
@@ -113,7 +114,10 @@ function loadConfig(): ExtensionConfig {
         if (stored === 'ghcr.io/openclaw/openclaw:latest') {
           return DEFAULT_CONFIG.image;
         }
-        if (stored === 'openclaw-docker-extension-runtime:dev') {
+        if (
+          stored === 'openclaw-docker-extension-runtime:dev' ||
+          stored === 'ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest'
+        ) {
           return DEFAULT_CONFIG.image;
         }
         return stored;
@@ -1166,7 +1170,7 @@ export function App() {
                   onClick={() => void applyOllamaSetup()}
                   disabled={busy || phase !== 'running' || !selectedOllamaChanged}
                 >
-                  {selectedOllamaChanged ? 'Apply and Restart' : 'Already Applied'}
+                  {ollamaApplyButtonLabel(selectedOllamaModel, selectedOllamaChanged)}
                 </Button>
               </Stack>
               <TextField

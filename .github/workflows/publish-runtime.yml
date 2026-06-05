@@ -16,7 +16,8 @@ permissions:
   packages: write
 
 env:
-  RUNTIME_IMAGE: ghcr.io/${{ github.repository_owner }}/openclaw-docker-extension-runtime
+  RUNTIME_IMAGE: ghcr.io/${{ github.repository_owner }}/openclaw-docker-desktop-extension-runtime
+  LEGACY_RUNTIME_IMAGE: ghcr.io/${{ github.repository_owner }}/openclaw-docker-extension-runtime
 
 jobs:
   build-and-push:
@@ -33,7 +34,9 @@ jobs:
       - uses: docker/metadata-action@v6
         id: meta
         with:
-          images: ${{ env.RUNTIME_IMAGE }}
+          images: |
+            ${{ env.RUNTIME_IMAGE }}
+            ${{ env.LEGACY_RUNTIME_IMAGE }}
           tags: |
             type=raw,value=latest
             type=sha,prefix=sha-,format=short
@@ -46,4 +49,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
       - name: Verify published runtime image
-        run: docker buildx imagetools inspect "${RUNTIME_IMAGE}:latest"
+        run: |
+          docker buildx imagetools inspect "${RUNTIME_IMAGE}:latest"
+          docker buildx imagetools inspect "${LEGACY_RUNTIME_IMAGE}:latest"

@@ -42,4 +42,21 @@ describe('runDetect diagnostics', () => {
     expect(terminal?.attrs?.selectedInDetectedList).toBe(false);
     expect(out.selectedOllamaModel).not.toBe('gone:latest');
   });
+
+  it('treats a missing OpenClaw model config path as unconfigured, not unreachable', async () => {
+    const run = runnerMock({
+      tags: { stdout: JSON.stringify({ models: [{ name: 'gemma4:latest' }] }) },
+      config: new Error(
+        'Config path not found: agents.defaults.model.primary. Run openclaw config validate to inspect config shape.',
+      ),
+    });
+
+    const out = await runDetect({ run, selectedOllamaModel: '' });
+
+    expect(out.severity).toBe('success');
+    expect(out.models).toEqual([{ name: 'gemma4:latest' }]);
+    expect(out.configuredOllamaModel).toBe('');
+    expect(out.selectedOllamaModel).toBe('gemma4:latest');
+    expect(out.status).toBe('Detected 1 host Ollama model.');
+  });
 });
