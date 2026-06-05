@@ -4,6 +4,7 @@ set -eu
 
 dockerfile="${1:-Dockerfile}"
 workflow="${2:-.github/workflows/publish.yml}"
+runtime_workflow="${3:-.github/workflows/publish-runtime.yml}"
 
 require_file_contains() {
   file="$1"
@@ -33,5 +34,8 @@ require_file_contains "$workflow" 'password: ${{ secrets.DOCKERHUB_TOKEN }}' "Do
 require_file_contains "$workflow" 'type=raw,value=${{ env.RELEASE_VERSION }}' "semver image tag alias"
 require_file_contains "$workflow" 'platforms: linux/arm64,linux/amd64' "multi-platform release build"
 require_file_contains "$workflow" 'VITE_DEFAULT_RUNTIME_IMAGE=${{ env.REGISTRY }}/${{ env.RUNTIME_IMAGE_NAME }}:${{ env.RELEASE_VERSION }}' "semver runtime default"
+require_file_contains "$runtime_workflow" 'openclaw-docker-desktop-extension-runtime' "canonical scheduled runtime image target"
+require_file_contains "$runtime_workflow" 'openclaw-docker-extension-runtime' "legacy scheduled runtime alias"
+require_file_contains "$runtime_workflow" '${{ env.LEGACY_RUNTIME_IMAGE }}' "legacy scheduled runtime metadata image"
 
 echo "extension metadata checks passed"

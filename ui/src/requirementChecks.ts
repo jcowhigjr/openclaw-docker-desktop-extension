@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2025-2026 John Cowhig Jr.
+import { getRemedy } from './diag/errorCodes';
+
 export type PortConflict = {
   id: string;
   name: string;
@@ -65,11 +67,11 @@ export function parseDockerPublishedPortConflicts(
 
 export function formatStartFailure(message: string, hostPort: number): string {
   if (/port is already allocated|bind for .* failed|address already in use/i.test(message)) {
-    return `Host port ${hostPort} is already in use. Change the Host Port in Settings or stop the other process, then try Start again.`;
+    return getRemedy('START-001').replace('{hostPort}', String(hostPort));
   }
 
   if (/cannot connect to the docker daemon|docker daemon is not running|is the docker daemon running/i.test(message)) {
-    return 'Docker Desktop is not ready yet. Start Docker Desktop, wait until it finishes starting, then try again.';
+    return getRemedy('START-002');
   }
 
   return message;

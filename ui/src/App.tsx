@@ -29,13 +29,17 @@ import { getDDClient, isDemoMode } from './dockerDesktopClient';
 import {
   buildOllamaTagsFetchArgs,
   chooseRecommendedOllamaModel,
-  isConfigPathMissing,
-  normalizeOllamaModelName,
-  parseOllamaTags,
   type OllamaModel,
 } from './ollamaSetup';
+import { ollamaApplyButtonLabel } from './ollamaUiState';
+import { runDetect } from './ollamaDetect';
 import { buildControlUiLaunchUrl } from './controlUiLaunch';
 import { appendDebugEntry } from './debugLog';
+import { buildDiagnosticsBundle } from './diag/bundle';
+import { readDiagEvents, resetDiagEvents } from './diag/events';
+import { captureOllamaSnapshot } from './diag/snapshot';
+import { traceAction, type StepFn } from './diag/trace';
+import { useDiagLogText } from './diag/useDiagEvents';
 import { buildRuntimeHelperArgs } from './dockerExec';
 import { readGatewayTokenWithRetry } from './tokenRetry';
 import {
@@ -82,7 +86,7 @@ const OLLAMA_BANNER_DISMISS_KEY = 'openclaw-docker-extension-ollama-banner-dismi
 const CONTAINER_NAME = 'openclaw-docker-extension-service';
 const VOLUME_NAME = 'openclaw-docker-extension-home';
 const BRIDGE_PORT = 18790;
-const DEFAULT_RUNTIME_IMAGE = (import.meta.env.VITE_DEFAULT_RUNTIME_IMAGE || 'ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest') as string;
+const DEFAULT_RUNTIME_IMAGE = (import.meta.env.VITE_DEFAULT_RUNTIME_IMAGE || 'ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest') as string;
 const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const DEFAULT_CONFIG: ExtensionConfig = {
   image: DEFAULT_RUNTIME_IMAGE,
@@ -110,7 +114,10 @@ function loadConfig(): ExtensionConfig {
         if (stored === 'ghcr.io/openclaw/openclaw:latest') {
           return DEFAULT_CONFIG.image;
         }
-        if (stored === 'openclaw-docker-extension-runtime:dev') {
+        if (
+          stored === 'openclaw-docker-extension-runtime:dev' ||
+          stored === 'ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest'
+        ) {
           return DEFAULT_CONFIG.image;
         }
         return stored;
@@ -148,6 +155,7 @@ export function App() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [debugLog, setDebugLog] = useState('');
+  const diagLogText = useDiagLogText();
   const [requirementsChecking, setRequirementsChecking] = useState(false);
   const [requirementsStatus, setRequirementsStatus] = useState('');
   const [requirementsSeverity, setRequirementsSeverity] = useState<AlertColor>('info');
@@ -227,72 +235,127 @@ export function App() {
     return parseDockerPublishedPortConflicts(asText(result.stdout), config.port, CONTAINER_NAME);
   }, [asText, config.port, ddClient]);
 
+  const currentOllamaState = useCallback(() => ({
+    phase,
+    busy,
+    ollamaChecking,
+    ollamaStatus,
+    ollamaAlertSeverity,
+    selectedOllamaModel,
+    configuredOllamaModel,
+    models: ollamaModels,
+    actionSeq: 0,
+    appliedSeq: 0,
+  }), [
+    busy,
+    configuredOllamaModel,
+    ollamaAlertSeverity,
+    ollamaChecking,
+    ollamaModels,
+    ollamaStatus,
+    phase,
+    selectedOllamaModel,
+  ]);
+
+  const copyDiagnostics = useCallback(async () => {
+    setError('');
+    let health: string | undefined;
+    try {
+      const container = await findContainer();
+      health = container?.status;
+    } catch {
+      health = undefined;
+    }
+
+    const bundle = buildDiagnosticsBundle(
+      {
+        extensionVersion: 'unknown',
+        runtimeImage: config.image,
+        dockerDesktop: 'unknown',
+        os: navigator.platform,
+      },
+      readDiagEvents(),
+      captureOllamaSnapshot(currentOllamaState()),
+      health,
+    );
+
+    try {
+      await navigator.clipboard.writeText(bundle);
+      setMessage('Diagnostics copied to clipboard.');
+    } catch {
+      setError('Could not copy diagnostics to clipboard.');
+    }
+  }, [config.image, currentOllamaState, findContainer]);
+
   const checkRequirements = useCallback(async () => {
     setRequirementsChecking(true);
     setRequirementsStatus('');
     setRequirementsSeverity('info');
     setError('');
     try {
-      const version = (await ddClient.docker.cli.exec('version', ['--format', '{{.Server.Version}}'])) as CliExecResult;
-      const dockerVersion = asText(version.stdout).trim();
-      if (!dockerVersion) {
-        throw new Error('Docker Desktop responded, but the Docker Engine version was empty.');
-      }
+      await traceAction('requirements.check', async ({ step }) => {
+        const version = (await ddClient.docker.cli.exec('version', ['--format', '{{.Server.Version}}'])) as CliExecResult;
+        const dockerVersion = asText(version.stdout).trim();
+        if (!dockerVersion) {
+          step('docker_version', 'error');
+          throw new Error('Docker Desktop responded, but the Docker Engine version was empty.');
+        }
+        step('docker_version', 'ok', { attrs: { dockerVersion } });
 
-      const conflicts = await findPortConflicts();
-      if (conflicts.length > 0) {
-        appendDebug(`requirements check found port conflict on ${config.port}`);
-        setRequirementsSeverity('warning');
-        setRequirementsStatus(
-          `Docker is ready, but host port ${config.port} is already published by ${conflicts.map((conflict) => conflict.name || conflict.id).join(', ')}. Change the Host Port or stop the other container before starting OpenClaw.`,
-        );
-        return;
-      }
+        const conflicts = await findPortConflicts();
+        if (conflicts.length > 0) {
+          step('port_check', 'warning', { attrs: { hostPort: config.port } });
+          setRequirementsSeverity('warning');
+          setRequirementsStatus(
+            `Docker is ready, but host port ${config.port} is already published by ${conflicts.map((conflict) => conflict.name || conflict.id).join(', ')}. Change the Host Port or stop the other container before starting OpenClaw.`,
+          );
+          return;
+        }
+        step('port_check', 'ok', { attrs: { hostPort: config.port } });
 
-      if (phase === 'running') {
-        const container = await findContainer();
-        if (container?.state === 'running') {
-          try {
-            await ddClient.docker.cli.exec('exec', [container.id, ...buildOllamaTagsFetchArgs()]);
-            const ollamaStatus = formatOllamaRequirementStatus({
-              hostPort: config.port,
-              configuredOllamaModel,
-              ollamaReachable: true,
-            });
-            setRequirementsSeverity(ollamaStatus.severity);
-            appendDebug(ollamaStatus.debug);
-            setRequirementsStatus(ollamaStatus.status);
-            return;
-          } catch (err) {
-            const text = formatUnknownError(err);
-            appendDebug(`requirements Ollama check failed: ${text}`);
-            const ollamaStatus = formatOllamaRequirementStatus({
-              hostPort: config.port,
-              configuredOllamaModel,
-              ollamaReachable: false,
-            });
-            setRequirementsSeverity(ollamaStatus.severity);
-            appendDebug(ollamaStatus.debug);
-            setRequirementsStatus(ollamaStatus.status);
-            return;
+        if (phase === 'running') {
+          const container = await findContainer();
+          if (container?.state === 'running') {
+            try {
+              await ddClient.docker.cli.exec('exec', [container.id, ...buildOllamaTagsFetchArgs()]);
+              const ollamaStatus = formatOllamaRequirementStatus({
+                hostPort: config.port,
+                configuredOllamaModel,
+                ollamaReachable: true,
+              });
+              step('ollama_check', 'ok');
+              setRequirementsSeverity(ollamaStatus.severity);
+              setRequirementsStatus(ollamaStatus.status);
+              return;
+            } catch (err) {
+              const text = formatUnknownError(err);
+              const ollamaStatus = formatOllamaRequirementStatus({
+                hostPort: config.port,
+                configuredOllamaModel,
+                ollamaReachable: false,
+              });
+              step('ollama_check', 'warning', { error: { message: text } });
+              setRequirementsSeverity(ollamaStatus.severity);
+              setRequirementsStatus(ollamaStatus.status);
+              return;
+            }
           }
         }
-      }
 
-      setRequirementsSeverity('success');
-      appendDebug(`requirements check passed: Docker is ready and host port ${config.port} is available`);
-      setRequirementsStatus(
-        `Docker is ready and host port ${config.port} is available. Ollama is only required for Local Model Setup or an ollama/<model> default.`,
-      );
+        step('complete', 'ok');
+        setRequirementsSeverity('success');
+        setRequirementsStatus(
+          `Docker is ready and host port ${config.port} is available. Ollama is only required for Local Model Setup or an ollama/<model> default.`,
+        );
+      });
     } catch (err) {
       const text = formatUnknownError(err);
-      appendDebug(`requirements check failed: ${text}`);
       setRequirementsSeverity('error');
       setRequirementsStatus(formatStartFailure(text, config.port));
     } finally {
       setRequirementsChecking(false);
     }
-  }, [appendDebug, asText, config.port, configuredOllamaModel, ddClient, findContainer, findPortConflicts, phase]);
+  }, [asText, config.port, configuredOllamaModel, ddClient, findContainer, findPortConflicts, phase]);
 
   const fetchGatewayToken = useCallback(async (containerId: string) => {
     const result = (await ddClient.docker.cli.exec('exec', [
@@ -399,19 +462,19 @@ export function App() {
     }
   }, [checkReady, findContainer, readToken]);
 
-  const runAndPoll = useCallback(async () => {
+  const runAndPoll = useCallback(async (step?: StepFn) => {
     for (let attempt = 0; attempt < 20; attempt += 1) {
-      appendDebug(`poll attempt ${attempt + 1}`);
+      step?.('poll_attempt', 'ok', { attrs: { attempt: attempt + 1 } });
       const result = await refresh();
       if (result.ready) {
-        appendDebug('host health check passed');
+        step?.('health_check', 'ok');
         break;
       }
       if (attempt < 19) {
         await new Promise((resolve) => window.setTimeout(resolve, 3000));
       }
     }
-  }, [appendDebug, refresh]);
+  }, [refresh]);
 
   const createOrStart = useCallback(async () => {
     setBusy(true);
@@ -420,59 +483,58 @@ export function App() {
     setPhase('starting');
     setStatusText('Creating OpenClaw container...');
     try {
-      const existing = await findContainer();
-      if (existing) {
-        appendDebug(`found existing container ${existing.id} (${existing.state})`);
-        await ddClient.docker.cli.exec('start', [existing.id]);
-        setStatusText('Starting existing OpenClaw container...');
-      } else {
-        const conflicts = await findPortConflicts();
-        if (conflicts.length > 0) {
-          throw new Error(
-            `Host port ${config.port} is already published by ${conflicts.map((conflict) => conflict.name || conflict.id).join(', ')}. Change the Host Port in Settings or stop the other container, then try Start again.`,
-          );
+      await traceAction('container.start', async ({ step }) => {
+        const existing = await findContainer();
+        if (existing) {
+          step('find_existing', 'ok', { attrs: { state: existing.state } });
+          await ddClient.docker.cli.exec('start', [existing.id]);
+          step('docker_start', 'ok');
+          setStatusText('Starting existing OpenClaw container...');
+        } else {
+          const conflicts = await findPortConflicts();
+          if (conflicts.length > 0) {
+            step('port_check', 'error', { code: 'START-001', attrs: { hostPort: config.port } });
+            throw new Error(
+              `Host port ${config.port} is already published by ${conflicts.map((conflict) => conflict.name || conflict.id).join(', ')}. Change the Host Port in Settings or stop the other container, then try Start again.`,
+            );
+          }
+
+          step('docker_run', 'ok', { attrs: { image: config.image } });
+          const result = (await ddClient.docker.cli.exec('run', buildRuntimeRunArgs({
+            containerName: CONTAINER_NAME,
+            image: config.image,
+            volumeName: VOLUME_NAME,
+            hostPort: config.port,
+            bridgePort: BRIDGE_PORT,
+            labels: LABELS,
+          }))) as CliExecResult;
+          const stdout = asText(result.stdout).trim();
+          const stderr = asText(result.stderr).trim();
+
+          await new Promise((resolve) => window.setTimeout(resolve, 1500));
+          const created = await findContainer();
+          if (!created) {
+            step('verify_created', 'error', { error: { message: stderr || stdout || 'container missing' } });
+            throw new Error(
+              stderr ||
+                stdout ||
+                'Docker reported success, but no OpenClaw service container was created.',
+            );
+          }
+          step('verify_created', 'ok');
         }
 
-        appendDebug(`creating container ${CONTAINER_NAME} from ${config.image}`);
-        const result = (await ddClient.docker.cli.exec('run', buildRuntimeRunArgs({
-          containerName: CONTAINER_NAME,
-          image: config.image,
-          volumeName: VOLUME_NAME,
-          hostPort: config.port,
-          bridgePort: BRIDGE_PORT,
-          labels: LABELS,
-        }))) as CliExecResult;
-        const stdout = asText(result.stdout).trim();
-        const stderr = asText(result.stderr).trim();
-        appendDebug(`docker run stdout: ${stdout || '<empty>'}`);
-        if (stderr) {
-          appendDebug(`docker run stderr: ${stderr}`);
-        }
-
-        await new Promise((resolve) => window.setTimeout(resolve, 1500));
-        const created = await findContainer();
-        if (!created) {
-          const ps = (await ddClient.docker.cli.exec('ps', ['-a'])) as CliExecResult;
-          appendDebug(`docker ps -a:\n${asText(ps.stdout).trim()}`);
-          throw new Error(
-            stderr ||
-              stdout ||
-              'Docker reported success, but no OpenClaw service container was created.',
-          );
-        }
-      }
-
-      setMessage('OpenClaw setup started. The first launch can take a minute while socat is installed.');
-      await runAndPoll();
+        setMessage('OpenClaw setup started. The first launch can take a minute while socat is installed.');
+        await runAndPoll(step);
+      });
     } catch (err) {
       setPhase('error');
       const text = formatStartFailure(formatUnknownError(err), config.port);
-      appendDebug(`create/start failed: ${text}`);
       setError(text);
     } finally {
       setBusy(false);
     }
-  }, [appendDebug, asText, config.image, config.port, ddClient, findContainer, findPortConflicts, runAndPoll]);
+  }, [asText, config.image, config.port, ddClient, findContainer, findPortConflicts, runAndPoll]);
 
   const stop = useCallback(async () => {
     setBusy(true);
@@ -496,21 +558,24 @@ export function App() {
     setBusy(true);
     setError('');
     try {
-      const container = await findContainer();
-      if (container) {
-        await ddClient.docker.cli.exec('restart', [container.id]);
-        await runAndPoll();
-      } else {
-        await createOrStart();
-      }
+      await traceAction('container.restart', async ({ step }) => {
+        const container = await findContainer();
+        if (container) {
+          await ddClient.docker.cli.exec('restart', [container.id]);
+          step('docker_restart', 'ok');
+          await runAndPoll(step);
+        } else {
+          step('container_missing', 'warning');
+          await createOrStart();
+        }
+      });
     } catch (err) {
       const text = formatUnknownError(err);
-      appendDebug(`restart failed: ${text}`);
       setError(text);
     } finally {
       setBusy(false);
     }
-  }, [appendDebug, createOrStart, ddClient, findContainer, runAndPoll]);
+  }, [createOrStart, ddClient, findContainer, runAndPoll]);
 
   const remove = useCallback(async () => {
     setBusy(true);
@@ -584,89 +649,20 @@ export function App() {
         throw new Error('Start OpenClaw before detecting local Ollama models.');
       }
 
-      const result = (await ddClient.docker.cli.exec('exec', [
-        container.id,
-        ...buildOllamaTagsFetchArgs(),
-      ])) as CliExecResult;
-      const stderr = asText(result.stderr).trim();
-      if (stderr) {
-        appendDebug(`ollama detect stderr: ${stderr}`);
-      }
+      const output = await runDetect({
+        run: async (cmd, args) => (await ddClient.docker.cli.exec(cmd, args)) as CliExecResult,
+        containerId: container.id,
+        selectedOllamaModel,
+        phase,
+      });
 
-      const tags = parseOllamaTags(asText(result.stdout));
-      if (!tags.ok) {
-        // The tags fetch succeeded at the transport level but the body was not a
-        // readable model list. Surface that distinctly from "no models installed",
-        // and clear stale selection so Apply cannot run against a vanished model.
-        appendDebug(`ollama detect: unreadable /api/tags response (${tags.reason})`);
-        setOllamaModels([]);
-        setConfiguredOllamaModel('');
-        setSelectedOllamaModel('');
-        setOllamaAlertSeverity('warning');
-        let unreadableStatus: string;
-        switch (tags.reason) {
-          case 'empty':
-            unreadableStatus =
-              'Host Ollama returned an empty response. Confirm Ollama is serving the model API and try again.';
-            break;
-          case 'invalid':
-            unreadableStatus = 'Host Ollama returned an unexpected response that could not be read as a model list.';
-            break;
-          default:
-            unreadableStatus = ((reason: never) => `Host Ollama returned an unreadable response (${reason}).`)(
-              tags.reason,
-            );
-        }
-        setOllamaStatus(unreadableStatus);
-        return;
-      }
-      const models = tags.models;
-
-      // Reading the configured model is best-effort: on a fresh install the path
-      // is unset and `config get` exits non-zero. That must not abort detection
-      // or be reported as an Ollama reachability failure.
-      let currentModel = '';
-      let modelReadWarning = '';
-      try {
-        const currentModelResult = (await ddClient.docker.cli.exec('exec', [
-          container.id,
-          'node',
-          'openclaw.mjs',
-          'config',
-          'get',
-          'agents.defaults.model.primary',
-        ])) as CliExecResult;
-        currentModel = normalizeOllamaModelName(asText(currentModelResult.stdout));
-      } catch (modelErr) {
-        const modelText = formatUnknownError(modelErr);
-        if (isConfigPathMissing(modelText)) {
-          appendDebug('ollama detect: no model configured yet (agents.defaults.model.primary unset)');
-        } else {
-          // Unexpected read failure (e.g. malformed config, permission error):
-          // models are still valid, but surface it rather than silently succeed.
-          modelReadWarning = modelText;
-          appendDebug(`ollama detect: could not read configured model: ${modelText}`);
-        }
-      }
-
-      setOllamaModels(models);
-      setConfiguredOllamaModel(currentModel);
-      setSelectedOllamaModel((current) => current || currentModel || chooseRecommendedOllamaModel(models));
-
-      const baseStatus =
-        models.length > 0
-          ? `Detected ${models.length} host Ollama model${models.length === 1 ? '' : 's'}${currentModel ? `; configured model is ${currentModel}.` : '.'}`
-          : 'Host Ollama responded, but no models were installed.';
-      if (modelReadWarning) {
-        setOllamaAlertSeverity('warning');
-        setOllamaStatus(`${baseStatus} Could not read the currently configured model: ${modelReadWarning}`);
-      } else {
-        setOllamaAlertSeverity(models.length > 0 ? 'success' : 'info');
-        setOllamaStatus(baseStatus);
-      }
+      setOllamaModels(output.models);
+      setConfiguredOllamaModel(output.configuredOllamaModel);
+      setSelectedOllamaModel(output.selectedOllamaModel);
+      setOllamaAlertSeverity(output.severity);
+      setOllamaStatus(output.status);
     } catch (err) {
       const text = formatUnknownError(err);
-      appendDebug(`ollama detect failed: ${text}`);
       setOllamaModels([]);
       setConfiguredOllamaModel('');
       setSelectedOllamaModel('');
@@ -675,7 +671,7 @@ export function App() {
     } finally {
       setOllamaChecking(false);
     }
-  }, [appendDebug, asText, ddClient, findContainer]);
+  }, [ddClient, findContainer, phase, selectedOllamaModel]);
 
   const detectExecutionMode = useCallback(async () => {
     setExecutionModeChecking(true);
@@ -1174,7 +1170,7 @@ export function App() {
                   onClick={() => void applyOllamaSetup()}
                   disabled={busy || phase !== 'running' || !selectedOllamaChanged}
                 >
-                  {selectedOllamaChanged ? 'Apply and Restart' : 'Already Applied'}
+                  {ollamaApplyButtonLabel(selectedOllamaModel, selectedOllamaChanged)}
                 </Button>
               </Stack>
               <TextField
@@ -1283,17 +1279,30 @@ export function App() {
             <Stack spacing={1.5}>
               <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
                 <Typography variant="h5">Debug Output</Typography>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => setDebugLog('')}
-                  disabled={!debugLog}
-                >
-                  Clear Debug
-                </Button>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<ContentCopyIcon />}
+                    onClick={() => void copyDiagnostics()}
+                  >
+                    Copy Diagnostics
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => {
+                      setDebugLog('');
+                      resetDiagEvents();
+                    }}
+                    disabled={!debugLog && !diagLogText}
+                  >
+                    Clear Debug
+                  </Button>
+                </Stack>
               </Stack>
               <TextField
-                value={debugLog}
+                value={diagLogText}
                 multiline
                 minRows={8}
                 fullWidth
