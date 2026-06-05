@@ -7,8 +7,19 @@ const path = require('path');
 
 const OPENCLAW_CONFIG_PATH = process.env.OPENCLAW_CONFIG_PATH || '/home/node/.openclaw/openclaw.json';
 const EXEC_APPROVALS_PATH = process.env.EXEC_APPROVALS_PATH || '/home/node/.openclaw/exec-approvals.json';
-const OPENCLAW_AUTH_PROFILES_PATH =
-  process.env.OPENCLAW_AUTH_PROFILES_PATH || '/home/node/.openclaw/agents/main/agent/auth-profiles.json';
+// Explicit single-file override (kept for back-compat / tests). When set, the
+// Ollama auth profile is written only to this path.
+const OPENCLAW_AUTH_PROFILES_OVERRIDE = process.env.OPENCLAW_AUTH_PROFILES_PATH || null;
+// Base directory holding per-agent dirs (<agents>/<id>/agent/auth-profiles.json).
+// OpenClaw resolves auth per-agent, so the profile must reach every agent.
+const OPENCLAW_AGENTS_DIR = process.env.OPENCLAW_AGENTS_DIR || '/home/node/.openclaw/agents';
+const MAIN_AGENT_ID = 'main';
+
+const OLLAMA_AUTH_PROFILE = {
+  type: 'api_key',
+  provider: 'ollama',
+  key: 'ollama-local',
+};
 
 function readJson(file) {
   if (!fs.existsSync(file)) {
@@ -141,17 +152,66 @@ function ollamaConfigWrite(model) {
   writeJson(OPENCLAW_CONFIG_PATH, config, true);
 }
 
+// Enumerate agent ids under the agents base. Always includes `main` as a floor.
+// Other entries count as agents only if they are directories containing an
+// `agent/` subdir, so stray files/dirs are skipped. Missing/unreadable base
+// degrades to just `main`.
+function listAgentIds(base) {
+  const ids = new Set([MAIN_AGENT_ID]);
+  let entries;
+  try {
+    entries = fs.readdirSync(base, { withFileTypes: true });
+  } catch (error) {
+    return Array.from(ids);
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+    if (fs.existsSync(path.join(base, entry.name, 'agent'))) {
+      ids.add(entry.name);
+    }
+  }
+  return Array.from(ids);
+}
+
+// Merge the ollama:manual profile into an agent's auth-profiles.json without
+// clobbering other profiles. Idempotent. A malformed existing file is fatal for
+// `main` (strong signal for the primary agent) but recoverable for others.
+function mergeOllamaProfile(file, strict) {
+  let data;
+  try {
+    data = readJson(file);
+  } catch (error) {
+    if (strict) {
+      throw error;
+    }
+    process.stderr.write('skipping malformed auth-profiles.json at ' + file + ': ' +
+      (error && error.message ? error.message : String(error)) + '\n');
+    data = {};
+  }
+  if (!isObject(data)) {
+    data = {};
+  }
+  if (typeof data.version !== 'number') {
+    data.version = 1;
+  }
+  if (!isObject(data.profiles)) {
+    data.profiles = {};
+  }
+  data.profiles['ollama:manual'] = Object.assign({}, OLLAMA_AUTH_PROFILE);
+  writeJson(file, data, false);
+}
+
 function ollamaAuthProfilesWrite() {
-  writeJson(OPENCLAW_AUTH_PROFILES_PATH, {
-    version: 1,
-    profiles: {
-      'ollama:manual': {
-        type: 'api_key',
-        provider: 'ollama',
-        key: 'ollama-local',
-      },
-    },
-  }, false);
+  if (OPENCLAW_AUTH_PROFILES_OVERRIDE) {
+    mergeOllamaProfile(OPENCLAW_AUTH_PROFILES_OVERRIDE, true);
+    return;
+  }
+  for (const id of listAgentIds(OPENCLAW_AGENTS_DIR)) {
+    const file = path.join(OPENCLAW_AGENTS_DIR, id, 'agent', 'auth-profiles.json');
+    mergeOllamaProfile(file, id === MAIN_AGENT_ID);
+  }
 }
 
 const command = process.argv[2];
