@@ -1,0 +1,4 @@
+ghcr channel is publicly readable: ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable
+ghcr channel is publicly readable: ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:stable
+Release channel path is ready for this channel:
+  make install-channel RELEASE_CHANNEL=stable

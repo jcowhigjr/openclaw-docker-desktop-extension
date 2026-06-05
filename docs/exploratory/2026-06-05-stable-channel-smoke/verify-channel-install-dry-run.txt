@@ -1,0 +1,2 @@
+dry run: RELEASE_CHANNEL=stable GHCR_OWNER=jcowhigjr ./scripts/verify-release-channel.sh
+dry run: docker extension validate --validate-install-uninstall ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable

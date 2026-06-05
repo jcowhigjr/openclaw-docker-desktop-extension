@@ -1,0 +1,6 @@
+ID                                     PROVIDER                                      VERSION             UI                  VM                          HOST
+jesulonimii/portless-extension         Jesulonimii                                   1.0.0               1 tab(Portless)     Running(1)                  -
+localstack/localstack-docker-desktop   LocalStack GmbH                               2026.4.1            1 tab(LocalStack)   Running(1)                  1 binarie(s)
+openclaw-docker-extension              jcowhigjr/openclaw-docker-desktop-extension   dev                 1 tab(OpenClaw)     Running(1)                  -
+rw4lll/openwebui-docker-extension      Sergei Shitikov                               0.3.0               1 tab(Open WebUI)   Restarting(1), Running(1)   -
+warpdotdev/warp                        Warp                                          0.0.32              1 tab(Warp)         -                           1 binarie(s)
