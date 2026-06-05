@@ -64,6 +64,13 @@ grep -F '"ollama:manual"' "$config_path" >/dev/null
 env $helper_env node runtime/openclaw-extension-helper.js ollama-auth-profiles-write
 grep -F '"key": "ollama-local"' "$auth_profiles_path" >/dev/null
 
+if env "OPENCLAW_AUTH_PROFILES_PATH=${tmp_dir}/wrong-name.json" \
+  node runtime/openclaw-extension-helper.js ollama-auth-profiles-write 2>"${tmp_dir}/invalid-path.err"; then
+  echo "ollama-auth-profiles-write must reject invalid auth profile filenames" >&2
+  exit 1
+fi
+grep -F 'auth profile path must end with auth-profiles.json' "${tmp_dir}/invalid-path.err" >/dev/null
+
 # --- Ollama auth profile propagation across all agents ---
 # When the single-file override is NOT set, the helper enumerates every agent
 # directory under OPENCLAW_AGENTS_DIR and writes ollama:manual to each.

@@ -21,19 +21,59 @@ const OLLAMA_AUTH_PROFILE = {
   key: 'ollama-local',
 };
 
+function resolvedPath(value) {
+  return path.resolve(String(value || ''));
+}
+
+function isSafePathSegment(value) {
+  return typeof value === 'string' &&
+    value.length > 0 &&
+    value !== '.' &&
+    value !== '..' &&
+    !value.includes('/') &&
+    !value.includes('\\') &&
+    !path.isAbsolute(value);
+}
+
+function safeJoin(base, ...segments) {
+  const root = resolvedPath(base);
+  const cleanSegments = segments.map((segment) => {
+    if (!isSafePathSegment(segment)) {
+      throw new Error('unsafe path segment: ' + segment);
+    }
+    return segment;
+  });
+  const target = path.resolve(root, ...cleanSegments);
+  const relative = path.relative(root, target);
+  if (relative === '..' || relative.startsWith('..' + path.sep)) {
+    throw new Error('resolved path escapes base directory');
+  }
+  return target;
+}
+
+function authProfilesPath(file) {
+  const resolved = resolvedPath(file);
+  if (path.basename(resolved) !== 'auth-profiles.json') {
+    throw new Error('auth profile path must end with auth-profiles.json');
+  }
+  return resolved;
+}
+
 function readJson(file) {
-  if (!fs.existsSync(file)) {
+  const resolved = resolvedPath(file);
+  if (!fs.existsSync(resolved)) {
     return {};
   }
-  return JSON.parse(fs.readFileSync(file, 'utf8'));
+  return JSON.parse(fs.readFileSync(resolved, 'utf8'));
 }
 
 function writeJson(file, data, backup) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  if (backup && fs.existsSync(file)) {
-    fs.copyFileSync(file, file + '.bak');
+  const resolved = resolvedPath(file);
+  fs.mkdirSync(path.dirname(resolved), { recursive: true });
+  if (backup && fs.existsSync(resolved)) {
+    fs.copyFileSync(resolved, resolved + '.bak');
   }
-  fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+  fs.writeFileSync(resolved, JSON.stringify(data, null, 2) + '\n');
 }
 
 function isObject(value) {
@@ -158,17 +198,18 @@ function ollamaConfigWrite(model) {
 // degrades to just `main`.
 function listAgentIds(base) {
   const ids = new Set([MAIN_AGENT_ID]);
+  const root = resolvedPath(base);
   let entries;
   try {
-    entries = fs.readdirSync(base, { withFileTypes: true });
+    entries = fs.readdirSync(root, { withFileTypes: true });
   } catch (error) {
     return Array.from(ids);
   }
   for (const entry of entries) {
-    if (!entry.isDirectory()) {
+    if (!entry.isDirectory() || !isSafePathSegment(entry.name)) {
       continue;
     }
-    if (fs.existsSync(path.join(base, entry.name, 'agent'))) {
+    if (fs.existsSync(safeJoin(root, entry.name, 'agent'))) {
       ids.add(entry.name);
     }
   }
@@ -179,14 +220,15 @@ function listAgentIds(base) {
 // clobbering other profiles. Idempotent. A malformed existing file is fatal for
 // `main` (strong signal for the primary agent) but recoverable for others.
 function mergeOllamaProfile(file, strict) {
+  const resolvedFile = authProfilesPath(file);
   let data;
   try {
-    data = readJson(file);
+    data = readJson(resolvedFile);
   } catch (error) {
     if (strict) {
       throw error;
     }
-    process.stderr.write('skipping malformed auth-profiles.json at ' + file + ': ' +
+    process.stderr.write('skipping malformed auth-profiles.json at ' + resolvedFile + ': ' +
       (error && error.message ? error.message : String(error)) + '\n');
     data = {};
   }
@@ -200,7 +242,7 @@ function mergeOllamaProfile(file, strict) {
     data.profiles = {};
   }
   data.profiles['ollama:manual'] = Object.assign({}, OLLAMA_AUTH_PROFILE);
-  writeJson(file, data, false);
+  writeJson(resolvedFile, data, false);
 }
 
 function ollamaAuthProfilesWrite() {
@@ -209,7 +251,7 @@ function ollamaAuthProfilesWrite() {
     return;
   }
   for (const id of listAgentIds(OPENCLAW_AGENTS_DIR)) {
-    const file = path.join(OPENCLAW_AGENTS_DIR, id, 'agent', 'auth-profiles.json');
+    const file = safeJoin(OPENCLAW_AGENTS_DIR, id, 'agent', 'auth-profiles.json');
     mergeOllamaProfile(file, id === MAIN_AGENT_ID);
   }
 }
