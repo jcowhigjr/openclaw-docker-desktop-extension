@@ -1,0 +1,22 @@
+NAMES                                                            IMAGE                                           STATUS                          PORTS
+gracious_galileo                                                 2ac27ef03461                                    Created                         
+cranky_carson                                                    693a03d63875                                    Created                         
+stupefied_gates                                                  1174e6a29634                                    Created                         
+vigilant_panini                                                  db0c2db07a44                                    Created                         
+charming_shannon                                                 cd3174b2ecf3                                    Created                         
+boring_ptolemy                                                   43e3be2da74d                                    Created                         
+interesting_carver                                               6a74d1018336                                    Created                         
+openclaw-docker-extension-desktop-extension-service              alpine:latest                                   Up 5 hours                      
+openclaw-docker-extension-service                                66a8858e4eca                                    Up 5 hours (healthy)            127.0.0.1:18789->18790/tcp
+mcp-bridge-8813                                                  alpine/socat                                    Up 5 hours                      
+mcp-bridge-8812                                                  alpine/socat                                    Up 5 hours                      
+mcp-bridge-8811                                                  alpine/socat                                    Up 5 hours                      
+localstack_localstack-docker-desktop-desktop-extension-service   localstack/localstack-docker-desktop:2026.4.1   Up 5 hours                      
+openwebui-extension-mcp-gateway                                  docker/mcp-gateway:v2                           Restarting (1) 37 seconds ago   
+mcp-docker                                                       mcp/docker                                      Up 5 hours                      127.0.0.1:8811->8811/tcp, [::]:8811->8811/tcp
+mcp-openapi-schema                                               mcp/openapi-schema                              Restarting (0) 26 seconds ago   
+mcp-playwright                                                   mcp/playwright                                  Restarting (0) 8 seconds ago    
+mcp-memory                                                       mcp/memory                                      Restarting (0) 33 seconds ago   
+mcp-context7                                                     mcp/context7                                    Up 5 hours                      127.0.0.1:8812->8812/tcp, [::]:8812->8812/tcp
+jesulonimii_portless-extension-desktop-extension-service         jesulonimii/portless-extension:1.0.0            Up 5 hours                      127.0.0.1:1355->1355/tcp, [::]:1355->1355/tcp
+rw4lll_openwebui-docker-extension-desktop-extension-service      alpine:latest                                   Up 5 hours                      

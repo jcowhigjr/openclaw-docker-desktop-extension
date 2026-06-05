@@ -282,7 +282,7 @@ Those files do not override environment variables that already exist in the proc
 
 Current extension-managed auth is intentionally narrow:
 
-- `Local Model Setup` writes OpenClaw config and a per-agent Ollama auth profile for an already installed host Ollama model.
+- `Local Model Setup` writes OpenClaw config and an Ollama auth profile for an already installed host Ollama model. The auth profile is propagated to every existing agent (not just `main`), so sub-agents can use local Ollama too. Agents created after setup need a re-run of `Local Model Setup` to receive the profile.
 - Other provider credentials should be configured through OpenClaw's own auth/onboarding flows or by writing supported keys such as `ANTHROPIC_API_KEY=...` into `/home/node/.openclaw/.env`, then restarting OpenClaw.
 
 ## Offline-first local model path
