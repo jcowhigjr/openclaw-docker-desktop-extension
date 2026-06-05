@@ -1,0 +1,2 @@
+2026/06/05 03:48:27 socat[20] E connect(5, AF=2 127.0.0.1:18789, 16): Connection refused
+2026/06/05 12:22:58 socat[15] E connect(5, AF=2 127.0.0.1:18789, 16): Connection refused

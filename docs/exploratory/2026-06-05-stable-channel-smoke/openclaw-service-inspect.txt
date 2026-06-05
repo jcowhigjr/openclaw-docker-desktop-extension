@@ -1,0 +1,303 @@
+[
+    {
+        "Id": "caa53b9d64f2c8334002f83244b7896722b4be0cf6cf1a1bc392474dd0928873",
+        "Created": "2026-06-05T03:46:38.522604385Z",
+        "Path": "sh",
+        "Args": [
+            "/usr/local/bin/openclaw-bridge.sh"
+        ],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 2461,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-06-05T12:22:58.504454876Z",
+            "FinishedAt": "2026-06-05T12:22:55.920236833Z",
+            "Health": {
+                "Status": "healthy",
+                "FailingStreak": 0,
+                "Log": [
+                    {
+                        "Start": "2026-06-05T16:58:11.309898334Z",
+                        "End": "2026-06-05T16:58:11.435563001Z",
+                        "ExitCode": 0,
+                        "Output": ""
+                    },
+                    {
+                        "Start": "2026-06-05T17:01:11.437228084Z",
+                        "End": "2026-06-05T17:01:11.565911376Z",
+                        "ExitCode": 0,
+                        "Output": ""
+                    },
+                    {
+                        "Start": "2026-06-05T17:04:11.567565459Z",
+                        "End": "2026-06-05T17:04:11.684037251Z",
+                        "ExitCode": 0,
+                        "Output": ""
+                    },
+                    {
+                        "Start": "2026-06-05T17:07:11.686619209Z",
+                        "End": "2026-06-05T17:07:11.799602334Z",
+                        "ExitCode": 0,
+                        "Output": ""
+                    },
+                    {
+                        "Start": "2026-06-05T17:10:11.800646084Z",
+                        "End": "2026-06-05T17:10:11.925877209Z",
+                        "ExitCode": 0,
+                        "Output": ""
+                    }
+                ]
+            }
+        },
+        "Image": "sha256:66a8858e4eca5432ccfcea2d0daff2caee26b3065d3ab1fae12ab5a2d715195e",
+        "ResolvConfPath": "/var/lib/docker/containers/caa53b9d64f2c8334002f83244b7896722b4be0cf6cf1a1bc392474dd0928873/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/caa53b9d64f2c8334002f83244b7896722b4be0cf6cf1a1bc392474dd0928873/hostname",
+        "HostsPath": "/var/lib/docker/containers/caa53b9d64f2c8334002f83244b7896722b4be0cf6cf1a1bc392474dd0928873/hosts",
+        "LogPath": "/var/lib/docker/containers/caa53b9d64f2c8334002f83244b7896722b4be0cf6cf1a1bc392474dd0928873/caa53b9d64f2c8334002f83244b7896722b4be0cf6cf1a1bc392474dd0928873-json.log",
+        "Name": "/openclaw-docker-extension-service",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "openclaw-docker-extension-home:/home/node"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "bridge",
+            "PortBindings": {
+                "18790/tcp": [
+                    {
+                        "HostIp": "127.0.0.1",
+                        "HostPort": "18789"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": [
+                "ALL"
+            ],
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": true,
+            "SecurityOpt": [
+                "no-new-privileges"
+            ],
+            "Tmpfs": {
+                "/tmp": "rw,noexec,nosuid,size=64m"
+            },
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [
+                {
+                    "Name": "nofile",
+                    "Hard": 1024,
+                    "Soft": 1024
+                }
+            ],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "volume",
+                "Name": "openclaw-docker-extension-home",
+                "Source": "/var/lib/docker/volumes/openclaw-docker-extension-home/_data",
+                "Destination": "/home/node",
+                "Driver": "local",
+                "Mode": "z",
+                "RW": true,
+                "Propagation": ""
+            }
+        ],
+        "Config": {
+            "Hostname": "caa53b9d64f2",
+            "Domainname": "",
+            "User": "node",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "ExposedPorts": {
+                "18790/tcp": {}
+            },
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "NODE_VERSION=24.16.0",
+                "YARN_VERSION=1.22.22",
+                "COREPACK_HOME=/usr/local/share/corepack",
+                "PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright",
+                "NODE_ENV=production"
+            ],
+            "Cmd": null,
+            "Healthcheck": {
+                "Test": [
+                    "CMD-SHELL",
+                    "node -e \"fetch('http://127.0.0.1:18789/healthz').then((r)=\u003eprocess.exit(r.ok?0:1)).catch(()=\u003eprocess.exit(1))\""
+                ],
+                "Interval": 180000000000,
+                "Timeout": 10000000000,
+                "StartPeriod": 15000000000,
+                "Retries": 3
+            },
+            "Image": "openclaw-docker-extension-runtime:dev",
+            "Volumes": null,
+            "WorkingDir": "/app",
+            "Entrypoint": [
+                "sh",
+                "/usr/local/bin/openclaw-bridge.sh"
+            ],
+            "Labels": {
+                "com.docker.extension.openclaw": "true",
+                "com.docker.extension.openclaw.role": "service",
+                "org.opencontainers.image.base.digest": "sha256:242549cd46785b480c832479a730f4f2a20865d61ea2e404fdb2a5c3d3b73ecf",
+                "org.opencontainers.image.base.name": "docker.io/library/node:24-bookworm-slim",
+                "org.opencontainers.image.created": "2026-06-03T19:10:59Z",
+                "org.opencontainers.image.description": "OpenClaw runtime wrapper with a localhost bridge for the Docker Desktop extension.",
+                "org.opencontainers.image.documentation": "https://docs.openclaw.ai/install/docker",
+                "org.opencontainers.image.licenses": "MIT AND Apache-2.0",
+                "org.opencontainers.image.revision": "2e08f0f4221f522b60423ed6ffd83427942b28de",
+                "org.opencontainers.image.source": "https://github.com/jcowhigjr/openclaw-docker-desktop-extension",
+                "org.opencontainers.image.title": "OpenClaw Docker Desktop Extension Runtime",
+                "org.opencontainers.image.url": "https://openclaw.ai",
+                "org.opencontainers.image.vendor": "jcowhigjr/openclaw-docker-desktop-extension",
+                "org.opencontainers.image.version": "2026.6.1"
+            },
+            "StopTimeout": 1
+        },
+        "NetworkSettings": {
+            "SandboxID": "72cf4b681b87c29852fa8dec7830ff7579403f8d08b7cf03904275c6c8524d3d",
+            "SandboxKey": "/var/run/docker/netns/72cf4b681b87",
+            "Ports": {
+                "18790/tcp": [
+                    {
+                        "HostIp": "127.0.0.1",
+                        "HostPort": "18789"
+                    }
+                ]
+            },
+            "Networks": {
+                "bridge": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "c13f572b8ec982decdbf16cad978cf3b78e33f10887158ad19084c84014d13c9",
+                    "EndpointID": "b7fa11e1bdc51bce8484b1bb83c06f18ba198b0c207f02a8fba2d1d6c85f623d",
+                    "Gateway": "172.17.0.1",
+                    "IPAddress": "172.17.0.3",
+                    "MacAddress": "c2:06:64:4e:49:48",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:8495e6e5ae6e32c505eff263fb42d73d29b6ceb914c1e1411927066ce74f8ce2",
+            "size": 5982,
+            "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+            }
+        }
+    }
+]
