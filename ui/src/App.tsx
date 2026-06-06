@@ -56,6 +56,7 @@ import {
   parseDockerPublishedPortConflicts,
 } from './requirementChecks';
 import { updateActionButtonSx } from './updateActionButton';
+import { parseProviderChoice, type ProviderChoice } from './firstRunOnboarding';
 
 type ContainerPhase = 'missing' | 'running' | 'stopped' | 'starting' | 'error';
 
@@ -63,6 +64,7 @@ type ExtensionConfig = {
   image: string;
   port: number;
   autoStart: boolean;
+  providerChoice: ProviderChoice;
 };
 
 type ContainerSnapshot = {
@@ -92,6 +94,7 @@ const DEFAULT_CONFIG: ExtensionConfig = {
   image: DEFAULT_RUNTIME_IMAGE,
   port: 18789,
   autoStart: true,
+  providerChoice: 'unset',
 };
 const LABELS = {
   'com.docker.extension.openclaw': 'true',
@@ -124,6 +127,7 @@ function loadConfig(): ExtensionConfig {
       })(),
       port: typeof parsed.port === 'number' && Number.isFinite(parsed.port) ? parsed.port : DEFAULT_CONFIG.port,
       autoStart: parsed.autoStart ?? DEFAULT_CONFIG.autoStart,
+      providerChoice: parseProviderChoice(parsed.providerChoice),
     };
   } catch {
     return DEFAULT_CONFIG;
