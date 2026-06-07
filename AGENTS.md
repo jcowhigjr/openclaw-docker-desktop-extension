@@ -88,6 +88,13 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
   - acting as QA after merging a user-facing change
   - tagging a user-verified release or milestone
 - Treat those screenshots as rollback and comparison evidence, not just decoration.
+- A CI guard (`scripts/test-ui-screenshot-sync.sh`, wired into `make test-pre-push` and the Build workflow) fails when `ui/src/` changed since the last `v*` release tag but no screenshot under `docs/` was updated.
+  - To refresh a screenshot, run `make capture-readme-screenshot`. Onboarding screens can be forced in demo mode with `?demo=1&onboarding=<fork|free-needs-model|free-ready|resolved>`.
+  - If a UI change has no visual diff, waive the requirement with a commit trailer (non-empty reason):
+
+        Screenshots-Not-Needed: <reason>
+
+    With squash-merge, the trailer must land in the squashed commit message to satisfy the PR check.
 - Prefer capturing both:
   - the extension UI state
   - the relevant OpenClaw UI state when the feature crosses that boundary

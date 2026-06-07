@@ -16,6 +16,23 @@ export function parseProviderChoice(value: unknown): ProviderChoice {
   return value === 'ollama' || value === 'anthropic' ? value : 'unset';
 }
 
+const DEMO_ONBOARDING_PHASES: readonly FirstRunOnboardingPhase[] = [
+  'fork',
+  'free-needs-model',
+  'free-ready',
+  'resolved',
+];
+
+/**
+ * Parse a demo-only `onboarding=<phase>` query flag into a forced onboarding
+ * phase, so the screenshot pipeline can render each first-run screen without
+ * live first-run state. Returns null when the flag is absent or invalid.
+ */
+export function parseDemoOnboardingPhase(search: string): FirstRunOnboardingPhase | null {
+  const value = new URLSearchParams(search).get('onboarding');
+  return DEMO_ONBOARDING_PHASES.find((phase) => phase === value) ?? null;
+}
+
 export function inferProviderChoiceFromExistingState(
   providerChoice: ProviderChoice,
   configuredOllamaModel: string,

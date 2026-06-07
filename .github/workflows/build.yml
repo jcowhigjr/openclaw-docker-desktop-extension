@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -63,3 +65,14 @@ jobs:
 
       - name: Verify release bundle wiring
         run: make verify-release-bundle RELEASE_TAG=v0.0.0-ci
+
+      - name: Verify UI screenshot-sync guard logic
+        run: make test-ui-screenshot-sync
+
+      - name: Check UI screenshot sync (pull requests)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "${GITHUB_BASE_REF}"
+          BASE_REF="$BASE_REF" bash ./scripts/test-ui-screenshot-sync.sh
