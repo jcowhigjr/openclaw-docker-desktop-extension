@@ -1,6 +1,6 @@
-# OpenClaw Docker Desktop Extension
+# Shellharbor — Run OpenClaw on your Mac in one click
 
-**Run OpenClaw on your Mac in one click.** A Docker Desktop extension that starts, isolates, and manages [OpenClaw](https://github.com/openclaw/openclaw) — your personal, open-source AI assistant — in a hardened, localhost-only container. No terminal required.
+**Shellharbor** is a Docker Desktop extension that starts, isolates, and manages [OpenClaw](https://github.com/openclaw/openclaw) — your personal, open-source AI assistant — in a hardened, localhost-only container. No terminal required.
 
 - **One-click run** — start, stop, restart, and open the Control UI from a GUI.
 - **Isolated by default** — read-only root filesystem, all capabilities dropped, `no-new-privileges`, bound to `127.0.0.1` only.

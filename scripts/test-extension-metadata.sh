@@ -17,9 +17,9 @@ require_file_contains() {
   fi
 }
 
-require_file_contains "$dockerfile" 'org.opencontainers.image.title="OpenClaw"' "validator-safe OCI title"
+require_file_contains "$dockerfile" 'org.opencontainers.image.title="Shellharbor for OpenClaw"' "validator-safe OCI title"
 require_file_contains "$dockerfile" 'org.opencontainers.image.licenses="Apache-2.0"' "repo license label"
-require_file_contains "$dockerfile" 'com.docker.desktop.extension.icon="https://raw.githubusercontent.com/jcowhigjr/openclaw-docker-desktop-extension/main/openclaw.svg"' "repo-owned icon URL"
+require_file_contains "$dockerfile" 'com.docker.desktop.extension.icon="https://raw.githubusercontent.com/jcowhigjr/openclaw-docker-desktop-extension/main/icon.svg"' "repo-owned icon URL"
 require_file_contains "$dockerfile" 'com.docker.extension.publisher-url="https://github.com/jcowhigjr/openclaw-docker-desktop-extension"' "publisher URL label"
 require_file_contains "$dockerfile" 'com.docker.extension.detailed-description=' "detailed description label"
 require_file_contains "$dockerfile" 'com.docker.extension.changelog=' "changelog label"
@@ -27,7 +27,7 @@ require_file_contains "$dockerfile" 'com.docker.extension.screenshots=' "screens
 require_file_contains "$dockerfile" 'com.docker.extension.categories="utility-tools"' "Docker Marketplace category label"
 
 require_file_contains "$workflow" 'RELEASE_VERSION=${release_tag#v}' "semver alias derivation"
-require_file_contains "$workflow" 'org.opencontainers.image.title=OpenClaw' "published validator-safe OCI title override"
+require_file_contains "$workflow" 'org.opencontainers.image.title=Shellharbor for OpenClaw' "published validator-safe OCI title override"
 require_file_contains "$workflow" 'DOCKERHUB_EXTENSION_IMAGE_NAME: jcowhigjr/openclaw-docker-desktop-extension' "Docker Hub extension image target"
 require_file_contains "$workflow" 'username: ${{ secrets.DOCKERHUB_USERNAME }}' "Docker Hub login username secret"
 require_file_contains "$workflow" 'password: ${{ secrets.DOCKERHUB_TOKEN }}' "Docker Hub login token secret"

@@ -1,11 +1,11 @@
 {
-  "icon": "openclaw.svg",
+  "icon": "icon.svg",
   "vm": {
     "composefile": "docker-compose.yaml"
   },
   "ui": {
     "dashboard-tab": {
-      "title": "OpenClaw",
+      "title": "Shellharbor",
       "src": "index.html",
       "root": "ui"
     }

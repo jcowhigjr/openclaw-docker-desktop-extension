@@ -1,5 +1,11 @@
 # Trademarks
 
+"Shellharbor" is the name and common-law mark of this project, Copyright
+2025-2026 John Cowhig Jr. You may fork and redistribute the source under the
+Apache License 2.0, but you may not use the "Shellharbor" name or the project
+icon to identify your fork or any unaffiliated product in a way that implies it
+is this project or is endorsed by it.
+
 "OpenClaw" is a trademark or common-law mark of the OpenClaw Foundation or its
 respective owners. This project is not affiliated with, sponsored by, or
 endorsed by the OpenClaw project or the OpenClaw Foundation.
