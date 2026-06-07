@@ -2,4 +2,6 @@
 
 set -eu
 
+unset $(git rev-parse --local-env-vars)
+
 make test-pre-push

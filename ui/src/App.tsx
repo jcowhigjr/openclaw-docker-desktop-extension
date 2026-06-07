@@ -57,8 +57,10 @@ import {
 } from './requirementChecks';
 import { updateActionButtonSx } from './updateActionButton';
 import {
+  chatGateMessage,
   deriveOnboardingPhase,
   formatOllamaPullCommand,
+  isChatGated,
   ollamaOnboardingActionLabel,
   parseDemoOnboardingPhase,
   parseProviderChoice,
@@ -215,6 +217,8 @@ export function App() {
       configuredOllamaModel,
       ollamaModels,
     });
+  const chatGated = isChatGated(config.providerChoice, configuredOllamaModel);
+  const chatGateWarning = chatGateMessage(config.providerChoice, configuredOllamaModel);
   const onboardingPullCommand = formatOllamaPullCommand(DEFAULT_OLLAMA_ONBOARDING_MODEL);
   const setProviderChoice = useCallback((providerChoice: ProviderChoice) => {
     const next = { ...config, providerChoice };
@@ -1166,6 +1170,9 @@ export function App() {
 
         {error && <Alert severity="error">{error}</Alert>}
         {message && <Alert severity="success">{message}</Alert>}
+        {phase === 'running' && chatGated && (
+          <Alert severity="warning">{chatGateWarning}</Alert>
+        )}
 
         {updateAvailable && (
           <Alert
@@ -1254,7 +1261,7 @@ export function App() {
                   color="secondary"
                   startIcon={<LaunchIcon />}
                   onClick={() => void openBrowser()}
-                  disabled={busy || phase !== 'running'}
+                  disabled={busy || phase !== 'running' || chatGated}
                 >
                   Open Control UI
                 </Button>

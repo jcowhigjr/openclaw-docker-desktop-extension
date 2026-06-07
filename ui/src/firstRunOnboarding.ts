@@ -77,6 +77,18 @@ export function isChatGated(
   return resolvedChoice === 'ollama' && !configuredOllamaModel.trim();
 }
 
+export function chatGateMessage(
+  providerChoice: ProviderChoice,
+  configuredOllamaModel: string,
+): string {
+  const resolvedChoice = inferProviderChoiceFromExistingState(providerChoice, configuredOllamaModel);
+  if (resolvedChoice === 'ollama') {
+    return 'OpenClaw chat is waiting on a local model. Apply a detected Ollama model before opening the Control UI.';
+  }
+
+  return 'Choose Free Local or Hosted before opening the Control UI so the first chat does not fail on the default Anthropic provider.';
+}
+
 export function ollamaOnboardingActionLabel(
   recommendedModel: string,
   configuredOllamaModel: string,
