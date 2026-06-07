@@ -1,6 +1,12 @@
 # OpenClaw Docker Desktop Extension
 
-Run OpenClaw from Docker Desktop on macOS with a more isolated, localhost-only container setup.
+**Run OpenClaw on your Mac in one click.** A Docker Desktop extension that starts, isolates, and manages [OpenClaw](https://github.com/openclaw/openclaw) — your personal, open-source AI assistant — in a hardened, localhost-only container. No terminal required.
+
+- **One-click run** — start, stop, restart, and open the Control UI from a GUI.
+- **Isolated by default** — read-only root filesystem, all capabilities dropped, `no-new-privileges`, bound to `127.0.0.1` only.
+- **Managed lifecycle** — persistent state, runtime update checks, and guided host-Ollama setup for offline local models.
+
+*Community packaging. Not an official Docker or OpenClaw extension.*
 
 ## 60-second quick start
 
