@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   deriveOnboardingPhase,
+  formatOllamaPullCommand,
   inferProviderChoiceFromExistingState,
   isChatGated,
   ollamaOnboardingActionLabel,
@@ -35,6 +36,16 @@ describe('firstRunOnboarding', () => {
         ollamaModels: [],
       }),
     ).toBe('fork');
+  });
+
+  it('pre-selects the free path when provider is unset and host models are available', () => {
+    expect(
+      deriveOnboardingPhase({
+        providerChoice: 'unset',
+        configuredOllamaModel: '',
+        ollamaModels: [{ name: 'gemma4:latest' }],
+      }),
+    ).toBe('free-ready');
   });
 
   it('returns free-ready when ollama is chosen and host models are available', () => {
@@ -90,5 +101,11 @@ describe('firstRunOnboarding', () => {
     expect(ollamaOnboardingActionLabel('gemma4:latest', 'gemma4:latest')).toBe(
       'Already Using gemma4:latest',
     );
+  });
+
+  it('formats the default ollama pull command for remediation', () => {
+    expect(formatOllamaPullCommand()).toBe('ollama pull gemma4:latest');
+    expect(formatOllamaPullCommand('llama3.2:latest')).toBe('ollama pull llama3.2:latest');
+    expect(formatOllamaPullCommand('')).toBe('ollama pull gemma4:latest');
   });
 });

@@ -56,7 +56,13 @@ import {
   parseDockerPublishedPortConflicts,
 } from './requirementChecks';
 import { updateActionButtonSx } from './updateActionButton';
-import { parseProviderChoice, type ProviderChoice } from './firstRunOnboarding';
+import {
+  deriveOnboardingPhase,
+  formatOllamaPullCommand,
+  ollamaOnboardingActionLabel,
+  parseProviderChoice,
+  type ProviderChoice,
+} from './firstRunOnboarding';
 
 type ContainerPhase = 'missing' | 'running' | 'stopped' | 'starting' | 'error';
 
@@ -90,6 +96,7 @@ const VOLUME_NAME = 'openclaw-docker-extension-home';
 const BRIDGE_PORT = 18790;
 const DEFAULT_RUNTIME_IMAGE = (import.meta.env.VITE_DEFAULT_RUNTIME_IMAGE || 'ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest') as string;
 const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+const DEFAULT_OLLAMA_ONBOARDING_MODEL = 'gemma4:latest';
 const DEFAULT_CONFIG: ExtensionConfig = {
   image: DEFAULT_RUNTIME_IMAGE,
   port: 18789,
@@ -192,6 +199,20 @@ export function App() {
 
   const openUrl = useMemo(() => `http://127.0.0.1:${config.port}`, [config.port]);
   const wsUrl = useMemo(() => `ws://127.0.0.1:${config.port}`, [config.port]);
+  const recommendedOllamaModel = useMemo(
+    () => chooseRecommendedOllamaModel(ollamaModels),
+    [ollamaModels],
+  );
+  const onboardingPhase = deriveOnboardingPhase({
+    providerChoice: config.providerChoice,
+    configuredOllamaModel,
+    ollamaModels,
+  });
+  const onboardingPullCommand = formatOllamaPullCommand(DEFAULT_OLLAMA_ONBOARDING_MODEL);
+  const setProviderChoice = useCallback((providerChoice: ProviderChoice) => {
+    const next = { ...config, providerChoice };
+    persistConfig(next);
+  }, [config, persistConfig]);
 
   const asText = useCallback((value: unknown) => {
     return typeof value === 'string' ? value : '';
@@ -756,8 +777,8 @@ export function App() {
     }
   }, [appendDebug, ddClient, executionMode, findContainer, restart]);
 
-  const applyOllamaSetup = useCallback(async () => {
-    const model = selectedOllamaModel.trim();
+  const applyOllamaSetup = useCallback(async (modelOverride?: string) => {
+    const model = (modelOverride ?? selectedOllamaModel).trim();
     if (!model) {
       setOllamaStatus('Choose an installed Ollama model first.');
       return;
@@ -799,6 +820,7 @@ export function App() {
       setOllamaStatus(`Configured OpenClaw to use Ollama model ${model}. Restarting OpenClaw...`);
       await restart();
       setConfiguredOllamaModel(model);
+      persistConfig({ ...config, providerChoice: 'ollama' });
       setOllamaStatus(`Restart complete. OpenClaw is using ${model}.`);
       setMessage(`OpenClaw local model setup applied for ${model}.`);
     } catch (err) {
@@ -808,7 +830,7 @@ export function App() {
     } finally {
       setBusy(false);
     }
-  }, [appendDebug, ddClient, findContainer, restart, selectedOllamaModel]);
+  }, [appendDebug, config, ddClient, findContainer, persistConfig, restart, selectedOllamaModel]);
 
   const checkForUpdate = useCallback(async () => {
     const image = configImageRef.current;
@@ -929,7 +951,7 @@ export function App() {
           </Typography>
         </Box>
 
-        {phase === 'missing' && !busy && (
+        {phase === 'missing' && !busy && onboardingPhase === 'resolved' && (
           <Card>
             <CardContent>
               <Stack spacing={1}>
@@ -946,6 +968,161 @@ export function App() {
                 <Typography variant="body2" color="text.secondary">
                   4. Enable a local model in <strong>Local Model Setup</strong> below
                 </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
+        )}
+
+        {onboardingPhase !== 'resolved' && (
+          <Card>
+            <CardContent>
+              <Stack spacing={2}>
+                <Box>
+                  <Typography variant="h5">Choose how OpenClaw should chat</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Pick a local Ollama model or use a hosted Anthropic key before starting a first chat.
+                  </Typography>
+                </Box>
+
+                {onboardingPhase === 'fork' && (
+                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                    <Box sx={{ flex: 1 }}>
+                      <Stack spacing={1}>
+                        <Typography variant="subtitle1">Free local (Ollama)</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Use an installed host Ollama model through the local runtime bridge.
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          onClick={() => {
+                            setProviderChoice('ollama');
+                            if (phase === 'running') {
+                              void detectOllamaModels();
+                            }
+                          }}
+                          disabled={busy || ollamaChecking}
+                        >
+                          Use Free Local
+                        </Button>
+                      </Stack>
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Stack spacing={1}>
+                        <Typography variant="subtitle1">Hosted (Anthropic API key)</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Continue with the hosted provider path and configure the Anthropic key through
+                          OpenClaw's existing provider or .env flow.
+                        </Typography>
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            setProviderChoice('anthropic');
+                            setMessage('Hosted provider selected. Configure your Anthropic key in OpenClaw before chatting.');
+                          }}
+                          disabled={busy}
+                        >
+                          Use Hosted
+                        </Button>
+                      </Stack>
+                    </Box>
+                  </Stack>
+                )}
+
+                {onboardingPhase === 'free-ready' && (
+                  <Alert
+                    severity="info"
+                    action={
+                      <Button
+                        color="inherit"
+                        size="small"
+                        onClick={() => {
+                          if (recommendedOllamaModel) {
+                            setSelectedOllamaModel(recommendedOllamaModel);
+                          }
+                          void applyOllamaSetup(recommendedOllamaModel);
+                        }}
+                        disabled={busy || !recommendedOllamaModel}
+                      >
+                        {ollamaOnboardingActionLabel(recommendedOllamaModel, configuredOllamaModel)}
+                      </Button>
+                    }
+                  >
+                    Host Ollama has {ollamaModels.length} model{ollamaModels.length === 1 ? '' : 's'}.
+                    Use {recommendedOllamaModel} as the OpenClaw default.
+                  </Alert>
+                )}
+
+                {onboardingPhase === 'free-needs-model' && (
+                  <Stack spacing={1}>
+                    <Alert
+                      severity="warning"
+                      action={
+                        <Button
+                          color="inherit"
+                          size="small"
+                          startIcon={ollamaChecking ? <CircularProgress size={20} /> : <RefreshIcon />}
+                          onClick={() => void detectOllamaModels()}
+                          disabled={busy || ollamaChecking || phase !== 'running'}
+                        >
+                          {ollamaChecking ? 'Checking...' : 'Re-detect'}
+                        </Button>
+                      }
+                    >
+                      Install and start Ollama, then pull a model. Start OpenClaw and re-detect models when it is ready.
+                    </Alert>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                      <TextField
+                        label="Terminal command"
+                        value={onboardingPullCommand}
+                        fullWidth
+                        InputProps={{ readOnly: true }}
+                      />
+                      <Button
+                        variant="outlined"
+                        startIcon={<ContentCopyIcon />}
+                        onClick={() => {
+                          void navigator.clipboard.writeText(onboardingPullCommand);
+                          setMessage('Ollama pull command copied.');
+                        }}
+                      >
+                        Copy
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        startIcon={<LaunchIcon />}
+                        onClick={() => void ddClient.host.openExternal('https://ollama.com/download')}
+                      >
+                        Ollama
+                      </Button>
+                    </Stack>
+                  </Stack>
+                )}
+
+                {(config.providerChoice === 'ollama' || onboardingPhase === 'free-ready') && (
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                    <Button
+                      variant="text"
+                      size="small"
+                      onClick={() => {
+                        setProviderChoice('anthropic');
+                        setMessage('Hosted provider selected. Configure your Anthropic key in OpenClaw before chatting.');
+                      }}
+                      disabled={busy}
+                    >
+                      {onboardingPhase === 'free-ready' ? 'Use hosted instead' : 'I configured hosted access elsewhere'}
+                    </Button>
+                    {config.providerChoice === 'ollama' && (
+                      <Button
+                        variant="text"
+                        size="small"
+                        onClick={() => setProviderChoice('unset')}
+                        disabled={busy}
+                      >
+                        Choose again
+                      </Button>
+                    )}
+                  </Stack>
+                )}
               </Stack>
             </CardContent>
           </Card>

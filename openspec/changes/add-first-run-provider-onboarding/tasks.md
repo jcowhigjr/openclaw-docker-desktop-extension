@@ -13,12 +13,12 @@
 
 ## 3. Onboarding UI
 
-- [ ] 3.1 Render a first-run provider fork card in `App.tsx` while phase !== `resolved` (Free local vs Hosted), replacing/augmenting the static Quick Start steps at `ui/src/App.tsx:928-947`
-- [ ] 3.2 Run Ollama detection on first-run mount (reuse `detectOllamaModels`/`runDetect`); pre-select Free local and show one-click "Use <model>" (via `chooseRecommendedOllamaModel` + `applyOllamaSetup`) when a model exists
-- [ ] 3.3 Free-local remediation states: actionable CTA + ollama.com link when unreachable; copyable `ollama pull <model>` + re-detect when zero models
-- [ ] 3.4 Hosted path: capture key / point at OpenClaw `.env` per README (thin); mark `providerChoice = 'anthropic'`
-- [ ] 3.5 Add a visible "skip / I configured this elsewhere" action that resolves onboarding
-- [ ] 3.6 On completing either path, set `providerChoice` and persist
+- [x] 3.1 Render a first-run provider fork card in `App.tsx` while phase !== `resolved` (Free local vs Hosted), replacing/augmenting the static Quick Start steps at `ui/src/App.tsx:928-947`
+- [x] 3.2 Run Ollama detection on first-run mount (reuse `detectOllamaModels`/`runDetect`); pre-select Free local and show one-click "Use <model>" (via `chooseRecommendedOllamaModel` + `applyOllamaSetup`) when a model exists
+- [x] 3.3 Free-local remediation states: actionable CTA + ollama.com link when unreachable; copyable `ollama pull <model>` + re-detect when zero models
+- [x] 3.4 Hosted path: capture key / point at OpenClaw `.env` per README (thin); mark `providerChoice = 'anthropic'`
+- [x] 3.5 Add a visible "skip / I configured this elsewhere" action that resolves onboarding
+- [x] 3.6 On completing either path, set `providerChoice` and persist
 
 ## 4. Chat gating
 
