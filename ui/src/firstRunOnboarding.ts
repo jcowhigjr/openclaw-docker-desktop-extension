@@ -45,7 +45,7 @@ export function deriveOnboardingPhase(input: FirstRunOnboardingInput): FirstRunO
     return input.ollamaModels.length > 0 ? 'free-ready' : 'free-needs-model';
   }
 
-  return 'fork';
+  return input.ollamaModels.length > 0 ? 'free-ready' : 'fork';
 }
 
 export function isChatGated(
@@ -72,4 +72,9 @@ export function ollamaOnboardingActionLabel(
   return model === configuredOllamaModel.trim()
     ? `Already Using ${model}`
     : `Use ${model}`;
+}
+
+export function formatOllamaPullCommand(model = 'gemma4:latest'): string {
+  const normalized = model.trim() || 'gemma4:latest';
+  return `ollama pull ${normalized}`;
 }
