@@ -43,9 +43,17 @@ if ! range="$(resolve_range)"; then
   exit 0
 fi
 
+# Diff is merge-base relative for "A...B"; the trailer scan, however, must only
+# see commits reachable from the head side (collapse "..." to ".."), otherwise
+# an opt-out trailer on the base branch would waive the guard for unrelated work.
+log_range="${range/.../..}"
 echo "ui-screenshot-sync: evaluating range ${range}"
 
-changed_files="$(git diff --name-only "$range" 2>/dev/null || true)"
+# Fail closed: a diff error must not be mistaken for "no changes".
+if ! changed_files="$(git diff --name-only "$range" 2>&1)"; then
+  echo "ui-screenshot-sync: could not diff range '${range}': ${changed_files}" >&2
+  exit 1
+fi
 
 ui_changed="$(printf '%s\n' "$changed_files" | grep -F "$UI_SOURCE_PREFIX" || true)"
 if [ -z "$ui_changed" ]; then
@@ -53,11 +61,16 @@ if [ -z "$ui_changed" ]; then
   exit 0
 fi
 
-shot_changed="$(printf '%s\n' "$changed_files" | grep -iE "$DOCS_IMAGE_REGEX" || true)"
+# Only added/modified screenshots satisfy the guard — a deletion must not.
+if ! shot_files="$(git diff --name-only --diff-filter=AM "$range" 2>&1)"; then
+  echo "ui-screenshot-sync: could not diff range '${range}': ${shot_files}" >&2
+  exit 1
+fi
+shot_changed="$(printf '%s\n' "$shot_files" | grep -iE "$DOCS_IMAGE_REGEX" || true)"
 if [ -n "$shot_changed" ]; then
   echo "ui-screenshot-sync: UI source changed and docs/ screenshot updated; pass."
   echo "  screenshots:"
-  printf '    %s\n' $shot_changed
+  printf '%s\n' "$shot_changed" | sed 's/^/    /'
   exit 0
 fi
 
@@ -76,7 +89,7 @@ while IFS= read -r sha; do
     optout_reason="$reason"
   fi
 done <<EOF
-$(git log "$range" --format='%H' 2>/dev/null || true)
+$(git log "$log_range" --format='%H' 2>/dev/null || true)
 EOF
 
 if [ "$optout_valid" -eq 1 ]; then
@@ -92,7 +105,7 @@ fi
 
 echo "ui-screenshot-sync: UI source changed without a screenshot update." >&2
 echo "  changed UI files:" >&2
-printf '    %s\n' $ui_changed >&2
+printf '%s\n' "$ui_changed" | sed 's/^/    /' >&2
 echo "" >&2
 echo "  Fix one of:" >&2
 echo "    - update a screenshot under docs/ (see: make capture-readme-screenshot)" >&2

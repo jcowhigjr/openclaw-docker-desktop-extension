@@ -93,6 +93,30 @@ echo "changed" > "$F/ui/src/App.tsx"; seed_commit "$F" "ui change, no tags"
 set +e; ( cd "$F" && bash "$GUARD" ) >"$WORK/out.log" 2>&1; rc=$?; set -e
 assert_exit "no release tag is a safe pass" 0 "$rc"
 
+# --- Case G: base-side opt-out trailer must NOT waive a head-side ui change (three-dot) ---
+# Regression guard for symmetric `git log A...B`.
+G="$WORK/g"; git_init "$G"
+mkdir -p "$G/ui/src"; echo "base" > "$G/ui/src/App.tsx"; seed_commit "$G" "base"
+git -C "$G" branch -M main
+# Base branch advances with an unrelated commit carrying an opt-out trailer.
+echo "doc" > "$G/README.md"
+git -C "$G" add -A
+git -C "$G" commit -q -m "unrelated base change
+
+Screenshots-Not-Needed: this was for a different change"
+# Feature branch off the original base, with a real un-screenshotted ui change.
+git -C "$G" checkout -q -b feature main~1
+echo "changed" > "$G/ui/src/App.tsx"; seed_commit "$G" "feature ui change, no screenshot"
+set +e; run_guard "$G" "main...HEAD"; rc=$?; set -e
+assert_exit "base-side opt-out does not waive head-side ui change" 1 "$rc"
+
+# --- Case H: deleting a screenshot must NOT satisfy the guard ---
+H="$WORK/h"; git_init "$H"
+mkdir -p "$H/ui/src" "$H/docs"; echo "base" > "$H/ui/src/App.tsx"; printf 'PNG' > "$H/docs/shot.png"; seed_commit "$H" "base"
+echo "changed" > "$H/ui/src/App.tsx"; rm "$H/docs/shot.png"; seed_commit "$H" "ui change + screenshot deletion"
+set +e; run_guard "$H" "HEAD~1..HEAD"; rc=$?; set -e
+assert_exit "screenshot deletion does not satisfy guard" 1 "$rc"
+
 if [ "$fail" -ne 0 ]; then
   echo "ui-screenshot-sync selftest: FAILURES above" >&2
   exit 1
