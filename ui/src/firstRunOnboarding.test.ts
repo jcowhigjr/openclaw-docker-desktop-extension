@@ -8,6 +8,7 @@ import {
   inferProviderChoiceFromExistingState,
   isChatGated,
   ollamaOnboardingActionLabel,
+  parseDemoOnboardingPhase,
   parseProviderChoice,
 } from './firstRunOnboarding';
 
@@ -107,5 +108,18 @@ describe('firstRunOnboarding', () => {
     expect(formatOllamaPullCommand()).toBe('ollama pull gemma4:latest');
     expect(formatOllamaPullCommand('llama3.2:latest')).toBe('ollama pull llama3.2:latest');
     expect(formatOllamaPullCommand('')).toBe('ollama pull gemma4:latest');
+  });
+
+  it('maps the demo onboarding flag to a forced phase for screenshots', () => {
+    expect(parseDemoOnboardingPhase('?demo=1&onboarding=fork')).toBe('fork');
+    expect(parseDemoOnboardingPhase('?demo=1&onboarding=free-needs-model')).toBe('free-needs-model');
+    expect(parseDemoOnboardingPhase('?demo=1&onboarding=free-ready')).toBe('free-ready');
+    expect(parseDemoOnboardingPhase('?demo=1&onboarding=resolved')).toBe('resolved');
+  });
+
+  it('ignores a missing or invalid demo onboarding flag', () => {
+    expect(parseDemoOnboardingPhase('?demo=1')).toBeNull();
+    expect(parseDemoOnboardingPhase('')).toBeNull();
+    expect(parseDemoOnboardingPhase('?onboarding=bogus')).toBeNull();
   });
 });

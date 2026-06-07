@@ -60,6 +60,7 @@ import {
   deriveOnboardingPhase,
   formatOllamaPullCommand,
   ollamaOnboardingActionLabel,
+  parseDemoOnboardingPhase,
   parseProviderChoice,
   type ProviderChoice,
 } from './firstRunOnboarding';
@@ -203,11 +204,17 @@ export function App() {
     () => chooseRecommendedOllamaModel(ollamaModels),
     [ollamaModels],
   );
-  const onboardingPhase = deriveOnboardingPhase({
-    providerChoice: config.providerChoice,
-    configuredOllamaModel,
-    ollamaModels,
-  });
+  const demoOnboardingPhase = useMemo(
+    () => (demoMode ? parseDemoOnboardingPhase(window.location.search) : null),
+    [demoMode],
+  );
+  const onboardingPhase =
+    demoOnboardingPhase ??
+    deriveOnboardingPhase({
+      providerChoice: config.providerChoice,
+      configuredOllamaModel,
+      ollamaModels,
+    });
   const onboardingPullCommand = formatOllamaPullCommand(DEFAULT_OLLAMA_ONBOARDING_MODEL);
   const setProviderChoice = useCallback((providerChoice: ProviderChoice) => {
     const next = { ...config, providerChoice };
