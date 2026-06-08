@@ -5,17 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta
       name="description"
-      content="A Docker Desktop extension for running OpenClaw locally on macOS with a localhost-only bridge, persistent state, and host Ollama setup."
+      content="Shellharbor is a Docker Desktop extension that runs OpenClaw on macOS in one click — isolated, localhost-only, GUI-managed. Community packaging."
     >
-    <title>OpenClaw Docker Desktop Extension</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23152525'/%3E%3Cpath d='M18 40 32 14l14 26-14 10z' fill='%23d6903d'/%3E%3Cpath d='M23 39h18l-9 6z' fill='%23f5efe3'/%3E%3C/svg%3E">
+    <title>Shellharbor — Run OpenClaw on your Mac in one click</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='28' fill='%23101820'/%3E%3Cpath d='M26 80 a38 38 0 0 1 76 0 Z' fill='%23ff5a36'/%3E%3Ccircle cx='54' cy='72' r='4.5' fill='%23fff2e8'/%3E%3Ccircle cx='74' cy='72' r='4.5' fill='%23fff2e8'/%3E%3Cpath d='M24 95 q10 -7 20 0 t20 0 t20 0 t20 0' stroke='%23ff5a36' stroke-width='6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <header class="hero">
       <nav class="nav" aria-label="Project links">
         <a class="brand" href="https://github.com/jcowhigjr/openclaw-docker-desktop-extension">
-          OpenClaw Docker Extension
+          Shellharbor
         </a>
         <div class="nav-links">
           <a href="https://github.com/jcowhigjr/openclaw-docker-desktop-extension#readme">README</a>
@@ -30,9 +30,9 @@
           <p class="eyebrow">Docker Desktop extension for macOS</p>
           <h1 id="page-title">Run OpenClaw on your Mac in one click.</h1>
           <p class="lede">
-            The GUI on-ramp to OpenClaw, your personal open-source AI assistant.
-            Click Start and it runs in a hardened, localhost-only container you
-            manage from Docker Desktop — no terminal required.
+            Shellharbor is the GUI on-ramp to OpenClaw, your personal open-source
+            AI assistant. Click Start and it runs in a hardened, localhost-only
+            container you manage from Docker Desktop — no terminal required.
           </p>
           <div class="actions">
             <a class="button primary" href="#quick-start">Install</a>
@@ -144,6 +144,7 @@
           <li>The wrapper improves local isolation, but it is not a hardened sandbox.</li>
           <li>Provider auth beyond the Ollama setup flow stays owned by OpenClaw.</li>
           <li>Bundled local inference and heavy skill dependencies are deferred until host Ollama usage shows real demand.</li>
+          <li>Shellharbor is community packaging, not an official OpenClaw or Docker product.</li>
         </ul>
       </section>
     </main>
