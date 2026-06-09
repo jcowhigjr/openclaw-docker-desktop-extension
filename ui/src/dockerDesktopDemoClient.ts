@@ -26,7 +26,12 @@ export function isDemoModeSearch(search: string): boolean {
   return new URLSearchParams(search).get('demo') === '1';
 }
 
-export function createDemoDDClient(): DemoDockerDesktopClient {
+export function isDemoChatBlockedSearch(search: string): boolean {
+  return new URLSearchParams(search).get('chat') === 'blocked';
+}
+
+export function createDemoDDClient(search = ''): DemoDockerDesktopClient {
+  const chatBlocked = isDemoChatBlockedSearch(search);
   const exec = async (command: string, args: string[] = []): Promise<DemoExecResult> => {
     if (command === 'version') {
       return { stdout: '29.5.0\n', stderr: '' };
@@ -49,6 +54,10 @@ export function createDemoDDClient(): DemoDockerDesktopClient {
     }
 
     if (command === 'exec' && args.some((arg) => arg.endsWith('/api/tags'))) {
+      if (chatBlocked) {
+        return { stdout: JSON.stringify({ models: [] }), stderr: '' };
+      }
+
       return {
         stdout: JSON.stringify({
           models: [
@@ -61,6 +70,10 @@ export function createDemoDDClient(): DemoDockerDesktopClient {
     }
 
     if (command === 'exec' && args.includes('agents.defaults.model.primary')) {
+      if (chatBlocked) {
+        return { stdout: '', stderr: '' };
+      }
+
       return { stdout: 'llama3.2:latest\n', stderr: '' };
     }
 

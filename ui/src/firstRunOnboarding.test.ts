@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   deriveOnboardingPhase,
   formatOllamaPullCommand,
+  chatGateMessage,
   inferProviderChoiceFromExistingState,
   isChatGated,
   ollamaOnboardingActionLabel,
@@ -94,6 +95,11 @@ describe('firstRunOnboarding', () => {
     expect(isChatGated('ollama', '')).toBe(true);
     expect(isChatGated('ollama', 'gemma4:latest')).toBe(false);
     expect(isChatGated('anthropic', '')).toBe(false);
+  });
+
+  it('explains why chat is gated before opening the Control UI', () => {
+    expect(chatGateMessage('unset', '')).toContain('Choose Free Local or Hosted');
+    expect(chatGateMessage('ollama', '')).toContain('Apply a detected Ollama model');
   });
 
   it('formats the ollama onboarding action label from model state', () => {
