@@ -14,7 +14,7 @@ export function isDemoMode(): boolean {
 
 export function getDDClient(): DockerDesktopClient {
   if (isDemoMode()) {
-    return createDemoDDClient() as unknown as DockerDesktopClient;
+    return createDemoDDClient(window.location.search) as unknown as DockerDesktopClient;
   }
 
   if (!cachedClient) {
