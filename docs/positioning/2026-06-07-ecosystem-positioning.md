@@ -129,7 +129,7 @@ Drop-in copy for each surface. Tuned to the pillars above. Keep the existing
 
 ### 2.4 GitHub README — hero block (replaces the top of README.md)
 
-> # OpenClaw Docker Desktop Extension
+> # Shellharbor — Run OpenClaw on your Mac in one click
 >
 > **Run OpenClaw on your Mac in one click.** A Docker Desktop extension that
 > starts, isolates, and manages [OpenClaw](https://github.com/openclaw/openclaw)
@@ -181,7 +181,7 @@ Ordered by leverage. Each item: what, why, surface.
    *Surface: Docker Marketplace.* Track against
    [submission-readiness.md](../submission-readiness.md).
 5. **Polish the Docker Hub repo page** with copy from section 2.1–2.2, the
-   `openclaw.svg` logo, and screenshots. Pull-count and a complete page both
+   `icon.svg` logo, and screenshots. Pull-count and a complete page both
    feed Docker search ranking. *Surface: DockerHub.*
 
 ### Tier 3 — cross-link the ecosystem

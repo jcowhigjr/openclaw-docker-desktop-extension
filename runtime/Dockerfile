@@ -1,7 +1,7 @@
 FROM ghcr.io/openclaw/openclaw:latest
 
 LABEL org.opencontainers.image.title="Shellharbor for OpenClaw Runtime" \
-    org.opencontainers.image.description="OpenClaw runtime wrapper with a localhost bridge for the Docker Desktop extension." \
+    org.opencontainers.image.description="Shellharbor runtime bridge for running OpenClaw from Docker Desktop over localhost." \
     org.opencontainers.image.vendor="jcowhigjr/openclaw-docker-desktop-extension" \
     org.opencontainers.image.source="https://github.com/jcowhigjr/openclaw-docker-desktop-extension" \
     org.opencontainers.image.licenses="MIT AND Apache-2.0"

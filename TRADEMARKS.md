@@ -15,7 +15,7 @@ software that this Docker Desktop extension wraps. Such use is descriptive and
 nominative, intended only to state a fact of interoperability, and does not
 imply affiliation or endorsement.
 
-The `openclaw.svg` icon and the visual design of this extension are original
+The `icon.svg` icon and the visual design of this extension are original
 works Copyright 2025-2026 John Cowhig Jr. and are not derived from any
 OpenClaw Foundation trademark or logo.
 

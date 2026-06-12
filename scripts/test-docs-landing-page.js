@@ -34,7 +34,7 @@ assertIncludes(
   "docker extension install ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable",
   "stable GHCR install command",
 );
-assertIncludes(html, "v0.3.5", "current validated release tag");
+assertIncludes(html, "v0.3.6", "current validated release tag");
 assertIncludes(html, "Not listed in the Docker Extensions Marketplace yet", "marketplace status");
 assertIncludes(html, "not a hardened sandbox", "honest isolation boundary");
 assertIncludes(html, "assets/openclaw-extension-dashboard.png", "extension screenshot");
