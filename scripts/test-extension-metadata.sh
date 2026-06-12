@@ -5,6 +5,7 @@ set -eu
 dockerfile="${1:-Dockerfile}"
 workflow="${2:-.github/workflows/publish.yml}"
 runtime_workflow="${3:-.github/workflows/publish-runtime.yml}"
+dockerignore="${4:-.dockerignore}"
 
 require_file_contains() {
   file="$1"
@@ -25,6 +26,7 @@ require_file_contains "$dockerfile" 'com.docker.extension.detailed-description='
 require_file_contains "$dockerfile" 'com.docker.extension.changelog=' "changelog label"
 require_file_contains "$dockerfile" 'com.docker.extension.screenshots=' "screenshots label"
 require_file_contains "$dockerfile" 'com.docker.extension.categories="utility-tools"' "Docker Marketplace category label"
+require_file_contains "$dockerignore" '!icon.svg' "extension icon in Docker build context"
 
 require_file_contains "$workflow" 'RELEASE_VERSION=${release_tag#v}' "semver alias derivation"
 require_file_contains "$workflow" 'org.opencontainers.image.title=Shellharbor for OpenClaw' "published validator-safe OCI title override"
