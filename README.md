@@ -34,8 +34,10 @@ Then:
 1. Open the `OpenClaw` extension in Docker Desktop.
 2. Click `Start OpenClaw`.
 3. Wait for the service status to show `OpenClaw is ready`.
-4. Click `Open Control UI`. The extension opens the canonical localhost Control UI and passes the gateway token through the URL fragment for dashboard bootstrap.
-5. Configure provider auth in OpenClaw, or use the extension's `Local Model Setup` flow for an already installed host Ollama model.
+4. Choose a first-run provider path in the extension:
+   - `Free local (Ollama)`: detect a host Ollama model and apply it as the default, or follow the pull/install guidance when no model is ready yet.
+   - `Hosted (Anthropic API key)`: continue with OpenClaw's existing provider auth or `.env` flow.
+5. Click `Open Control UI`. The extension opens the canonical localhost Control UI and passes the gateway token through the URL fragment for dashboard bootstrap after a usable provider path is selected.
 
 If Docker Desktop blocks local extensions, enable local or non-Marketplace extension installs first.
 
@@ -288,6 +290,7 @@ Those files do not override environment variables that already exist in the proc
 
 Current extension-managed auth is intentionally narrow:
 
+- First-run onboarding now makes the provider choice explicit before chat: `Free local (Ollama)` or `Hosted (Anthropic API key)`.
 - `Local Model Setup` writes OpenClaw config and an Ollama auth profile for an already installed host Ollama model. The auth profile is propagated to every existing agent (not just `main`), so sub-agents can use local Ollama too. Agents created after setup need a re-run of `Local Model Setup` to receive the profile.
 - Other provider credentials should be configured through OpenClaw's own auth/onboarding flows or by writing supported keys such as `ANTHROPIC_API_KEY=...` into `/home/node/.openclaw/.env`, then restarting OpenClaw.
 
@@ -300,8 +303,9 @@ Expected flow:
 1. Install the extension while online.
 2. Install Ollama on the host Mac and pull a practical local model from the [Ollama model library](https://ollama.com/models).
 3. Start OpenClaw from the Docker Desktop extension.
-4. Use `Local Model Setup` to detect host Ollama through `http://host.docker.internal:11434`, choose a model, and apply the configuration.
-5. Restart OpenClaw through the extension. After the model is already downloaded, core chat can continue without hosted-provider network access.
+4. In the first-run provider card, choose `Free local (Ollama)`. The extension detects host Ollama through `http://host.docker.internal:11434`.
+5. If a host model is already available, use the one-click apply action to set it as the OpenClaw default. If no model is ready, use the provided `ollama pull <model>` guidance, then re-detect.
+6. Restart OpenClaw through the extension if prompted after applying the local model. After the model is already downloaded, core chat can continue without hosted-provider network access.
 
 Validated local path on macOS:
 

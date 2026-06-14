@@ -105,7 +105,8 @@ git -C "$G" commit -q -m "unrelated base change
 
 Screenshots-Not-Needed: this was for a different change"
 # Feature branch off the original base, with a real un-screenshotted ui change.
-git -C "$G" checkout -q -b feature main~1
+feature_branch="feature-selftest-$$"
+git -C "$G" checkout -q -b "$feature_branch" main~1
 echo "changed" > "$G/ui/src/App.tsx"; seed_commit "$G" "feature ui change, no screenshot"
 set +e; run_guard "$G" "main...HEAD"; rc=$?; set -e
 assert_exit "base-side opt-out does not waive head-side ui change" 1 "$rc"
