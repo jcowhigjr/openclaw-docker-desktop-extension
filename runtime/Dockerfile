@@ -1,4 +1,5 @@
-FROM ghcr.io/openclaw/openclaw:latest
+ARG OPENCLAW_VERSION=latest
+FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}
 
 LABEL org.opencontainers.image.title="Shellharbor for OpenClaw Runtime" \
     org.opencontainers.image.description="Shellharbor runtime bridge for running OpenClaw from Docker Desktop over localhost." \
