@@ -60,6 +60,13 @@ grep -F 'preserve-socket-token' "$approvals_path" >/dev/null
 env $helper_env node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
 grep -F '"primary": "ollama/qwen3.5:latest"' "$config_path" >/dev/null
 grep -F '"ollama:manual"' "$config_path" >/dev/null
+# Ollama defaults to a 4096-token context without num_ctx, which truncates
+# OpenClaw replies to ~1 token; the helper must write a large default num_ctx.
+grep -F '"num_ctx": 32768' "$config_path" >/dev/null
+
+# The num_ctx default is overridable via OPENCLAW_OLLAMA_NUM_CTX.
+env $helper_env OPENCLAW_OLLAMA_NUM_CTX=8192 node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
+grep -F '"num_ctx": 8192' "$config_path" >/dev/null
 
 env $helper_env node runtime/openclaw-extension-helper.js ollama-auth-profiles-write
 grep -F '"key": "ollama-local"' "$auth_profiles_path" >/dev/null
