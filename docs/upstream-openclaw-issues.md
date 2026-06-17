@@ -11,47 +11,52 @@ repo via `--pull` + an `OPENCLAW_VERSION` build-arg.
 
 ---
 
-## Issue 1 — Chat renders only the first streamed token (single character)
+## Issue 1 — Single-character replies on native Ollama: num_ctx not sent, Ollama defaults to 4096
 
-**Severity:** high — chat is unusable on the Ollama provider.
-**Affected version observed:** `v2026.6.1`. Likely fixed in `v2026.6.8` (needs confirmation).
+**Severity:** high — chat is unusable on the native Ollama provider unless the user
+manually sets `params.num_ctx`.
+**Affected version confirmed:** `v2026.6.1` and **still present in `v2026.6.8`**
+(reproduced directly — this is NOT a streaming-aggregation bug and was not fixed by
+the version bump).
 
 ### Summary
-With the Ollama provider, an assistant reply renders as a single character/token
-(e.g. `I`) and then stops. Every turn truncates the same way.
+With the native Ollama provider, an assistant reply is a single token (e.g. `Hello`
+/ `I`) and then stops. Every turn truncates the same way.
 
-### Evidence the model and Ollama are NOT at fault
-Calling the same model directly returns full responses, and Ollama streams proper
-incremental deltas:
+### Root cause (proven)
+The native Ollama provider does not send an `options.num_ctx` unless
+`model.params.num_ctx` is explicitly configured (`resolveOllamaNativeNumCtx` returns
+only the configured value). With no `num_ctx`, **Ollama defaults to a 4096-token
+context window.** OpenClaw's injected system prompt is ~4–10k tokens, which fills
+the window and leaves room for ~1 token of generation.
+
+### Evidence
+Reproduced through `openclaw agent` on `v2026.6.8`:
 
 ```
-# Non-streaming /api/chat → full ~569-token answer, done_reason=stop.
-# First token happens to be "I" (from "I apologize...") — exactly the single
-# character surfaced in the OpenClaw UI.
+# No num_ctx configured:
+usage = { "input": 4095, "output": 1, "total": 4096 }   # 4095 + 1 = 4096 exactly
+reply = "Hello"
 
-# Streaming /api/chat deltas are well-formed:
-{"message":{"role":"assistant","content":"Hello"},"done":false}
-{"message":{"role":"assistant","content":"!"},"done":false}
-{"message":{"role":"assistant","content":" How"},"done":false}
-{"message":{"role":"assistant","content":" can"},"done":false}
-{"message":{"role":"assistant","content":" I"},"done":false}
+# With model.params.num_ctx = 32768:
+usage = { "input": 20479, "output": 29, "total": 20508 }
+reply = "Hello to you this afternoon. I hope everything is going well ..."
 ```
 
-### Diagnosis
-OpenClaw's Ollama provider appears to read the **first** stream delta, render it,
-and then stop accumulating the remaining `message.content` deltas. The consistency
-(always exactly one token) rules out random truncation — it points to the
-streaming-aggregation loop terminating after the first chunk.
-
-### Repro
-1. Configure Ollama provider (`baseUrl: http://host.docker.internal:11434`), model `gemma4:latest`.
-2. Send any prompt in chat.
-3. Observe a one-character reply.
+Confirmed at the Ollama layer too — same prompt, `num_ctx` 4096 → `eval_count=1`;
+`num_ctx` 16384 → `eval_count=211`. The model and Ollama streaming are both fine;
+only the missing `num_ctx` is at fault.
 
 ### Ask
-Confirm whether this is the streaming regression fixed between `v2026.6.1` and
-`v2026.6.8`; if not, fix the Ollama stream accumulator to append all deltas until
-`done: true`.
+For the **native** Ollama provider, default `num_ctx` to the model's known context
+window (OpenClaw already tracks `contextWindow`/`maxTokens`; `resolveOllamaNumCtx`
+does exactly this for the compat path) instead of letting Ollama silently cap at
+4096. Optionally warn when the system prompt approaches the resolved `num_ctx`.
+
+### Extension-side mitigation (already applied in this repo)
+`ollamaConfigWrite` now writes `params.num_ctx` (default 32768, overridable via
+`OPENCLAW_OLLAMA_NUM_CTX`) on the model entry, which OpenClaw passes through to
+Ollama. This restores full responses without an upstream change.
 
 ---
 
