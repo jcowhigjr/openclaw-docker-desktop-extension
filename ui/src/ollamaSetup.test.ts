@@ -8,6 +8,7 @@ import {
   buildOllamaAuthProfilesStore,
   buildOllamaProviderPatch,
   buildOllamaTagsFetchArgs,
+  buildOllamaWarmupArgs,
   chooseRecommendedOllamaModel,
   isConfigPathMissing,
   mergeOllamaProviderConfig,
@@ -128,6 +129,29 @@ describe('ollamaSetup helpers', () => {
       '5',
       'http://host.docker.internal:11434/api/tags',
     ]);
+  });
+
+  it('builds Docker SDK-safe argv that preloads a model into host Ollama', () => {
+    expect(buildOllamaWarmupArgs('gemma4-fast:latest')).toEqual([
+      'curl',
+      '-fsS',
+      '--max-time',
+      '120',
+      '-X',
+      'POST',
+      '-H',
+      'Content-Type: application/json',
+      '-d',
+      '{"model":"gemma4-fast:latest","keep_alive":"30m"}',
+      'http://host.docker.internal:11434/api/generate',
+    ]);
+  });
+
+  it('trims the model name when building warmup argv and rejects empty', () => {
+    expect(buildOllamaWarmupArgs('  qwen3.5:latest  ')[9]).toBe(
+      '{"model":"qwen3.5:latest","keep_alive":"30m"}',
+    );
+    expect(buildOllamaWarmupArgs('   ')).toEqual([]);
   });
 
   it('prefers a practical installed local model over the first Ollama result', () => {

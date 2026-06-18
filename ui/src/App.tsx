@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getDDClient, isDemoMode } from './dockerDesktopClient';
 import {
   buildOllamaTagsFetchArgs,
+  buildOllamaWarmupArgs,
   chooseRecommendedOllamaModel,
   type OllamaModel,
 } from './ollamaSetup';
@@ -594,28 +595,52 @@ export function App() {
     }
   }, [appendDebug, ddClient, findContainer, refresh]);
 
-  const restart = useCallback(async () => {
-    setBusy(true);
-    setError('');
-    try {
-      await traceAction('container.restart', async ({ step }) => {
-        const container = await findContainer();
-        if (container) {
-          await ddClient.docker.cli.exec('restart', [container.id]);
-          step('docker_restart', 'ok');
-          await runAndPoll(step);
-        } else {
-          step('container_missing', 'warning');
-          await createOrStart();
-        }
-      });
-    } catch (err) {
-      const text = formatUnknownError(err);
-      setError(text);
-    } finally {
-      setBusy(false);
-    }
-  }, [createOrStart, ddClient, findContainer, runAndPoll]);
+  // Best-effort: preload an Ollama model into memory so the user's first
+  // message after a (re)start doesn't pay the cold-load cost (which otherwise
+  // surfaces as "LLM request timed out"). Fire-and-forget — it never blocks or
+  // fails the calling flow, and is a no-op for a blank model.
+  const warmUpOllamaModel = useCallback(
+    (containerId: string, model: string) => {
+      const args = buildOllamaWarmupArgs(model);
+      if (args.length === 0) {
+        return;
+      }
+      void ddClient.docker.cli
+        .exec('exec', [containerId, ...args])
+        .then(() => appendDebug(`warmed up Ollama model ${model.trim()}`))
+        .catch((err) => appendDebug(`ollama warmup skipped: ${formatUnknownError(err)}`));
+    },
+    [appendDebug, ddClient],
+  );
+
+  const restart = useCallback(
+    async (warmupModel?: string) => {
+      setBusy(true);
+      setError('');
+      try {
+        await traceAction('container.restart', async ({ step }) => {
+          const container = await findContainer();
+          if (container) {
+            await ddClient.docker.cli.exec('restart', [container.id]);
+            step('docker_restart', 'ok');
+            await runAndPoll(step);
+            const modelToWarm =
+              warmupModel ?? (config.providerChoice === 'ollama' ? configuredOllamaModel : '');
+            warmUpOllamaModel(container.id, modelToWarm);
+          } else {
+            step('container_missing', 'warning');
+            await createOrStart();
+          }
+        });
+      } catch (err) {
+        const text = formatUnknownError(err);
+        setError(text);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [config.providerChoice, configuredOllamaModel, createOrStart, ddClient, findContainer, runAndPoll, warmUpOllamaModel],
+  );
 
   const remove = useCallback(async () => {
     setBusy(true);
@@ -826,7 +851,7 @@ export function App() {
       // restart — making "Apply and Restart" neither apply cleanly nor restart.
       appendDebug(`OpenClaw default model set to ollama/${model}`);
       setOllamaStatus(`Configured OpenClaw to use Ollama model ${model}. Restarting OpenClaw...`);
-      await restart();
+      await restart(model);
       setConfiguredOllamaModel(model);
       persistConfig({ ...config, providerChoice: 'ollama' });
       setOllamaStatus(`Restart complete. OpenClaw is using ${model}.`);
