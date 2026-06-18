@@ -817,20 +817,13 @@ export function App() {
         container.id,
         ...buildRuntimeHelperArgs('ollama-auth-profiles-write'),
       ]);
-      await ddClient.docker.cli.exec('exec', [
-        container.id,
-        'node',
-        'openclaw.mjs',
-        'models',
-        'auth',
-        'order',
-        'set',
-        '--agent',
-        'main',
-        '--provider',
-        'ollama',
-        'ollama:manual',
-      ]);
+      // Auth resolution is entirely file-based: ollama-config-write sets
+      // openclaw.json auth.profiles/order and ollama-auth-profiles-write seeds
+      // each agent's auth-profiles.json, both loaded on the restart below. The
+      // previous `models auth order set` CLI call here targeted a separate
+      // sqlite auth-state store that these writes never populate, so it always
+      // failed ("Auth profile ollama:manual not found") and aborted before the
+      // restart — making "Apply and Restart" neither apply cleanly nor restart.
       appendDebug(`OpenClaw default model set to ollama/${model}`);
       setOllamaStatus(`Configured OpenClaw to use Ollama model ${model}. Restarting OpenClaw...`);
       await restart();
