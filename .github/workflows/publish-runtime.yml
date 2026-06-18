@@ -44,6 +44,9 @@ jobs:
         with:
           context: runtime
           file: runtime/Dockerfile
+          pull: true
+          build-args: |
+            OPENCLAW_VERSION=latest
           platforms: linux/arm64,linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

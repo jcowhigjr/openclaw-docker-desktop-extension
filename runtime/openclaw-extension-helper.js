@@ -112,6 +112,23 @@ function executionModeConfig(mode) {
   };
 }
 
+// Resolve the Ollama context window size (num_ctx) for the model entry.
+// Without num_ctx, Ollama defaults to a 4096-token context. OpenClaw's injected
+// system prompt is ~4-10k tokens, which fills that window and leaves room for
+// only ~1 token of generation, so chat replies come back as a single character.
+// A larger context (default 32768) restores full responses. Overridable via
+// OPENCLAW_OLLAMA_NUM_CTX, which must parse to a positive finite integer.
+function resolveOllamaNumCtx() {
+  const raw = process.env.OPENCLAW_OLLAMA_NUM_CTX;
+  if (typeof raw === 'string' && raw.trim() !== '') {
+    const n = Number.parseInt(raw, 10);
+    if (Number.isFinite(n) && n > 0) {
+      return n;
+    }
+  }
+  return 32768;
+}
+
 function buildOllamaAuthConfigProfile() {
   return {
     provider: 'ollama',
@@ -180,6 +197,9 @@ function ollamaConfigWrite(model) {
         id: selectedModel,
         name: selectedModel,
         reasoning: false,
+        params: {
+          num_ctx: resolveOllamaNumCtx(),
+        },
       },
     ],
   };

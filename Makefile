@@ -2,6 +2,7 @@ IMAGE ?= openclaw-docker-extension
 TAG ?= dev
 RUNTIME_IMAGE ?= openclaw-docker-extension-runtime
 RUNTIME_TAG ?= dev
+OPENCLAW_VERSION ?= latest
 GHCR_OWNER ?= jcowhigjr
 DOCKERHUB_OWNER ?= jcowhigjr
 RELEASE_TAG ?=
@@ -26,7 +27,7 @@ SCREENSHOT_PATH ?= docs/assets/openclaw-extension-dashboard.png
 .DEFAULT_GOAL := build-extension
 
 build-runtime:
-	docker build -t $(RUNTIME_IMAGE):$(RUNTIME_TAG) -f runtime/Dockerfile runtime
+	docker build --pull --build-arg OPENCLAW_VERSION=$(OPENCLAW_VERSION) -t $(RUNTIME_IMAGE):$(RUNTIME_TAG) -f runtime/Dockerfile runtime
 
 build-extension:
 	docker build --build-arg VITE_DEFAULT_RUNTIME_IMAGE=$(DEFAULT_RUNTIME_IMAGE) --tag=$(IMAGE):$(TAG) .
@@ -39,6 +40,8 @@ update-extension: build-runtime build-extension
 
 publish-runtime:
 	docker buildx build \
+	  --pull \
+	  --build-arg OPENCLAW_VERSION=$(OPENCLAW_VERSION) \
 	  --platform linux/arm64,linux/amd64 \
 	  --tag $(REGISTRY_IMAGE):$(REGISTRY_TAG) \
 	  --push \
@@ -60,6 +63,7 @@ verify-release-channel: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GH
 
 test-release-channel: ; @./scripts/test-release-channel.sh
 test-runtime-bridge: ; @sh ./scripts/test-runtime-bridge.sh
+test-runtime-base-pull: ; @sh ./scripts/test-runtime-base-pull.sh
 test-extension-metadata: ; @./scripts/test-extension-metadata.sh
 test-release-tag-dry-run: ; @./scripts/test-release-tag-dry-run.sh
 test-verify-release-tag-dockerhub-error: ; @./scripts/test-verify-release-tag-dockerhub-error.sh
@@ -74,7 +78,7 @@ test-docs-landing-page: ; @node ./scripts/test-docs-landing-page.js
 test-security-local: ; @sh ./scripts/test-security-local.sh
 test-ui-screenshot-sync: ; @bash ./scripts/test-ui-screenshot-sync-selftest.sh
 test-ui: ; @cd ui && npm ci && npm test && npm run build
-test-pre-push: test-ui test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-runtime-image-helper test-docs-landing-page test-security-local test-ui-screenshot-sync
+test-pre-push: test-ui test-runtime-bridge test-runtime-base-pull test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-runtime-image-helper test-docs-landing-page test-security-local test-ui-screenshot-sync
 install-hooks: ; @git config core.hooksPath .githooks && chmod +x .githooks/pre-push && echo "installed repo git hooks from .githooks"
 
 verify-release-bundle:
@@ -99,4 +103,4 @@ capture-readme-screenshot:
 create-smoke-report:
 	@REPORT_DATE="$(REPORT_DATE)" RELEASE_CHANNEL="$(RELEASE_CHANNEL)" RELEASE_TAG="$(RELEASE_TAG)" REPORT_DIR="$(REPORT_DIR)" sh ./scripts/create-smoke-report.sh
 
-.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-runtime-bridge test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-docs-landing-page test-security-local test-ui-screenshot-sync test-ui test-pre-push install-hooks verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot create-smoke-report
+.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-runtime-bridge test-runtime-base-pull test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-docs-landing-page test-security-local test-ui-screenshot-sync test-ui test-pre-push install-hooks verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot create-smoke-report
