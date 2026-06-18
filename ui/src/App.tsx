@@ -323,7 +323,11 @@ export function App() {
     }
   }, [config.image, currentOllamaState, findContainer]);
 
-  const checkRequirements = useCallback(async () => {
+  const checkRequirements = useCallback(async (modelOverride?: string) => {
+    // modelOverride lets callers (e.g. applyOllamaSetup) refresh the banner with a
+    // model that was just written but not yet reflected in configuredOllamaModel
+    // state, since this callback closes over the previous state value.
+    const effectiveOllamaModel = modelOverride ?? configuredOllamaModel;
     setRequirementsChecking(true);
     setRequirementsStatus('');
     setRequirementsSeverity('info');
@@ -356,7 +360,7 @@ export function App() {
               await ddClient.docker.cli.exec('exec', [container.id, ...buildOllamaTagsFetchArgs()]);
               const ollamaStatus = formatOllamaRequirementStatus({
                 hostPort: config.port,
-                configuredOllamaModel,
+                configuredOllamaModel: effectiveOllamaModel,
                 ollamaReachable: true,
               });
               step('ollama_check', 'ok');
@@ -367,7 +371,7 @@ export function App() {
               const text = formatUnknownError(err);
               const ollamaStatus = formatOllamaRequirementStatus({
                 hostPort: config.port,
-                configuredOllamaModel,
+                configuredOllamaModel: effectiveOllamaModel,
                 ollamaReachable: false,
               });
               step('ollama_check', 'warning', { error: { message: text } });
@@ -834,6 +838,10 @@ export function App() {
       persistConfig({ ...config, providerChoice: 'ollama' });
       setOllamaStatus(`Restart complete. OpenClaw is using ${model}.`);
       setMessage(`OpenClaw local model setup applied for ${model}.`);
+      // Refresh the requirements banner so it reflects the newly applied model.
+      // Pass the model explicitly because setConfiguredOllamaModel above has not
+      // yet propagated to checkRequirements' captured state.
+      await checkRequirements(model);
     } catch (err) {
       const text = formatUnknownError(err);
       appendDebug(`ollama setup failed: ${text}`);
@@ -841,7 +849,7 @@ export function App() {
     } finally {
       setBusy(false);
     }
-  }, [appendDebug, config, ddClient, findContainer, persistConfig, restart, selectedOllamaModel]);
+  }, [appendDebug, checkRequirements, config, ddClient, findContainer, persistConfig, restart, selectedOllamaModel]);
 
   const checkForUpdate = useCallback(async () => {
     const image = configImageRef.current;
