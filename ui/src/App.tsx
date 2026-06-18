@@ -33,6 +33,7 @@ import {
   type OllamaModel,
 } from './ollamaSetup';
 import { ollamaApplyButtonLabel } from './ollamaUiState';
+import { buildLocalModelGuidance, getCondensedGuidance } from './ollamaGuidance';
 import { runDetect } from './ollamaDetect';
 import { buildControlUiLaunchUrl } from './controlUiLaunch';
 import { appendDebugEntry } from './debugLog';
@@ -1417,6 +1418,16 @@ export function App() {
               </TextField>
               {ollamaStatus && (
                 <Alert severity={ollamaAlertSeverity}>{ollamaStatus}</Alert>
+              )}
+              {configuredOllamaModel && (
+                <Alert severity="info" icon={false}>
+                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    Performance Tip
+                  </Typography>
+                  <Typography variant="body2">
+                    {getCondensedGuidance()}
+                  </Typography>
+                </Alert>
               )}
             </Stack>
           </CardContent>
