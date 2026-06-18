@@ -137,6 +137,34 @@ export function buildOllamaTagsFetchArgs(): string[] {
   ];
 }
 
+// Build Docker SDK-safe argv that preloads a model into host Ollama. A POST to
+// /api/generate with no prompt and a keep_alive triggers Ollama's documented
+// model-preload: it loads the model into memory and returns immediately. Firing
+// this after a restart means the user's first real message does not pay the
+// cold-load cost (which otherwise shows up as an "LLM request timed out").
+// Returns [] for a blank model so callers can skip the warmup safely.
+export function buildOllamaWarmupArgs(model: string): string[] {
+  const trimmed = model.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  const body = JSON.stringify({ model: trimmed, keep_alive: '30m' });
+  return [
+    'curl',
+    '-fsS',
+    '--max-time',
+    '120',
+    '-X',
+    'POST',
+    '-H',
+    'Content-Type: application/json',
+    '-d',
+    body,
+    `${DEFAULT_OLLAMA_BASE_URL}/api/generate`,
+  ];
+}
+
 export function chooseRecommendedOllamaModel(models: OllamaModel[]): string {
   const installed = new Set(models.map((model) => model.name));
   for (const candidate of RECOMMENDED_MODEL_ORDER) {
