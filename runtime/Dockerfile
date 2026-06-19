@@ -1,4 +1,5 @@
-FROM ghcr.io/openclaw/openclaw:latest
+ARG OPENCLAW_VERSION=latest
+FROM ghcr.io/openclaw/openclaw:${OPENCLAW_VERSION}
 
 LABEL org.opencontainers.image.title="OpenClaw Docker Desktop Extension Runtime" \
     org.opencontainers.image.description="OpenClaw runtime wrapper with a localhost bridge for the Docker Desktop extension." \
