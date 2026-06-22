@@ -33,7 +33,7 @@ import {
   type OllamaModel,
 } from './ollamaSetup';
 import { ollamaApplyButtonLabel } from './ollamaUiState';
-import { buildLocalModelGuidance, getCondensedGuidance } from './ollamaGuidance';
+import { getCondensedGuidance } from './ollamaGuidance';
 import { runDetect } from './ollamaDetect';
 import { buildControlUiLaunchUrl } from './controlUiLaunch';
 import { appendDebugEntry } from './debugLog';

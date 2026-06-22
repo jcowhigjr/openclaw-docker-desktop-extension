@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2025-2026 John Cowhig Jr.
 /**
  * Ollama guidance module - provides static guidance for local model optimization
  * and cache eviction prevention.
