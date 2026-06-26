@@ -10,6 +10,44 @@ OpenClaw has a **120-second idle timeout watchdog** that aborts requests when no
 
 ---
 
+## One Model at a Time (Critical for Avoiding Timeouts)
+
+The most important optimization for avoiding timeouts is to **use one model consistently**. When you switch models in the Control UI dropdown:
+
+1. The previous model's KV cache is evicted from Ollama memory
+2. The new model must load and re-evaluate the entire system prompt (~20,000 tokens)
+3. This can take 8-40 seconds depending on the model and hardware
+4. If you switch back, the cycle repeats
+
+**Symptoms of cache eviction:**
+- First chat with a model works fine
+- Second chat with a different model is slow
+- Switching back to the first model is slow again
+
+### Solution: Use One Model Consistently
+
+Pick one model for your workflow and stick with it. If you need multiple models, see below for the `OLLAMA_MAX_LOADED_MODELS` option.
+
+### Solution: OLLAMA_MAX_LOADED_MODELS (If You Have RAM)
+
+If you have sufficient RAM, you can configure Ollama to keep multiple models loaded simultaneously:
+
+```bash
+# macOS (add to ~/.zshrc or ~/.bash_profile)
+export OLLAMA_MAX_LOADED_MODELS=2    # Allow 2 models in memory
+
+# Linux (add to ~/.bashrc)
+export OLLAMA_MAX_LOADED_MODELS=2
+```
+
+**Requirements:**
+- gemma4-fast (8B) + qwen3.5 (9.7B): ~16GB RAM recommended
+- Two gemma4 models: ~12GB RAM recommended
+
+Default is `1`, which causes cache eviction when switching models.
+
+---
+
 ## Quick Diagnostic: What Hardware Profile Are You?
 
 | Profile | RAM | GPU | Typical Use Case |
@@ -49,15 +87,17 @@ export OLLAMA_KEEP_ALIVE=30m          # Keep model loaded, skip cold-start delay
 Restart Ollama after setting:
 ```bash
 # macOS
-killall ollama
-ollama serve
+pkill ollama
+open -a Ollama
+
+# Linux
+sudo systemctl restart ollama
 ```
 
-### OpenClaw Configuration
+### OpenClaw Extension Configuration
 
-After applying your Ollama model through the extension, edit your OpenClaw config to reduce prompt pressure:
+Use the leanest agent configuration to reduce prompt size:
 
-**Option 1: Minimal (most reliable)**
 ```json
 {
   "agents": {
@@ -66,396 +106,118 @@ After applying your Ollama model through the extension, edit your OpenClaw confi
         "localModelLean": true
       }
     }
-  },
-  "models": {
-    "providers": {
-      "ollama": {
-        "models": [
-          {
-            "id": "gemma4-fast:latest",
-            "params": {
-              "num_ctx": 8192
-            },
-            "compat": {
-              "supportsTools": false
-            }
-          }
-        ]
-      }
-    }
   }
 }
 ```
 
-**Option 2: Balanced (try this first)**
-```json
-{
-  "agents": {
-    "defaults": {
-      "experimental": {
-        "localModelLean": true
-      },
-      "compaction": {
-        "reserveTokens": 4096,
-        "reserveTokensFloor": 0,
-        "keepRecentTokens": 6000
-      }
-    }
-  },
-  "models": {
-    "providers": {
-      "ollama": {
-        "models": [
-          {
-            "id": "gemma4-fast:latest",
-            "params": {
-              "num_ctx": 12288
-            }
-          }
-        ]
-      }
-    }
-  }
-}
-```
-
-### What These Settings Do
-
-| Setting | Effect |
-|---------|--------|
-| `localModelLean: true` | Removes `browser`, `cron`, `message` tools from prompt—smaller tool schema |
-| `supportsTools: false` | Disables all tool calls—smallest possible prompt |
-| `num_ctx: 8192` | Smaller context window = faster prompt eval, less memory |
-| `reserveTokens: 4096` | Compacts session earlier, keeping prompt smaller |
-| `OLLAMA_KV_CACHE_TYPE=q4_0` | 75% memory reduction in KV cache |
-
-### Trim Workspace Files
-
-OpenClaw injects workspace files into every prompt. Large files slow down prompt evaluation:
-
-```bash
-# Check sizes
-ls -lh ~/.openclaw/workspace/
-
-# Trim or remove large files
-truncate -s 0 ~/.openclaw/workspace/AGENTS.md  # Keep file, empty contents
-rm ~/.openclaw/workspace/SOUL.md               # Remove if not needed
-```
+This removes heavyweight tools (browser, cron, message) from the system prompt.
 
 ---
 
 ## Balanced Profile: Apple Silicon or 16-24GB RAM
 
-**Target:** 30-60s prompt evaluation with moderate context.
+**Target:** Comfortable margin under 120s even with larger prompts.
 
 ### Recommended Models
 
-| Model | Parameters | Unified Memory | Notes |
-|-------|------------|----------------|-------|
-| `gemma4:latest` | 9B | ~6 GB | Good balance on Apple Silicon |
-| `llama3.2:latest` | 8B | ~5 GB | Fast, capable |
-| `qwen3.5:latest` | 9.7B | ~6 GB | Larger context, slower eval |
+| Model | Parameters | VRAM/RAM | Speed | Notes |
+|-------|------------|----------|-------|-------|
+| `gemma4:latest` | 8B | ~6 GB | Medium | Good balance for M-series Macs |
+| `qwen3.5:latest` | 9.7B | ~7 GB | Medium-Slow | Better reasoning, slower |
+| `gemma4-long:latest` | 8B | ~6 GB | Medium | Optimized for longer context |
+
+**M-series Mac tip:** Ollama uses Apple Silicon Neural Engine automatically—no extra config needed.
 
 ### Ollama Host Configuration
 
 ```bash
 # macOS
-export OLLAMA_NUM_PARALLEL=1
-export OLLAMA_FLASH_ATTENTION=1
-export OLLAMA_KV_CACHE_TYPE=q8_0      # Balanced: ½ memory of f16
+export OLLAMA_NUM_PARALLEL=1          # Keep at 1 unless you have 32GB+
+export OLLAMA_FLASH_ATTENTION=1       # ~20% speedup on Apple Silicon
+export OLLAMA_KV_CACHE_TYPE=q8_0     # Good balance: ½ memory of f16
 export OLLAMA_KEEP_ALIVE=30m
 ```
 
-For Apple Silicon specifically, ensure GPU layers are used:
-```bash
-ollama ps  # Verify model shows GPU offload
-```
+### Context Window Tuning
 
-If running CPU-only on Apple Silicon (slow), treat as Light Profile.
+The extension now sets `num_ctx: 32768` by default (fixing the single-character reply bug). On 16GB systems, this is appropriate. On 24GB systems, you can experiment with larger values via `OPENCLAW_OLLAMA_NUM_CTX`.
 
-### OpenClaw Configuration
-
-```json
-{
-  "agents": {
-    "defaults": {
-      "experimental": {
-        "localModelLean": true
-      },
-      "compaction": {
-        "reserveTokens": 8192,
-        "keepRecentTokens": 12000
-      }
-    }
-  },
-  "models": {
-    "providers": {
-      "ollama": {
-        "models": [
-          {
-            "id": "gemma4:latest",
-            "params": {
-              "num_ctx": 16384
-            }
-          }
-        ]
-      }
-    }
-  }
-}
-```
-
-### Managing Context on Medium Hardware
-
-With 16K context, you're approaching the danger zone for CPU prompt eval. Strategies:
-
-1. **Monitor context usage:** Watch the token counter in Control UI
-2. **Manual compaction:** Type `/compact` proactively before context gets large
-3. **Shorter messages:** Break long requests into smaller chunks
-4. **Use Tool Search:** Let OpenClaw discover tools rather than listing them all
+**Trade-off:** Larger context = more memory, slower prompt evaluation. The default is tuned for reliable operation on typical hardware.
 
 ---
 
 ## Performance Profile: 32GB+ RAM, Dedicated GPU
 
-**Target:** GPU handles prompt eval in <10s; 120s timeout not a constraint.
+**Target:** Maximize capability without worrying about timeouts.
 
 ### Recommended Models
 
-| Model | Parameters | VRAM | Notes |
-|-------|------------|------|-------|
-| `gemma4:latest` | 9B | ~6 GB | Fast on GPU |
-| `llama3.1:latest` | 8B | ~5 GB | Good capabilities |
-| `qwen3.5:latest` | 9.7B | ~6 GB | Largest context |
-| `llama3.1:70b` | 70B | ~40 GB | Requires significant VRAM |
+| Model | Parameters | VRAM | Speed | Notes |
+|-------|------------|------|-------|-------|
+| `qwen3.6:latest` | 36B | ~22 GB | Medium | Excellent reasoning |
+| `gemma4:27b` | 27B | ~18 GB | Medium-Fast | Good balance |
+| `mixtral:latest` | 47B (MoE) | ~26 GB | Medium | State-of-the-art |
 
 ### Ollama Host Configuration
 
 ```bash
-export OLLAMA_NUM_PARALLEL=1          # Increase to 2-4 if VRAM allows
+export OLLAMA_NUM_PARALLEL=2          # Can increase with ample VRAM
 export OLLAMA_FLASH_ATTENTION=1
-export OLLAMA_KV_CACHE_TYPE=f16       # Full precision—VRAM available
+export OLLAMA_KV_CACHE_TYPE=f16      # Full precision with enough VRAM
 export OLLAMA_KEEP_ALIVE=30m
-```
-
-### OpenClaw Configuration
-
-Full capabilities—no special constraints needed:
-
-```json
-{
-  "agents": {
-    "defaults": {
-      "compaction": {
-        "reserveTokens": 16384
-      }
-    }
-  },
-  "models": {
-    "providers": {
-      "ollama": {
-        "models": [
-          {
-            "id": "gemma4:latest",
-            "params": {
-              "num_ctx": 32768
-            }
-          }
-        ]
-      }
-    }
-  }
-}
+export OLLAMA_MAX_LOADED_MODELS=2    # Keep multiple models loaded
 ```
 
 ---
 
-## Configuration Reference
+## Troubleshooting Timeouts
 
-### OpenClaw Config Paths
+### Symptom: "Turn 1 works, turn 2 times out"
 
-Edit via Control UI or directly in `~/.openclaw/openclaw.json`:
+**Cause:** Model switching evicted the KV cache.
 
-| Path | Type | Default | Effect |
-|------|------|---------|--------|
-| `agents.defaults.experimental.localModelLean` | boolean | false | Removes heavy tools (browser, cron, message) |
-| `models.providers.ollama.models[].compat.supportsTools` | boolean | true | Disables all tool calls if false |
-| `models.providers.ollama.models[].params.num_ctx` | number | 32768 (extension default) | Context window size for Ollama |
-| `agents.defaults.compaction.reserveTokens` | number | 20000 | Trigger compaction when within this many tokens of context limit |
-| `agents.defaults.compaction.reserveTokensFloor` | number | 20000 | Minimum reserve (set to 0 to disable floor) |
-| `agents.defaults.compaction.keepRecentTokens` | number | — | Tokens to preserve during compaction |
+**Fix:** 
+1. Use the same model consistently, OR
+2. Set `OLLAMA_MAX_LOADED_MODELS=2` if you have RAM
 
-### Extension Environment Variables
+### Symptom: Long delays before first token (but no timeout)
 
-Set when building/running the extension runtime:
+**Cause:** Large prompt evaluation on slower model.
 
-| Variable | Effect |
-|----------|--------|
-| `OPENCLAW_OLLAMA_NUM_CTX` | Override default context window (default: 32768) |
-
-### Ollama Host Environment Variables
-
-Set on your host Ollama process:
-
-| Variable | Default | Options | Effect |
-|----------|---------|---------|--------|
-| `OLLAMA_NUM_PARALLEL` | 1 | 1-N | Parallel requests (multiplies memory use) |
-| `OLLAMA_FLASH_ATTENTION` | 0 | 0, 1 | Reduces memory, improves speed |
-| `OLLAMA_KV_CACHE_TYPE` | f16 | f16, q8_0, q4_0, q5_0, q5_1 | KV cache quantization |
-| `OLLAMA_KEEP_ALIVE` | 5m | duration, -1 | How long to keep model loaded |
-| `OLLAMA_CONTEXT_LENGTH` | model default | 2048, 4096, etc. | Override default context |
-
----
-
-## Troubleshooting
-
-### Symptom: "LLM idle timeout (120s)" errors
-
-**Causes and fixes:**
-
-1. **Prompt too large for hardware**
-   - Reduce `num_ctx` in config
-   - Enable `localModelLean: true`
-   - Try `supportsTools: false`
-   - Trim workspace files (AGENTS.md, SOUL.md)
-
-2. **Model too large for CPU**
-   - Switch to smaller model (gemma4-fast, qwen2.5:3b)
-   - Add GPU if possible (10-20x speedup)
-
-3. **Cold-start latency**
-   - Set `OLLAMA_KEEP_ALIVE=30m` or `-1`
-   - The extension's "warm up model" feature also helps
+**Fix:**
+1. Switch to a faster model (gemma4-fast)
+2. Enable `OLLAMA_FLASH_ATTENTION=1`
+3. Reduce prompt size (trim AGENTS.md, SOUL.md)
+4. Use `localModelLean: true`
 
 ### Symptom: Single-character replies
 
-**Cause:** Ollama default context (4096) filled by system prompt.
+**Cause:** Fixed in PR #154—extension now sets `num_ctx: 32768` by default.
 
-**Fix:** Extension already sets `num_ctx: 32768` by default. If you overrode it, check:
-```bash
-# Verify context size
-curl http://localhost:11434/api/show -d '{"name": "gemma4:latest"}'
-```
-
-### Symptom: Out of memory errors
-
-**Fixes:**
-
-1. Reduce `num_ctx`
-2. Set `OLLAMA_KV_CACHE_TYPE=q4_0`
-3. Reduce `OLLAMA_NUM_PARALLEL` to 1
-4. Use smaller model
-5. Close other applications
-
-### Symptom: Slow response every turn
-
-**Cause:** Full prompt re-evaluation (no KV cache prefix sharing).
-
-**Partial fixes:**
-- Enable `OLLAMA_FLASH_ATTENTION=1`
-- Reduce context window
-- Compaction helps keep prompt smaller
-- Use faster model
+If you see this, ensure you're using the latest extension version.
 
 ---
 
-## Decision Flowchart
+## Environment Variable Reference
 
-```
-Start with model detection in extension
-         │
-         ▼
-    Model selected
-         │
-         ▼
-   First chat works?
-   ┌─────────────┐
-   │             │
-   ▼             ▼
-  Yes           No (timeout/error)
-   │             │
-   │             ▼
-   │    Enable localModelLean: true
-   │    Set num_ctx to 8192
-   │             │
-   │             ▼
-   │    Still failing?
-   │    ┌─────────────┐
-   │    │             │
-   │    ▼             ▼
-   │   Yes            No
-   │    │             │
-   │    ▼             ▼
-   │  SupportsTools:   Working
-   │  false           configuration
-   │    │
-   │    ▼
-   │  Still failing?
-   │    │
-   │    ▼
-   │  Switch to smaller
-   │  model (gemma4-fast,
-   │  qwen2.5:3b)
-   │
-   ▼
-Monitor context usage
-Type /compact when
-approaching limit
-```
+Set these on your **host Ollama** before starting the service:
 
----
-
-## Advanced: Editing Config Directly
-
-The extension writes Ollama configuration to the OpenClaw volume. You can edit directly:
-
-```bash
-# Find the container
-docker ps | grep openclaw
-
-# Enter container
-docker exec -it <container_id> sh
-
-# Edit config
-cat ~/.openclaw/openclaw.json
-vi ~/.openclaw/openclaw.json
-
-# Restart OpenClaw (via extension UI) to apply changes
-```
-
-Or on the host with the volume:
-```bash
-# Locate volume
-docker volume ls | grep openclaw
-
-# Mount and edit (macOS: volume is inside Docker Desktop VM)
-# Use docker run to mount and edit:
-docker run --rm -it \
-  -v openclaw-docker-extension-home:/home/node \
-  alpine sh
-vi /home/node/.openclaw/openclaw.json
-```
-
----
-
-## Summary Table: Recommended Settings by Hardware
-
-| Setting | Light (8-16GB, CPU) | Balanced (16-24GB, Apple Silicon) | Performance (32GB+, GPU) |
-|---------|---------------------|----------------------------------|--------------------------|
-| **Model** | gemma4-fast, qwen2.5:3b | gemma4, llama3.2 | gemma4, llama3.1, larger |
-| **num_ctx** | 8192 | 16384 | 32768 |
-| **localModelLean** | true | true (test false) | false |
-| **supportsTools** | false (if needed) | true | true |
-| **reserveTokens** | 4096 | 8192 | 16384 |
-| **OLLAMA_KV_CACHE_TYPE** | q4_0 | q8_0 | f16 |
-| **OLLAMA_FLASH_ATTENTION** | 1 | 1 | 1 |
-| **OLLAMA_NUM_PARALLEL** | 1 | 1 | 1-4 |
+| Variable | Values | Effect |
+|----------|--------|--------|
+| `OLLAMA_FLASH_ATTENTION` | `1` or unset | Enables flash attention (~20-40% speedup) |
+| `OLLAMA_KV_CACHE_TYPE` | `f16`, `q8_0`, `q4_0` | KV cache quantization level |
+| `OLLAMA_NUM_PARALLEL` | `1`, `2`, `4` | Parallel request handling (multiplies memory) |
+| `OLLAMA_MAX_LOADED_MODELS` | `1`, `2`, `3+` | Models kept in memory simultaneously |
+| `OLLAMA_KEEP_ALIVE` | `30m`, `1h`, etc. | Time to keep model loaded after last use |
 
 ---
 
 ## See Also
 
-- [Ollama FAQ](https://docs.ollama.com/faq) — Ollama-specific tuning
-- [OpenClaw Local Models](https://docs.openclaw.ai/gateway/local-models) — Official OpenClaw guidance
-- [OpenClaw Compaction](https://docs.openclaw.ai/concepts/compaction) — Session management
-- [README.md](../README.md) — Extension setup and basic usage
+- [GitHub Issue #156](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/156) - 120s timeout discussion
+- [GitHub Issue #158](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/158) - Ollama environment variable guidance
+- [GitHub Issue #159](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/159) - Workspace file size optimization
+
+---
+
+*Last updated: 2026-06-18*
