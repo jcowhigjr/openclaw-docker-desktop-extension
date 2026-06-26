@@ -24,14 +24,18 @@ Use this path for a 5-10 minute functional review on macOS with Docker Desktop.
 The extension is not listed in the Docker Extensions Marketplace yet, so this
 review path uses the GHCR stable channel.
 
-Current validated release/install tag: `v0.3.5`.
+Current validated release/install tag: `v0.3.6`.
 Latest committed manual stable-channel smoke packet: `v0.3.4` at
 `docs/exploratory/2026-05-22-stable-channel-smoke/`.
+The `v0.3.6` release verification recorded in #86 confirms pinned GHCR and
+Docker Hub install validation plus GHCR `stable` channel parity. The manual
+stable-channel Docker Desktop UI smoke packet has not been refreshed since
+`v0.3.4`.
 
 If you want a timestamped evidence packet before starting, run:
 
 ```bash
-make create-smoke-report RELEASE_CHANNEL=stable RELEASE_TAG=v0.3.5
+make create-smoke-report RELEASE_CHANNEL=stable RELEASE_TAG=v0.3.6
 ```
 
 That scaffolds a report under `docs/exploratory/` with the preflight commands,
@@ -68,7 +72,7 @@ Maintainer release-channel validation:
 
 ```bash
 make verify-channel-install RELEASE_CHANNEL=stable
-make verify-channel-install RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=v0.3.5
+make verify-channel-install RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=v0.3.6
 ```
 
 Use `DRY_RUN=1` when you want to validate command construction without mutating Docker Desktop.
@@ -100,12 +104,15 @@ Use `DRY_RUN=1` when you want to validate command construction without mutating 
 
 Open issues at submission time:
 
+- [#86](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/86): Docker Marketplace submission governance gate for the current `docker.io/jcowhigjr/openclaw-docker-desktop-extension:0.3.6` submission image.
 - [#65](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/65): long-term security, hardening, supply-chain, and network migration epic.
+- [#156](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/156): large-prompt Ollama chats can hit OpenClaw's 120s LLM idle-timeout watchdog.
+- [#157](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/157)-[#160](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/160): post-MVP local-model performance and supportability proposals.
 - [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12): roadmap and decision gates tracker.
 
 Native migration after a Docker Desktop trial is documented as a manual investigation path in [native-migration-investigation.md](native-migration-investigation.md).
 
-These are not blockers for an external review of the current Docker Desktop extension path.
+These are not blockers for an external review of the current Docker Desktop extension path unless the review specifically requires Docker Marketplace listing, a refreshed manual stable-channel UI smoke packet, or large-prompt local Ollama reliability.
 
 ## Suggested Reviewer Questions
 

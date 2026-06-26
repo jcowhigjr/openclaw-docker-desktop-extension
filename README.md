@@ -374,15 +374,15 @@ Safe extension-level diagnostics are limited to project-specific state: containe
 
 The roadmap source of truth is [issue #12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12). Keep this section aligned with that issue.
 
-Current status: the MVP is complete enough to share. The release/channel image path exists, the extension can update its runtime image, the localhost Control UI launch path bootstraps the gateway token, host Ollama setup is available, execution mode changes restart OpenClaw to reload cached exec approvals, and the README documents the current provider-auth, `.env`, host-Ollama offline-first behavior, and host-posture boundary. A real Docker Desktop stable-channel smoke pass for `v0.3.4` is captured in [docs/exploratory/2026-05-22-stable-channel-smoke/](docs/exploratory/2026-05-22-stable-channel-smoke/).
+Current status as of 2026-06-26: the MVP is complete enough to share. The latest release is `v0.3.6`, GHCR `stable` was promoted to `v0.3.6`, and the pinned GHCR/Docker Hub `0.3.6` install path is recorded in #86. The release/channel image path exists, the extension can update its runtime image, the localhost Control UI launch path bootstraps the gateway token, first-run provider setup is gated before chat, host Ollama setup is available, execution mode changes restart OpenClaw to reload cached exec approvals, and the README documents the current provider-auth, `.env`, host-Ollama offline-first behavior, and host-posture boundary. The latest committed real Docker Desktop stable-channel UI smoke packet remains `v0.3.4` in [docs/exploratory/2026-05-22-stable-channel-smoke/](docs/exploratory/2026-05-22-stable-channel-smoke/).
 
 Native migration after a successful Docker Desktop trial is documented as a manual investigation path in [docs/native-migration-investigation.md](docs/native-migration-investigation.md). Do not build native migration automation until real user demand and upstream OpenClaw portable-state guidance justify it.
 
 The repo should now move in this order:
 
 1. Pause unless outside users, upstream, or release/distribution friction provide evidence that more work is worth doing.
-2. Keep the release/channel image path and public landing page current when a real release or verification failure needs attention.
-3. Treat host Ollama as the supported offline-first local model path after initial setup.
+2. Keep #86 as the active Marketplace submission governance gate; do not treat it as a repo-side implementation blocker unless submission validation exposes a reproducible failure.
+3. Treat host Ollama as the supported offline-first local model path after initial setup; #156-#160 are post-MVP supportability follow-ups, and #161 now records the merged OpenSpec design package.
 4. Defer bundled local inference runtime work and native migration automation unless real user traction justifies them.
 
 The developer-only local update path remains `make update-extension`. The release-image path is the preferred end-user path; local builds remain useful for development and validation.
