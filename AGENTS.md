@@ -21,10 +21,14 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 ## Current Roadmap
 
 - Treat issue [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12) as the source of truth for roadmap and decision gates.
-- MVP is complete enough to share: GHCR/channel install path, update/restart flow, localhost Control UI bootstrap, token retry UX, host Ollama setup, execution mode UX, repo metadata, `.env` documentation, readiness checks, build validation, and a real Docker Desktop stable-channel smoke pass for `v0.3.4`.
+- Current live status as of 2026-06-26: latest release is `v0.3.6`; GHCR `stable` was promoted to `v0.3.6`; pinned GHCR and Docker Hub `0.3.6` install validation was recorded in #86; the latest committed real Docker Desktop stable-channel smoke packet remains `v0.3.4`.
+- MVP is complete enough to share: GHCR/channel install path, update/restart flow, localhost Control UI bootstrap, token retry UX, first-run provider fork and chat gating, host Ollama setup, execution mode UX, repo metadata, `.env` documentation, readiness checks, build validation, and committed Docker Desktop stable-channel smoke evidence.
 - Default post-MVP posture is pause unless outside traction appears or a release/distribution gate fails and needs a small reproducible fix.
-- Remaining roadmap work is long-term hardening:
-  1. [#65](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/65) longer-term security, hardening, supply-chain, and network migration epic.
+- Active gates and follow-ups are:
+  1. [#86](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/86) Docker Marketplace submission governance gate; repo-side release verification is not the blocker for `v0.3.6`.
+  2. [#156](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/156)-[#160](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/160) local-model performance/supportability follow-ups; treat them as post-MVP, not a reason to restart broad feature work.
+  3. [#65](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/65) longer-term security, hardening, supply-chain, and network migration epic.
+- [#161](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/161) merged on 2026-06-26 as a docs-only OpenSpec hardware-profile design package; do not reopen that planning lane unless working a specific follow-up issue.
 - Native migration after a successful Docker Desktop trial is documented in `docs/native-migration-investigation.md`; keep it manual/documentation-only unless real user demand justifies reopening implementation work.
 - Treat [#2](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/2) and [#13](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/13) as historical execution-mode context, not active implementation tracks.
 - Do not start new feature branches from stale priority notes. Re-check #12, open issues, and the latest merged PRs first.
@@ -105,3 +109,10 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 - On this workstation, Docker Desktop CLI symlinks are installed under `$HOME/.docker/bin`.
 - If `docker` resolves to another install or cannot reach the Desktop engine, use `$HOME/.docker/bin/docker` or add `$HOME/.docker/bin` to `PATH` before live Docker validation.
 - Current local-model development assumes host Ollama is already running on `127.0.0.1:11434`; container-to-host checks should use `http://host.docker.internal:11434`.
+
+## Session Retro Contract
+
+- Before the final response in a long or blocker-heavy session, invoke `[$session-retro](/Users/temp/.codex/skills/session-retro/SKILL.md)`.
+- Re-check capabilities after sandbox, auth, or network conditions change during the run.
+- Prefer `gh` for GitHub writes when `gh auth status` is healthy and MCP writes are narrower or failing.
+- Treat `branch already used by worktree` and dead preview URLs as routing problems that require fallback, not early stop conditions.
