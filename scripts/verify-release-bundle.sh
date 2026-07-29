@@ -20,7 +20,7 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-expected_runtime_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension-runtime:${release_version}"
+expected_runtime_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension-runtime:stable"
 image_ref="${verify_image}:${verify_tag}"
 
 if [ "$dry_run" = "1" ]; then
@@ -66,7 +66,7 @@ fi
 cat <<EOF
 Release bundle verification passed:
   extension image: ${image_ref}
-  bundled runtime default: ${expected_runtime_image}
+  bundled runtime channel: ${expected_runtime_image}
 
 Next maintainer steps:
   make publish-release RELEASE_TAG=${release_tag}

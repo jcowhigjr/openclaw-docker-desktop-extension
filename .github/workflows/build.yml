@@ -51,6 +51,9 @@ jobs:
       - name: Verify release channel mapping
         run: make test-release-channel
 
+      - name: Verify release automation contract
+        run: make test-release-automation
+
       - name: Verify release tag dry-run
         run: make test-release-tag-dry-run
 

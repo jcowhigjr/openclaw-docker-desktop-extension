@@ -80,6 +80,7 @@ Use `DRY_RUN=1` when you want to validate command construction without mutating 
 ## What Is Ready
 
 - Install/update: GHCR release and channel paths are documented and validated by repository scripts.
+- Unpublished update contract: extension-package updates use the explicit GHCR `stable` CLI route; the in-extension update action refreshes only the managed runtime.
 - Marketplace metadata: required labels, semver aliases, multi-arch images, and Docker's documented `utility-tools` category are covered by the pre-push metadata guard.
 - Startup UX: the extension exposes `Check Requirements`, start/stop/restart, update/restart, and debug output.
 - Control UI bootstrap: `Open Control UI` launches the canonical localhost URL and passes the gateway token via URL fragment.
@@ -99,6 +100,7 @@ Use `DRY_RUN=1` when you want to validate command construction without mutating 
 - The extension does not perform automatic host posture scanning.
 - Provider credentials beyond the Ollama setup path remain OpenClaw-owned.
 - Release notes / what-changed UI after runtime updates is not implemented yet.
+- Docker Desktop's native Manage-tab Update control and Marketplace notifications are unavailable while this extension remains unpublished. Repository release automation does not bypass Docker's Marketplace gate or submission pause.
 
 ## Remaining Roadmap
 

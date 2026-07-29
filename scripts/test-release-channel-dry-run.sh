@@ -17,20 +17,22 @@ assert_contains() {
 channel_output="$(make verify-release-channel RELEASE_CHANNEL=stable DRY_RUN=1 2>&1)"
 assert_contains "$channel_output" "dry run: docker manifest inspect ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable"
 assert_contains "$channel_output" "dry run: docker manifest inspect ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:stable"
-echo "passed: verify-release-channel dry run prints both manifest checks"
+assert_contains "$channel_output" "dry run: docker manifest inspect docker.io/jcowhigjr/openclaw-docker-desktop-extension:stable"
+assert_contains "$channel_output" "dry run: compare ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:stable to ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest"
+echo "passed: verify-release-channel dry run prints registry and runtime-channel checks"
 
 comparison_output="$(make verify-release-channel RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=v1.2.3 DRY_RUN=1 2>&1)"
 assert_contains "$comparison_output" "dry run: compare ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable to ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:v1.2.3"
-assert_contains "$comparison_output" "dry run: compare ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:stable to ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:v1.2.3"
+assert_contains "$comparison_output" "dry run: compare docker.io/jcowhigjr/openclaw-docker-desktop-extension:stable to docker.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3"
 echo "passed: verify-release-channel dry run prints release parity checks"
 
 install_output="$(make verify-channel-install RELEASE_CHANNEL=stable DRY_RUN=1 2>&1)"
-assert_contains "$install_output" "dry run: RELEASE_CHANNEL=stable GHCR_OWNER=jcowhigjr ./scripts/verify-release-channel.sh"
+assert_contains "$install_output" "dry run: RELEASE_CHANNEL=stable GHCR_OWNER=jcowhigjr DOCKERHUB_OWNER=jcowhigjr ./scripts/verify-release-channel.sh"
 assert_contains "$install_output" "dry run: docker extension validate --validate-install-uninstall ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable"
 echo "passed: verify-channel-install dry run prints validate command"
 
 install_comparison_output="$(make verify-channel-install RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=v1.2.3 DRY_RUN=1 2>&1)"
-assert_contains "$install_comparison_output" "dry run: RELEASE_CHANNEL=stable GHCR_OWNER=jcowhigjr EXPECTED_RELEASE_TAG=v1.2.3 ./scripts/verify-release-channel.sh"
+assert_contains "$install_comparison_output" "dry run: RELEASE_CHANNEL=stable GHCR_OWNER=jcowhigjr DOCKERHUB_OWNER=jcowhigjr EXPECTED_RELEASE_TAG=v1.2.3 ./scripts/verify-release-channel.sh"
 assert_contains "$install_comparison_output" "dry run: docker extension validate --validate-install-uninstall ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable"
 echo "passed: verify-channel-install dry run forwards EXPECTED_RELEASE_TAG"
 

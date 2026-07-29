@@ -11,7 +11,7 @@ require_file_contains() {
   pattern="$2"
   description="$3"
 
-  if ! grep -Fq "$pattern" "$file"; then
+  if ! grep -Fq -- "$pattern" "$file"; then
     echo "missing ${description}: ${pattern}" >&2
     return 1
   fi
@@ -33,9 +33,12 @@ require_file_contains "$workflow" 'username: ${{ secrets.DOCKERHUB_USERNAME }}' 
 require_file_contains "$workflow" 'password: ${{ secrets.DOCKERHUB_TOKEN }}' "Docker Hub login token secret"
 require_file_contains "$workflow" 'type=raw,value=${{ env.RELEASE_VERSION }}' "semver image tag alias"
 require_file_contains "$workflow" 'platforms: linux/arm64,linux/amd64' "multi-platform release build"
-require_file_contains "$workflow" 'VITE_DEFAULT_RUNTIME_IMAGE=${{ env.REGISTRY }}/${{ env.RUNTIME_IMAGE_NAME }}:${{ env.RELEASE_VERSION }}' "semver runtime default"
+require_file_contains "$workflow" 'VITE_DEFAULT_RUNTIME_IMAGE=${{ env.REGISTRY }}/${{ env.RUNTIME_IMAGE_NAME }}:${{ steps.release-context.outputs.runtime_channel_tag }}' "floating runtime channel default"
+require_file_contains "$workflow" '--tag "${REGISTRY}/${EXTENSION_IMAGE_NAME}:${CHANNEL_TAG}"' "validated GHCR extension channel promotion"
+require_file_contains "$workflow" '--tag "${DOCKERHUB_EXTENSION_IMAGE_NAME}:${CHANNEL_TAG}"' "validated Docker Hub extension channel promotion"
 require_file_contains "$runtime_workflow" 'openclaw-docker-desktop-extension-runtime' "canonical scheduled runtime image target"
 require_file_contains "$runtime_workflow" 'openclaw-docker-extension-runtime' "legacy scheduled runtime alias"
 require_file_contains "$runtime_workflow" '${{ env.LEGACY_RUNTIME_IMAGE }}' "legacy scheduled runtime metadata image"
+require_file_contains "$runtime_workflow" '--tag "${RUNTIME_IMAGE}:stable"' "scheduled stable runtime promotion"
 
 echo "extension metadata checks passed"
