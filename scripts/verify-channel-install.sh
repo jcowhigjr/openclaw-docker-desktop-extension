@@ -4,6 +4,7 @@ set -eu
 
 release_channel="${1:-${RELEASE_CHANNEL:-stable}}"
 ghcr_owner="${GHCR_OWNER:-jcowhigjr}"
+dockerhub_owner="${DOCKERHUB_OWNER:-$ghcr_owner}"
 expected_release_tag="${EXPECTED_RELEASE_TAG:-}"
 dry_run="${DRY_RUN:-0}"
 extension_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension:${release_channel}"
@@ -20,9 +21,9 @@ fi
 
 if [ "$dry_run" = "1" ]; then
   if [ -n "$expected_release_tag" ]; then
-    echo "dry run: RELEASE_CHANNEL=${release_channel} GHCR_OWNER=${ghcr_owner} EXPECTED_RELEASE_TAG=${expected_release_tag} ./scripts/verify-release-channel.sh"
+    echo "dry run: RELEASE_CHANNEL=${release_channel} GHCR_OWNER=${ghcr_owner} DOCKERHUB_OWNER=${dockerhub_owner} EXPECTED_RELEASE_TAG=${expected_release_tag} ./scripts/verify-release-channel.sh"
   else
-    echo "dry run: RELEASE_CHANNEL=${release_channel} GHCR_OWNER=${ghcr_owner} ./scripts/verify-release-channel.sh"
+    echo "dry run: RELEASE_CHANNEL=${release_channel} GHCR_OWNER=${ghcr_owner} DOCKERHUB_OWNER=${dockerhub_owner} ./scripts/verify-release-channel.sh"
   fi
   echo "dry run: docker extension validate --validate-install-uninstall ${extension_image}"
   exit 0
@@ -36,6 +37,7 @@ fi
 
 RELEASE_CHANNEL="$release_channel" \
   GHCR_OWNER="$ghcr_owner" \
+  DOCKERHUB_OWNER="$dockerhub_owner" \
   EXPECTED_RELEASE_TAG="$expected_release_tag" \
   ./scripts/verify-release-channel.sh
 

@@ -11,6 +11,10 @@ on:
     - cron: '17 9 * * *'
   workflow_dispatch:
 
+concurrency:
+  group: openclaw-published-channels
+  cancel-in-progress: false
+
 permissions:
   contents: read
   packages: write
@@ -38,7 +42,6 @@ jobs:
             ${{ env.RUNTIME_IMAGE }}
             ${{ env.LEGACY_RUNTIME_IMAGE }}
           tags: |
-            type=raw,value=latest
             type=sha,prefix=sha-,format=short
       - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
@@ -51,7 +54,33 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-      - name: Verify published runtime image
+
+      - name: Scan runtime image before channel promotion
+        uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8 # master
+        env:
+          TRIVY_PLATFORM: linux/arm64
+        with:
+          image-ref: ${{ env.RUNTIME_IMAGE }}:${{ steps.meta.outputs.version }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+
+      - name: Promote validated runtime channels
+        env:
+          PUBLISHED_TAG: ${{ steps.meta.outputs.version }}
+        run: |
+          docker buildx imagetools create \
+            --tag "${RUNTIME_IMAGE}:latest" \
+            --tag "${RUNTIME_IMAGE}:stable" \
+            "${RUNTIME_IMAGE}:${PUBLISHED_TAG}"
+          docker buildx imagetools create \
+            --tag "${LEGACY_RUNTIME_IMAGE}:latest" \
+            "${LEGACY_RUNTIME_IMAGE}:${PUBLISHED_TAG}"
+
+      - name: Verify published runtime channels
         run: |
           docker buildx imagetools inspect "${RUNTIME_IMAGE}:latest"
+          docker buildx imagetools inspect "${RUNTIME_IMAGE}:stable"
           docker buildx imagetools inspect "${LEGACY_RUNTIME_IMAGE}:latest"

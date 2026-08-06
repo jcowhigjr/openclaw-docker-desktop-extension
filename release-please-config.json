@@ -1,0 +1,21 @@
+{
+  "release-type": "simple",
+  "include-v-in-tag": true,
+  "draft": true,
+  "force-tag-creation": true,
+  "pull-request-title-pattern": "chore: release ${version}",
+  "packages": {
+    ".": {
+      "package-name": "openclaw-docker-desktop-extension",
+      "exclude-paths": [
+        "AGENTS.md",
+        "LICENSE",
+        "NOTICE",
+        "README.md",
+        "TRADEMARKS.md",
+        "docs/**",
+        "openspec/**"
+      ]
+    }
+  }
+}

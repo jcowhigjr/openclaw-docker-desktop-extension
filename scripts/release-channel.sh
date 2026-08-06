@@ -27,16 +27,16 @@ esac
 
 channel_tag=""
 has_channel_tag=false
+runtime_channel_tag="stable"
+
+case "$release_tag" in
+  *-alpha|*-alpha.*|*-beta|*-beta.*|*-rc|*-rc.*)
+    runtime_channel_tag="beta"
+    ;;
+esac
 
 if [ "$event_name" != "workflow_dispatch" ] || [ "$promote_channel" = "1" ]; then
-  case "$release_tag" in
-    *-alpha|*-alpha.*|*-beta|*-beta.*|*-rc|*-rc.*)
-      channel_tag="beta"
-      ;;
-    *)
-      channel_tag="stable"
-      ;;
-  esac
+  channel_tag="$runtime_channel_tag"
   has_channel_tag=true
 fi
 
@@ -44,4 +44,5 @@ cat <<EOF
 release_tag=${release_tag}
 channel_tag=${channel_tag}
 has_channel_tag=${has_channel_tag}
+runtime_channel_tag=${runtime_channel_tag}
 EOF

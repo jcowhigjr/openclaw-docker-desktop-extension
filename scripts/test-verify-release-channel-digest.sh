@@ -37,7 +37,10 @@ case "$url" in
   https://ghcr.io/token\?*)
     printf '%s' '{"token":"test-token"}'
     ;;
-  */manifests/stable|*/manifests/v1.2.3)
+  https://auth.docker.io/token\?*)
+    printf '%s' '{"token":"test-token"}'
+    ;;
+  */manifests/stable|*/manifests/latest|*/manifests/v1.2.3|*/manifests/1.2.3)
     printf 'HTTP/1.1 200 OK\r\n'
     printf 'content-type: application/vnd.oci.image.index.v1+json\r\n'
     printf 'docker-content-digest: sha256:testdigest\r\n'
@@ -59,7 +62,9 @@ output="$(
     "$repo_root/scripts/verify-release-channel.sh" stable
 )"
 
-printf '%s\n' "$output" | grep -F "ghcr channel matches expected release: ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable -> v1.2.3" >/dev/null
-printf '%s\n' "$output" | grep -F "ghcr channel matches expected release: ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:stable -> v1.2.3" >/dev/null
+printf '%s\n' "$output" | grep -F "registry channel matches expected tag: ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable -> v1.2.3" >/dev/null
+printf '%s\n' "$output" | grep -F "registry channel matches expected tag: docker.io/jcowhigjr/openclaw-docker-desktop-extension:stable -> 1.2.3" >/dev/null
+printf '%s\n' "$output" | grep -F "registry channel matches expected tag: ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:stable -> latest" >/dev/null
+printf '%s\n' "$output" | grep -F "extension channel matches across registries: stable -> sha256:testdigest" >/dev/null
 
 echo "verify-release-channel digest parsing checks passed"

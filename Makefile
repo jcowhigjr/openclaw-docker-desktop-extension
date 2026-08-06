@@ -12,11 +12,11 @@ REPO_OWNER ?= jcowhigjr
 REPO_NAME ?= openclaw-docker-desktop-extension
 REGISTRY_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-desktop-extension-runtime
 REGISTRY_TAG ?= latest
-# For release builds, use the tagged registry image. Otherwise use the published latest.
+# Released extension bundles follow the validated runtime channel. Local development stays local.
 ifeq ($(RELEASE_TAG),)
   DEFAULT_RUNTIME_IMAGE ?= $(RUNTIME_IMAGE):$(RUNTIME_TAG)
 else
-  DEFAULT_RUNTIME_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-desktop-extension-runtime:$(RELEASE_TAG)
+  DEFAULT_RUNTIME_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-desktop-extension-runtime:$(RELEASE_CHANNEL)
 endif
 RELEASE_EXTENSION_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-desktop-extension:$(RELEASE_VERSION)
 CHANNEL_EXTENSION_IMAGE ?= ghcr.io/$(GHCR_OWNER)/openclaw-docker-desktop-extension:$(RELEASE_CHANNEL)
@@ -59,9 +59,10 @@ update-channel: ; @test -n "$(RELEASE_CHANNEL)" || (echo "RELEASE_CHANNEL is req
 verify-release-tag:
 	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" DOCKERHUB_OWNER="$(DOCKERHUB_OWNER)" ./scripts/verify-release-tag.sh
 
-verify-release-channel: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" EXPECTED_RELEASE_TAG="$(EXPECTED_RELEASE_TAG)" ./scripts/verify-release-channel.sh
+verify-release-channel: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" DOCKERHUB_OWNER="$(DOCKERHUB_OWNER)" EXPECTED_RELEASE_TAG="$(EXPECTED_RELEASE_TAG)" ./scripts/verify-release-channel.sh
 
 test-release-channel: ; @./scripts/test-release-channel.sh
+test-release-automation: ; @./scripts/test-release-automation.sh
 test-runtime-bridge: ; @sh ./scripts/test-runtime-bridge.sh
 test-runtime-base-pull: ; @sh ./scripts/test-runtime-base-pull.sh
 test-extension-metadata: ; @./scripts/test-extension-metadata.sh
@@ -78,7 +79,7 @@ test-docs-landing-page: ; @node ./scripts/test-docs-landing-page.js
 test-security-local: ; @sh ./scripts/test-security-local.sh
 test-ui-screenshot-sync: ; @bash ./scripts/test-ui-screenshot-sync-selftest.sh
 test-ui: ; @cd ui && npm ci && npm test && npm run build
-test-pre-push: test-ui test-runtime-bridge test-runtime-base-pull test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-runtime-image-helper test-docs-landing-page test-security-local test-ui-screenshot-sync
+test-pre-push: test-ui test-runtime-bridge test-runtime-base-pull test-extension-metadata test-release-automation test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-runtime-image-helper test-docs-landing-page test-security-local test-ui-screenshot-sync
 install-hooks: ; @git config core.hooksPath .githooks && chmod +x .githooks/pre-push && echo "installed repo git hooks from .githooks"
 
 verify-release-bundle:
@@ -86,7 +87,7 @@ verify-release-bundle:
 
 verify-release-install: ; @RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" GHCR_OWNER="$(GHCR_OWNER)" DOCKERHUB_OWNER="$(DOCKERHUB_OWNER)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-release-install.sh
 
-verify-channel-install: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" EXPECTED_RELEASE_TAG="$(EXPECTED_RELEASE_TAG)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-channel-install.sh
+verify-channel-install: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" DOCKERHUB_OWNER="$(DOCKERHUB_OWNER)" EXPECTED_RELEASE_TAG="$(EXPECTED_RELEASE_TAG)" DRY_RUN="$(DRY_RUN)" ./scripts/verify-channel-install.sh
 
 publish-release:
 	@RELEASE_TAG="$(RELEASE_TAG)" REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" DRY_RUN="$(DRY_RUN)" ./scripts/publish-release.sh
@@ -103,4 +104,4 @@ capture-readme-screenshot:
 create-smoke-report:
 	@REPORT_DATE="$(REPORT_DATE)" RELEASE_CHANNEL="$(RELEASE_CHANNEL)" RELEASE_TAG="$(RELEASE_TAG)" REPORT_DIR="$(REPORT_DIR)" sh ./scripts/create-smoke-report.sh
 
-.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-runtime-bridge test-runtime-base-pull test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-docs-landing-page test-security-local test-ui-screenshot-sync test-ui test-pre-push install-hooks verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot create-smoke-report
+.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-release-automation test-runtime-bridge test-runtime-base-pull test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-docs-landing-page test-security-local test-ui-screenshot-sync test-ui test-pre-push install-hooks verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot create-smoke-report

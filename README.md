@@ -42,7 +42,7 @@ Use these commands depending on where you are in the flow:
 - `make install-dev`: build both local images and install the extension into Docker Desktop
 - `make update-extension`: rebuild both local images and refresh an existing local install
 - `make verify-release-tag RELEASE_TAG=vX.Y.Z`: maintainer check that the GitHub release exists, the GHCR tags and Docker Hub extension semver tag are public, and the published extension title label stayed validator-safe
-- `make verify-release-bundle RELEASE_TAG=vX.Y.Z`: maintainer check that a release extension build points at the matching GHCR runtime image
+- `make verify-release-bundle RELEASE_TAG=vX.Y.Z`: maintainer check that a release extension build follows the validated GHCR runtime channel
 - `make verify-release-install RELEASE_TAG=vX.Y.Z`: maintainer check that Docker Desktop can install and uninstall the GHCR extension image and Docker Hub Marketplace semver image
 - `make publish-release RELEASE_TAG=vX.Y.Z`: maintainer fallback if a tag exists but the GitHub release needs to be repaired manually
 - `make ship-release RELEASE_TAG=vX.Y.Z`: maintainer repair path that publishes the GitHub release if needed, verifies release tags, then validates Docker Desktop install/uninstall
@@ -61,7 +61,11 @@ Use these commands depending on where you are in the flow:
 
 ## Release-image path
 
-Tagged releases now publish both images to GHCR through GitHub Actions and create the matching GitHub release automatically:
+Release Please maintains a gated semver release PR from conventional `feat:`, `fix:`, and breaking changes. Documentation-only and planning paths are excluded. Merging ordinary changes to `main` does not publish production images; merging the protected release PR creates a draft GitHub release and `vX.Y.Z` tag, then invokes the single production publisher. The publisher only finalizes the GitHub release and promotes `stable` after both images pass their release scans.
+
+Release automation requires a fine-grained `RELEASE_PLEASE_TOKEN` Actions secret with repository contents, issues, and pull-request write access. A dedicated token is required because release PRs created with the default `GITHUB_TOKEN` do not trigger the protected-branch checks.
+
+Versioned releases publish both images to GHCR:
 
 - extension image: `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:<tag>`
 - runtime image: `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:<tag>`
@@ -74,18 +78,22 @@ The release workflow also publishes the extension image to Docker Hub for Docker
 
 Docker's automated Marketplace submission validates the greatest semver tag on Docker Hub, so the non-`v` semver tag, for example `0.3.4`, must be public before submission.
 
-Release builds of the extension UI default the runtime image field to the matching GHCR runtime tag. Local development still defaults to `openclaw-docker-extension-runtime:dev`.
+Release builds of the extension UI default the runtime image field to `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:stable` for normal releases (`beta` for prereleases). Local development still defaults to `openclaw-docker-extension-runtime:dev`.
 
 The publish workflow also promotes both images onto floating channel tags on real tag pushes:
 
 - `stable` for normal release tags such as `v0.2.0`
 - `beta` for prerelease tags such as `v0.2.0-rc.1`
 
-That gives end users a one-line extension install path and gives the extension a predictable GHCR runtime channel for update checks without changing the pinned version-tag install path.
+The extension package and runtime have separate channel contracts:
 
-When the runtime image points at a published GHCR channel tag such as `stable` or `beta`, the extension can check for a newer runtime image on open and again before launch.
+- extension `stable` moves only after a new semver release passes release scans, and the same extension manifest is promoted on GHCR and Docker Hub
+- runtime `stable` is refreshed by the scanned scheduled runtime build and matches runtime `latest`
+- a versioned extension tag is immutable, but its default managed OpenClaw runtime follows `runtime:stable`; users can explicitly configure a pinned runtime tag when reproducibility is more important than freshness
 
-The standalone runtime publish workflow also refreshes `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest` on a daily schedule and can still be run manually with `workflow_dispatch`. It also publishes the older `ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest` alias for existing local installs. That scheduled rebuild is how the wrapper picks up new `ghcr.io/openclaw/openclaw:latest` content when this repo has no file changes, so upstream OpenClaw updates become available after the next scheduled runtime rebuild and GHCR push, not instantly at the moment upstream publishes them.
+When the runtime image points at a published GHCR channel tag such as `stable` or `beta`, the extension's own UI checks for a newer runtime image on open and again before launch.
+
+The standalone runtime publish workflow refreshes both `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest` and `:stable` on a daily schedule after its critical-vulnerability scan. It also publishes the older `ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest` alias for existing local installs. That scheduled rebuild is how the wrapper picks up new `ghcr.io/openclaw/openclaw:latest` content when this repo has no file changes, so upstream OpenClaw updates become available after the next successful scheduled runtime build, not instantly when upstream publishes them.
 
 The current MVP update policies are:
 
@@ -106,7 +114,7 @@ Local maintainer check before publishing a new tag:
 make verify-release-bundle RELEASE_TAG=vX.Y.Z
 ```
 
-That build-time check proves the extension bundle is wired to the matching GHCR runtime tag instead of falling back to the local dev runtime image.
+That build-time check proves the extension bundle is wired to the validated GHCR runtime channel instead of falling back to the local dev runtime image.
 
 That check verifies the requirements for the documented install path and Marketplace submission:
 
@@ -172,6 +180,20 @@ Or use the repo shortcut with the same preflight and optional dry-run:
 make install-channel RELEASE_CHANNEL=stable
 make install-channel RELEASE_CHANNEL=stable DRY_RUN=1
 ```
+
+### Updating an unpublished installation
+
+Until Docker publishes this extension in the Marketplace, Docker Desktop labels a GHCR or Docker Hub CLI installation as `UNPUBLISHED`. Docker Desktop's native **Manage > Update** button and Marketplace update notifications are unavailable for unpublished extensions. The supported extension-package update route is explicit:
+
+```bash
+docker extension update ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable
+```
+
+Or use `make update-channel RELEASE_CHANNEL=stable`.
+
+The `Update and Restart` action inside the OpenClaw extension is different: it updates the managed OpenClaw runtime container from `runtime:stable` while preserving the named volume. It does not update the Docker Desktop extension package or make the installation Marketplace-published. Earlier GHCR builds exposed this custom runtime action, which can look similar to Docker Desktop's native extension Update control.
+
+Marketplace submission and the current new-submission pause remain external governance work tracked in [#86](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/86). This repository automation does not bypass that gate.
 
 If you are maintaining the floating channel path, verify the anonymous channel tags first:
 
