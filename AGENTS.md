@@ -82,6 +82,12 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 
 ## Verification
 
+- Treat `docs/agent-memory.md` as the evidence ledger for confirmed agent lessons. Raw
+  retros do not become instructions automatically: promote a lesson only when it has
+  evidence, a defined scope, a corrective behavior, and a regression check or explicit
+  validation method.
+- Run `make test-agent-memory` when changing `AGENTS.md`, `docs/agent-memory.md`, or
+  an agent evaluation under `evals/`.
 - Do not claim success without verifying the relevant path:
   - UI build for frontend changes
   - Docker image build for runtime or packaging changes
