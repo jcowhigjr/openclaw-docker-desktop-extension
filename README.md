@@ -1,6 +1,12 @@
-# OpenClaw Docker Desktop Extension
+# Shellharbor — Run OpenClaw on your Mac in one click
 
-Run OpenClaw from Docker Desktop on macOS with a more isolated, localhost-only container setup.
+**Shellharbor** is a Docker Desktop extension that starts, isolates, and manages [OpenClaw](https://github.com/openclaw/openclaw) — your personal, open-source AI assistant — in a hardened, localhost-only container. After a one-line install, daily use is GUI-only.
+
+- **One-click run** — start, stop, restart, and open the Control UI from a GUI.
+- **Isolated by default** — read-only root filesystem, all capabilities dropped, `no-new-privileges`, bound to `127.0.0.1` only.
+- **Managed lifecycle** — persistent state, runtime update checks, and guided host-Ollama setup for offline local models.
+
+*Community packaging. Not an official Docker or OpenClaw extension.*
 
 ## 60-second quick start
 
@@ -25,7 +31,7 @@ The pre-push target also runs local security preflights where possible: Gitleaks
 
 Then:
 
-1. Open the `OpenClaw` extension in Docker Desktop.
+1. Open the `Shellharbor` extension in Docker Desktop.
 2. Click `Start OpenClaw`.
 3. Wait for the service status to show `OpenClaw is ready`.
 4. Choose a first-run provider path in the extension:
@@ -395,7 +401,7 @@ The developer-only local update path remains `make update-extension`. The releas
   - Hosted-provider use does not require Ollama, but it does require the relevant provider auth and network access.
 - Basic startup workflow:
   - Open Docker Desktop and wait for it to finish starting.
-  - Open the OpenClaw extension in Docker Desktop.
+  - Open the Shellharbor extension in Docker Desktop.
   - Click `Check Requirements` if you want to confirm Docker is responsive, the configured host port is not already used by another Docker container, and host Ollama is reachable whenever OpenClaw is already running.
   - Click `Start`; if the service already exists, use `Restart`.
   - Click `Open Control UI` after the status says `OpenClaw is ready`.

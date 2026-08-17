@@ -51,7 +51,7 @@ cat >"$report_file" <<EOF
 ## Manual Flow
 
 1. Install the channel image in Docker Desktop if it is not already installed.
-2. Open the \`OpenClaw\` extension.
+2. Open the \`Shellharbor\` extension.
 3. Confirm the \`Quick Start\` card lists the expected four-step flow.
 4. Click \`Check Requirements\`.
 5. Click \`Start\`.

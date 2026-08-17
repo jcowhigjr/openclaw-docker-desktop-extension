@@ -54,7 +54,7 @@ if [ "$1" = "pull" ] && [ "$3" = "docker.io/jcowhigjr/openclaw-docker-desktop-ex
 fi
 
 if [ "$1" = "inspect" ] && [ "$2" = "docker.io/jcowhigjr/openclaw-docker-desktop-extension:1.2.3" ]; then
-  printf '%s\n' '[{"Config":{"Labels":{"org.opencontainers.image.title":"OpenClaw"}}}]'
+  printf '%s\n' '[{"Config":{"Labels":{"org.opencontainers.image.title":"Shellharbor for OpenClaw"}}}]'
   exit 0
 fi
 
@@ -84,10 +84,10 @@ case "$*" in
     printf '%s\n' '{"config":{"digest":"sha256:testconfigsemver"}}'
     ;;
   *"https://ghcr.io/v2/jcowhigjr/openclaw-docker-desktop-extension/blobs/sha256:testconfigv"*)
-    printf '%s\n' '{"config":{"Labels":{"org.opencontainers.image.title":"OpenClaw"}}}'
+    printf '%s\n' '{"config":{"Labels":{"org.opencontainers.image.title":"Shellharbor for OpenClaw"}}}'
     ;;
   *"https://ghcr.io/v2/jcowhigjr/openclaw-docker-desktop-extension/blobs/sha256:testconfigsemver"*)
-    printf '%s\n' '{"config":{"Labels":{"org.opencontainers.image.title":"OpenClaw"}}}'
+    printf '%s\n' '{"config":{"Labels":{"org.opencontainers.image.title":"Shellharbor for OpenClaw"}}}'
     ;;
   *)
     echo "unexpected curl invocation: $*" >&2
