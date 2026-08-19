@@ -104,7 +104,7 @@ jobs:
           labels: ${{ steps.runtime-meta.outputs.labels }}
 
       - name: Run Trivy vulnerability scanner (runtime)
-        uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956 # master
+        uses: aquasecurity/trivy-action@d2a0b60797ff03db6132bd4e2b293f9b37081297 # master
         env:
           TRIVY_PLATFORM: linux/arm64
         with:
@@ -144,7 +144,7 @@ jobs:
             VITE_DEFAULT_RUNTIME_IMAGE=${{ env.REGISTRY }}/${{ env.RUNTIME_IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
 
       - name: Run Trivy vulnerability scanner (extension)
-        uses: aquasecurity/trivy-action@2736533278103862a861f4a35ebac3e97854d956 # master
+        uses: aquasecurity/trivy-action@d2a0b60797ff03db6132bd4e2b293f9b37081297 # master
         env:
           TRIVY_PLATFORM: linux/arm64
         with:
