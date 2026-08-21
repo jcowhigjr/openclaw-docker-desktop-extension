@@ -1,14 +1,24 @@
 # Trademarks
 
-"OpenClaw" is a trademark or common-law mark of the OpenClaw Foundation or its
-respective owners. This project is not affiliated with, sponsored by, or
-endorsed by the OpenClaw project or the OpenClaw Foundation.
+"Shellharbor" is the project name used by this repository. No statement in this
+file represents that a comprehensive trademark clearance search or trademark
+registration has been completed.
 
-The name "OpenClaw" is used in this repository solely to describe the upstream
-software that this Docker Desktop extension wraps, as permitted for factual
-identification of a dependency under Apache License 2.0 §6.
+The source code is licensed under the Apache License 2.0. Use of the
+"Shellharbor" name or project icon by a fork or unaffiliated product should not
+imply affiliation with, sponsorship by, or endorsement from this project.
 
-The `openclaw.svg` icon and the visual design of this extension are original
+"OpenClaw" is the name used by the upstream OpenClaw project and may be
+protected by trademark rights held by its respective owners. This project is
+not affiliated with, sponsored by, or endorsed by the OpenClaw project or the
+OpenClaw Foundation.
+
+The name "OpenClaw" is used in this repository solely to identify the upstream
+software that this Docker Desktop extension wraps. Such use is descriptive and
+nominative, intended only to state a fact of interoperability, and does not
+imply affiliation or endorsement.
+
+The `icon.svg` icon and the visual design of this extension are original
 works Copyright 2025-2026 John Cowhig Jr. and are not derived from any
 OpenClaw Foundation trademark or logo.
 

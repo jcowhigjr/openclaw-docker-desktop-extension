@@ -17,6 +17,7 @@ capture_script="${report_dir}/capture-artifacts.sh"
 grep -F '# stable Channel Smoke Test - 2026-05-17' "$report_file" >/dev/null
 grep -F 'Release tag under test: `v0.3.4`' "$report_file" >/dev/null
 grep -F 'make verify-release-channel RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=v0.3.4' "$report_file" >/dev/null
+grep -F 'Open the `Shellharbor` extension.' "$report_file" >/dev/null
 grep -F 'environment.txt' "$report_file" >/dev/null
 grep -F 'verify-release-channel.txt' "$report_file" >/dev/null
 grep -F 'verify-channel-install-dry-run.txt' "$report_file" >/dev/null

@@ -73,6 +73,15 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 - Use `.dockerignore`, image metadata, and build validation to keep the repo publishable.
 - Keep the README crisp and public-facing.
 
+## Public Repository Boundary
+
+- Treat every tracked file, commit, branch, and pull-request revision as immediately public. GitHub Pages also deploys the entire `docs/` tree.
+- Never stage or commit private AI-session output, raw retrospectives, internal product or competitive strategy, unpublished outreach drafts, or naming, namespace, domain-acquisition, and brand-defense plans.
+- Commit only factual project documentation and deliberately sanitized public collateral. If publication intent is uncertain, fail closed and keep the material outside this repository.
+- `scripts/public-docs-allowlist.txt` is the explicit publication contract for `docs/`. Do not add a path to it mechanically: inspect and sanitize the file, then add it only when its public purpose is explicit.
+- Run `make test-public-repo-boundary` whenever adding or renaming documentation, planning artifacts, evaluations, or agent instructions. The same gate runs in pre-push and CI.
+- Deleting sensitive material in a later commit does not remove it from history. After accidental publication, stop new work, rewrite the affected branch before another push, force-push with an exact lease, and report any remote retention that requires provider support.
+
 ## Secrets and Auth
 
 - Never commit secrets or auth material.
@@ -109,3 +118,10 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 - On this workstation, Docker Desktop CLI symlinks are installed under `$HOME/.docker/bin`.
 - If `docker` resolves to another install or cannot reach the Desktop engine, use `$HOME/.docker/bin/docker` or add `$HOME/.docker/bin` to `PATH` before live Docker validation.
 - Current local-model development assumes host Ollama is already running on `127.0.0.1:11434`; container-to-host checks should use `http://host.docker.internal:11434`.
+
+## Session Retro Contract
+
+- Before the final response in a long or blocker-heavy session, invoke `[$session-retro](/Users/temp/.codex/skills/session-retro/SKILL.md)`.
+- Re-check capabilities after sandbox, auth, or network conditions change during the run.
+- Prefer `gh` for GitHub writes when `gh auth status` is healthy and MCP writes are narrower or failing.
+- Treat `branch already used by worktree` and dead preview URLs as routing problems that require fallback, not early stop conditions.
