@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Shellharbor">
+  <rect width="128" height="128" rx="28" fill="#101820"/>
+  <!-- carapace / shell dome: the hardened shell (isolation moat) -->
+  <path d="M26 80 a38 38 0 0 1 76 0 Z" fill="#ff5a36"/>
+  <!-- shell ridges -->
+  <path d="M64 44 V80 M46 50 L52 80 M82 50 L76 80" stroke="#101820" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- sheltered creature peeking under the rim -->
+  <circle cx="54" cy="72" r="4.5" fill="#fff2e8"/>
+  <circle cx="74" cy="72" r="4.5" fill="#fff2e8"/>
+  <!-- harbor water: the safe local berth -->
+  <path d="M24 95 q10 -7 20 0 t20 0 t20 0 t20 0" stroke="#ff5a36" stroke-width="6" fill="none" stroke-linecap="round"/>
+</svg>

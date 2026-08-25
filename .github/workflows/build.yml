@@ -36,6 +36,9 @@ jobs:
       - name: Verify docs landing page
         run: make test-docs-landing-page
 
+      - name: Verify public repository boundary
+        run: make test-public-repo-boundary
+
       - name: Build runtime image
         run: docker build -t openclaw-docker-extension-runtime:test -f runtime/Dockerfile runtime
 

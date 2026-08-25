@@ -5,7 +5,7 @@
 !Dockerfile
 !docker-compose.yaml
 !metadata.json
-!openclaw.svg
+!icon.svg
 !ui/
 !ui/index.html
 !ui/package-lock.json

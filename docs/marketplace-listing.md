@@ -2,17 +2,21 @@
 
 Use this as the source copy for Docker Hub and Docker Marketplace submission fields.
 
+## Extension Name
+
+Shellharbor for OpenClaw
+
 ## Short Description
 
-Run OpenClaw from Docker Desktop with localhost-only access, persistent state, update controls, and guided host Ollama setup.
+Run OpenClaw on your Mac in one click — isolated, localhost-only, managed from Docker Desktop.
 
 ## Overview
 
-OpenClaw Docker Desktop Extension gives macOS users a clean local path for trying OpenClaw without managing the container wiring by hand.
+Shellharbor gives macOS users a clean local path for trying OpenClaw without managing the container wiring by hand.
 
 The extension starts and stops an OpenClaw runtime container, publishes the Control UI on `127.0.0.1`, preserves OpenClaw state in a Docker volume, checks runtime image freshness, and helps configure host Ollama models for local/offline use after the model is already installed.
 
-This is a Docker Desktop trial path for OpenClaw. It is more isolated and easier to clean up than a direct host install, but it is not a perfect security boundary or a full native installer.
+Shellharbor is community packaging — not an official OpenClaw or Docker product. It is a Docker Desktop path for OpenClaw that is more isolated and easier to clean up than a direct host install, but it is not a perfect security boundary or a full native installer.
 
 ## Key Features
 
@@ -28,7 +32,7 @@ This is a Docker Desktop trial path for OpenClaw. It is more isolated and easier
 
 1. Start Docker Desktop and wait for the Docker Engine to become ready.
 2. Install the extension from Docker Marketplace once published, or use the documented GHCR path while Marketplace submission is pending.
-3. Open the `OpenClaw` extension in Docker Desktop.
+3. Open the `Shellharbor` extension in Docker Desktop.
 4. Click `Check Requirements`.
 5. Click `Start`.
 6. Wait for `OpenClaw is ready`.

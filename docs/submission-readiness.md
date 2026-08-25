@@ -53,7 +53,7 @@ one capture command fails.
    docker extension install ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:stable
    ```
 
-4. Open the `OpenClaw` extension in Docker Desktop.
+4. Open the `Shellharbor` extension in Docker Desktop.
 5. Confirm the first visible panel includes the `Quick Start` card with four steps: install Docker Desktop, wait for the gateway token, open the Control UI, and optionally use host Ollama.
 6. Click `Check Requirements`.
 7. Click `Start`.

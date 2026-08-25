@@ -3,3 +3,6 @@ ui/node_modules/
 ui/build/
 .playwright-cli/
 output/
+chatgpt-app/
+_study-guide/
+.docker-submission-253-watch.state.json

@@ -16,7 +16,7 @@ runtime_semver_image="ghcr.io/${ghcr_owner}/openclaw-docker-desktop-extension-ru
 dockerhub_extension_semver_image="docker.io/${dockerhub_owner}/openclaw-docker-desktop-extension:${release_version}"
 extension_repo="${ghcr_owner}/openclaw-docker-desktop-extension"
 dockerhub_extension_repo="${dockerhub_owner}/openclaw-docker-desktop-extension"
-expected_extension_title="${EXPECTED_EXTENSION_TITLE:-OpenClaw}"
+expected_extension_title="${EXPECTED_EXTENSION_TITLE:-Shellharbor for OpenClaw}"
 
 if [ -z "$release_tag" ]; then
   echo "RELEASE_TAG is required, for example: make verify-release-tag RELEASE_TAG=v0.1.0" >&2
