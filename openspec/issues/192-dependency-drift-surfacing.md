@@ -2,6 +2,9 @@
 
 Tracking: <https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/192>
 
+**Delivery order:** 4 of 4  (blocked by: #191 — reuses its load probe)
+**Minimum agent tier:** T2 — persisted last-known-good state, drift comparison, checklist UI
+
 ## Problem
 
 Both external dependencies change and stop underneath the user, silently, and
@@ -36,9 +39,21 @@ weekly, a container engine that stages updates but cannot auto-start, and a
 four-surface launch sequence. The failure mode is always the same — something
 worked yesterday and silently doesn't today, and the extension says nothing.
 
+## Design stance: an explicit checklist, not invisible magic
+
+We cannot bundle Docker or Ollama, so we should stop implying they are handled.
+An explicit checklist that tells the truth is worth more than an interface that
+appears to work and fails opaquely half an hour later. Five visible minutes beats
+thirty invisible ones.
+
+The manual version ships first as `docs/preflight-checklist.md`. This issue is
+about promoting it into the UI as a gate users pass through on start — visible,
+with per-item pass/fail and a remedy, not a spinner that hides state.
+
 ## Proposed change
 
-A dependency preflight card, shown before the provider flow:
+A dependency preflight card, shown before the provider flow, mirroring the
+steps in `docs/preflight-checklist.md`:
 
 1. **Docker engine reachable?** If not, say so plainly and link to starting it.
    Today the extension simply cannot load.
@@ -60,6 +75,10 @@ regression into a one-line explanation.
       names both versions.
 - [ ] Version-drift banner never appears when the probe passes.
 - [ ] Unit tests for the drift comparison (no drift / drift+pass / drift+fail).
+- [ ] Each checklist item renders its own pass/fail state and a remedy; no single
+      aggregate spinner that hides which dependency is at fault.
+- [ ] The UI checklist and `docs/preflight-checklist.md` stay in step (same items,
+      same order).
 
 ## Out of scope
 

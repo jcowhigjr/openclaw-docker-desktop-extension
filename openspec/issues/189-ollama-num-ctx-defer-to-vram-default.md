@@ -2,6 +2,9 @@
 
 Tracking: <https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/189>
 
+**Delivery order:** 1 of 4  (blocked by: none)
+**Minimum agent tier:** T1 — mechanical: delete a constant, adjust 2 call sites, extend 2 existing tests
+
 ## Problem
 
 `buildOllamaProviderPatch` (`ui/src/ollamaSetup.ts`) and `resolveOllamaNumCtx`

@@ -2,6 +2,9 @@
 
 Tracking: <https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/190>
 
+**Delivery order:** 3 of 4  (blocked by: #189 — both touch the provider patch; sequence to avoid conflict)
+**Minimum agent tier:** T3 — new external API integration plus a VRAM-fit ranking heuristic, and retires a spec lane across code, specs and docs
+
 ## Problem
 
 `chooseRecommendedOllamaModel` (`ui/src/ollamaSetup.ts`) matches against a

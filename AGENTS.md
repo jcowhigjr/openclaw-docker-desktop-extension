@@ -73,6 +73,54 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 - Use `.dockerignore`, image metadata, and build validation to keep the repo publishable.
 - Keep the README crisp and public-facing.
 
+## Issue Delivery Contract
+
+Every issue filed in this repo carries two fields in its body, near the top:
+
+```
+**Delivery order:** <n> of <total in the current batch>  (blocked by: #x, or none)
+**Minimum agent tier:** T1 | T2 | T3
+```
+
+Ordering is by dependency and by unblocking value, not by issue number. State the
+blocker explicitly so parallel work is obvious.
+
+Tier is the *minimum* capability that should take the issue on. Assign it from
+observable properties of the work, not from a guess at difficulty:
+
+| Tier | Assign when the issue has | Typical model class |
+|---|---|---|
+| **T1** | Mechanical, fully prescriptive change. Single concern. An existing test pattern to copy. No design decisions left open. | Small/fast (Haiku-class) |
+| **T2** | Multiple files, or async/state-flow changes, or a new error taxonomy. Tests written from scratch. Design judgment bounded by the spec. | Mid (Sonnet-class) |
+| **T3** | New external API integration, a ranking/heuristic to design, cross-cutting deletion across code + specs + docs, or open product judgment. | Frontier (Opus-class) |
+
+Rules:
+
+- A tier is a floor, not a ceiling. A higher tier may always take a lower-tier issue.
+- If an implementer finds the work is above its assigned tier, it must stop and say so
+  rather than guess. Re-tier the issue in a comment with the reason.
+- If an issue cannot be given a tier, it is not specified well enough to file.
+
+## Agent Contract Interoperability
+
+Multiple agent tools work in this repo (Claude Code, Codex, Windsurf). They discover
+instructions differently, which has produced duplicated and misattributed work.
+
+- **`AGENTS.md` is the single source of truth.** `CLAUDE.md` exists only to redirect
+  here. Do not fork guidance between them.
+- **Never rely on a user's global agent config** to load this file. Anything a
+  contributor must follow belongs in the repo, not in someone's home directory.
+- **Never set repo-local git identity.** `git config --local user.email` inside this
+  repo has already poisoned local history once: a self-test script set
+  `selftest@example.com`, and every subsequent local commit inherited it. Test
+  fixtures must build throwaway repos under `mktemp -d` and configure identity there.
+- **Never commit to `main` locally.** Branch from `origin/main`, never from a local
+  branch that may have drifted. A local `main` that has diverged is a bug to repair,
+  not a base to build on.
+- **Before starting work, check whether it already exists on `origin/main`.** Repeated
+  redundant commits in this repo have come from branching off stale local state and
+  redoing merged work.
+
 ## Public Repository Boundary
 
 - Treat every tracked file, commit, branch, and pull-request revision as immediately public. GitHub Pages also deploys the entire `docs/` tree.

@@ -2,6 +2,9 @@
 
 Tracking: <https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/191>
 
+**Delivery order:** 2 of 4  (blocked by: none)
+**Minimum agent tier:** T2 — async detect flow, new error taxonomy entry, timeout-vs-error distinction
+
 ## Problem
 
 The extension reports local setup as healthy when it is not.
