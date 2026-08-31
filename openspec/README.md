@@ -1,3 +1,14 @@
+> **STATUS (2026-08-31): the hardware-profile lane is superseded.** An audit against
+> Ollama 0.33.2 found its core premises no longer hold (MLX claim false; Ollama now
+> serves live model recommendations with `vram_bytes`; no telemetry exists to measure
+> the stated success metrics). Model fit is delegated to Ollama in
+> [#190](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/190).
+> Current active issues: [#189](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/189)
+> (num_ctx), [#190](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/190)
+> (model fit), [#191](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/191)
+> (load preflight), [#192](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/192)
+> (dependency drift). Treat the model tables below as historical.
+
 # OpenSpec: Hardware Profile System for Local Models
 
 This directory contains the specification, design, and implementation planning for the Hardware Profile System—a set of extension features to optimize OpenClaw for local Ollama models on constrained hardware, with primary focus on M4 Macs with 24GB RAM.

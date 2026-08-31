@@ -1,3 +1,18 @@
+> **SUPERSEDED (2026-08-31) — see [#190](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/190).**
+>
+> This document proposed a hand-maintained model/performance database. Two of its
+> load-bearing premises were audited against Ollama 0.33.2 and do not hold:
+>
+> - The **MLX claim below is false.** Ollama 0.33.2 runs `llama-server` (llama.cpp);
+>   the bundle ships `libllama*.dylib`. Every tok/s figure here derives from that premise.
+> - **Ollama now serves the data this spec proposed to hand-maintain**, live, via
+>   `/api/experimental/model-recommendations`, including per-model `vram_bytes`, and it
+>   already derives a VRAM-based default context.
+>
+> A hand-maintained table cannot track weekly model releases. Model fit is delegated to
+> Ollama in #190. Retained here as history and for the UI-state wireframes, which are
+> still useful. Do not treat the model tables or tok/s figures as accurate.
+
 # Hardware Profile System Specification
 
 ## Overview
@@ -35,7 +50,7 @@ A comprehensive system to detect, configure, and optimize OpenClaw for local mod
 | **qwen3.5:27b** | 27B | ~16GB | 6-10 tok/s | Top quality, tight fit |
 
 **Key Insights from Research**:
-1. **MLX Backend**: Ollama 0.19+ uses Apple MLX framework → 1.7-3.4x faster than llama.cpp
+1. ~~**MLX Backend**: Ollama 0.19+ uses Apple MLX framework → 1.7-3.4x faster than llama.cpp~~ **— INCORRECT.** Verified on 0.33.2: the runner is `llama-server` (llama.cpp). See #190.
 2. **Flash Attention**: `OLLAMA_FLASH_ATTENTION=1` reduces memory and improves speed
 3. **KV Cache Quantization**: `OLLAMA_KV_CACHE_TYPE=q8_0` uses ½ memory vs f16 with minimal quality loss
 4. **Prompt Eval vs Generation**: Prompt eval (first tokens) is slower than generation (subsequent tokens)
