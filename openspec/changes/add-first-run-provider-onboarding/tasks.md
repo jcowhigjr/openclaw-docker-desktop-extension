@@ -1,7 +1,7 @@
 ## 1. Config & state foundation
 
 - [x] 1.1 Add `providerChoice: 'unset' | 'ollama' | 'anthropic'` to `ExtensionConfig` and `DEFAULT_CONFIG` in `ui/src/App.tsx`
-- [ ] 1.2 Update `loadConfig()` to default `providerChoice` to `'unset'`, and infer a resolved choice for existing installs (e.g. an Ollama default already configured) so upgraders are not re-onboarded
+- [x] 1.2 Update `loadConfig()` to default `providerChoice` to `'unset'`, and infer a resolved choice for existing installs (e.g. an Ollama default already configured) so upgraders are not re-onboarded
 - [x] 1.3 Ensure `persistConfig()` writes the new field
 
 ## 2. Pure onboarding logic module (TDD)
@@ -22,7 +22,7 @@
 
 ## 4. Chat gating
 
-- [ ] 4.1 Gate the chat / Open Control UI affordance on `isChatGated(...)`; show the "choose a provider / pick a model first" CTA instead of letting the raw anthropic error be the first experience
+- [x] 4.1 Gate the chat / Open Control UI affordance on `isChatGated(...)`; show the "choose a provider / pick a model first" CTA instead of letting the raw anthropic error be the first experience
 - [ ] 4.2 Add a "change provider" reset that returns to the fork
 
 ## 5. Verification
@@ -30,4 +30,17 @@
 - [x] 5.1 Run `npm test` / vitest in `ui/` — all new and existing tests green
 - [x] 5.2 Run typecheck + lint/build (`npm run build` in `ui/`)
 - [ ] 5.3 Manual smoke: fresh config (no `providerChoice`) shows fork; Ollama-with-model gives one-click apply then unblocks chat; Ollama-without-model shows pull CTA; hosted path resolves; upgrader with existing Ollama default is NOT re-onboarded
-- [ ] 5.4 Update README onboarding section to match the new first-run flow
+- [x] 5.4 Update README onboarding section to match the new first-run flow
+
+## Reconciliation 2026-08-31
+
+Bookkeeping drifted while work continued across tools/sessions. Verified against
+code on `origin/main`:
+
+- 1.2 done — `providerChoice: 'unset'` (`ui/src/App.tsx`) + `inferProviderChoiceFromExistingState`.
+- 4.1 done — `isChatGated` wired in `ui/src/App.tsx`.
+- 5.4 done — README onboarding rewrite is on `origin/main`.
+- **4.2 genuinely open** — no "change provider" reset exists in `ui/src/App.tsx`.
+- **5.3 genuinely open** — manual smoke, needs a human run.
+
+Do not archive this change until 4.2 and 5.3 are closed.

@@ -21,7 +21,15 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 ## Current Roadmap
 
 - Treat issue [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12) as the source of truth for roadmap and decision gates.
-- Current live status as of 2026-06-26: latest release is `v0.3.6`; GHCR `stable` was promoted to `v0.3.6`; pinned GHCR and Docker Hub `0.3.6` install validation was recorded in #86; the latest committed real Docker Desktop stable-channel smoke packet remains `v0.3.4`.
+- **Resume point (update this at the end of any session that changes priorities).**
+  Current live status as of 2026-08-31: local-usability batch [#189](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/189)
+  -> [#191](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/191)
+  -> [#190](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/190)
+  -> [#192](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/192)
+  is filed and specced, none started. Each carries a delivery order and minimum agent
+  tier. The hardware-profile lane (#157/#160) is superseded by #190. Users should run
+  `docs/preflight-checklist.md` before reporting local-model problems.
+- Previous live status as of 2026-06-26: latest release is `v0.3.6`; GHCR `stable` was promoted to `v0.3.6`; pinned GHCR and Docker Hub `0.3.6` install validation was recorded in #86; the latest committed real Docker Desktop stable-channel smoke packet remains `v0.3.4`.
 - MVP is complete enough to share: GHCR/channel install path, update/restart flow, localhost Control UI bootstrap, token retry UX, first-run provider fork and chat gating, host Ollama setup, execution mode UX, repo metadata, `.env` documentation, readiness checks, build validation, and committed Docker Desktop stable-channel smoke evidence.
 - Default post-MVP posture is pause unless outside traction appears or a release/distribution gate fails and needs a small reproducible fix.
 - Active gates and follow-ups are:
@@ -31,7 +39,11 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 - [#161](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/161) merged on 2026-06-26 as a docs-only OpenSpec hardware-profile design package; do not reopen that planning lane unless working a specific follow-up issue.
 - Native migration after a successful Docker Desktop trial is documented in `docs/native-migration-investigation.md`; keep it manual/documentation-only unless real user demand justifies reopening implementation work.
 - Treat [#2](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/2) and [#13](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/13) as historical execution-mode context, not active implementation tracks.
-- Do not start new feature branches from stale priority notes. Re-check #12, open issues, and the latest merged PRs first.
+- Do not start new feature branches from stale priority notes. Start every session by
+  reading, in this order: the Resume point above, `gh issue list`, open task lists under
+  `openspec/changes/*/tasks.md`, and the latest merged PRs. These are the only durable
+  state. Anything held in one tool's private memory does not survive a tool switch and
+  must be written into the repo before the session ends.
 
 ## Decision Gates
 
@@ -169,7 +181,10 @@ instructions differently, which has produced duplicated and misattributed work.
 
 ## Session Retro Contract
 
-- Before the final response in a long or blocker-heavy session, invoke `[$session-retro](/Users/temp/.codex/skills/session-retro/SKILL.md)`.
+- Before the final response in a long or blocker-heavy session, run a session retro:
+  record what blocked progress and apply the smallest safe systemic fix. If your tool
+  has a `session-retro` skill, use it; otherwise do it inline. Do not reference a
+  tool-specific absolute path here — see Agent Contract Interoperability.
 - Re-check capabilities after sandbox, auth, or network conditions change during the run.
 - Prefer `gh` for GitHub writes when `gh auth status` is healthy and MCP writes are narrower or failing.
 - Treat `branch already used by worktree` and dead preview URLs as routing problems that require fallback, not early stop conditions.
