@@ -241,9 +241,13 @@ export OLLAMA_MAX_LOADED_MODELS=2    # Keep multiple models loaded
 
 ### Symptom: Single-character replies
 
-**Cause:** Fixed in PR #154—extension now sets `num_ctx: 32768` by default.
+**Cause:** A context window too small for the prompt. PR #154 originally addressed
+this by forcing `num_ctx: 32768`, but that default was removed — it overrode Ollama's
+own VRAM-derived choice and made large models unusable on constrained hardware.
 
-If you see this, ensure you're using the latest extension version.
+Ollama now sizes the context itself. If you still see single-character replies, raise
+it explicitly with `OPENCLAW_OLLAMA_NUM_CTX` (see Context Window Tuning above) rather
+than assuming the extension has set a large value for you.
 
 ---
 
