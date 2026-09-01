@@ -39,10 +39,25 @@ llama-server terminated  error="signal: abort trap"
 reported success. The user experiences it as an opaque chat timeout much later,
 with nothing pointing at Ollama.
 
-Isolation: the same binary and models launched via `ollama serve` from a shell
-load fine — only the Ollama.app launch context fails. Failure counts across log
-rotations show it arriving with an auto-update: server-5 = 0, server-4 = 6,
-server-3 = 112.
+**The failure is intermittent and self-recovering — which is the whole point.**
+Failure counts per log rotation on the same host:
+
+| Log | Through | Failures |
+|---|---|---|
+| server-5 | Aug 26 | 0 |
+| server-4 | Aug 28 | 6 |
+| server-3 | Aug 30 | 112 |
+| server-1 | Aug 31 12:44 | 14 |
+| server.log | Sep 1 | 0 |
+
+The process that logged the last 14 failures started Aug 31 12:44:58 and never
+restarted; it began serving loads normally again on its own. An earlier reading of
+this data — that only the `Ollama.app` launch context fails, since a shell-launched
+`ollama serve` worked — does not hold: that test simply landed in a good window.
+
+This raises the bar for the probe rather than lowering it. A transient fault means a
+point-in-time green light is close to worthless: the probe must run at the moment of
+use, and a past success must not be cached as health.
 
 ## Proposed change
 
