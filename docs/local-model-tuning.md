@@ -171,7 +171,12 @@ docker exec -e OPENCLAW_OLLAMA_THINKING=true openclaw-docker-extension-service \
 docker restart openclaw-docker-extension-service
 ```
 
-Replace `<model>` with your configured Ollama model id (e.g. `qwen3.5:latest`).
+Replace `<model>` with your configured Ollama model id.
+
+**This requires a runtime image that already contains this behaviour.** On an
+older runtime the helper writes no `thinking` key at all, so the command appears
+to succeed while the verification below prints nothing. Update the extension
+first if that happens.
 
 Verify what is actually configured by reading the written OpenClaw config in the
 runtime container:
@@ -181,9 +186,12 @@ docker exec openclaw-docker-extension-service \
   grep -o '"thinking":[^,}]*' /home/node/.openclaw/openclaw.json
 ```
 
-On success this prints `"thinking":false` (the default) or `"thinking":true` (after
-the rollback above). No output means no `thinking` key is configured — expected on
-installs that predate this behaviour, and a signal to run the command above.
+On success this prints `"thinking": false` (the default) or `"thinking": true`
+(after the rollback above) — the config is written with two-space indentation, so
+there is a space after the colon.
+
+No output means no `thinking` key is configured. That is expected on installs
+predating this behaviour, and a signal to run the command above.
 
 ---
 
