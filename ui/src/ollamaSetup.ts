@@ -83,7 +83,9 @@ export function buildOllamaTagsFetchArgs(): string[] {
 // this after a restart means the user's first real message does not pay the
 // cold-load cost (which otherwise shows up as an "LLM request timed out").
 // Returns [] for a blank model so callers can skip the warmup safely.
-export function buildOllamaWarmupArgs(model: string): string[] {
+// `timeoutSeconds` defaults to the existing 120s restart-time warmup budget;
+// callers with a tighter budget (e.g. a detect-time load probe) can override it.
+export function buildOllamaWarmupArgs(model: string, timeoutSeconds = 120): string[] {
   const trimmed = model.trim();
   if (!trimmed) {
     return [];
@@ -94,7 +96,7 @@ export function buildOllamaWarmupArgs(model: string): string[] {
     'curl',
     '-fsS',
     '--max-time',
-    '120',
+    String(timeoutSeconds),
     '-X',
     'POST',
     '-H',

@@ -2,6 +2,7 @@
 // Copyright 2025-2026 John Cowhig Jr.
 import {
   buildOllamaTagsFetchArgs,
+  buildOllamaWarmupArgs,
   chooseRecommendedOllamaModel,
   normalizeOllamaModelName,
   parseOllamaTags,
@@ -10,9 +11,71 @@ import {
 import { classifyError, classifyOllamaTags, getRemedy, getTitle } from './diag/errorCodes';
 import { captureOllamaSnapshot, hasOllamaInvariantViolation } from './diag/snapshot';
 import { traceAction } from './diag/trace';
+import { formatUnknownError } from './requirementChecks';
 
 type CommandResult = { stdout?: string; stderr?: string };
 type CommandRunner = (cmd: string, args: string[]) => Promise<CommandResult>;
+
+// /api/tags lists models from disk and returns 200 even when Ollama cannot
+// load a single one (e.g. a Metal/GPU backend fault). A bounded load probe
+// after the tags parse is the only way to catch that before the user hits an
+// opaque chat timeout. Keep this well under the overall detect budget: a
+// timeout here must not read as "Ollama is broken" (see isProbeTimeout).
+const MODEL_PROBE_TIMEOUT_SECONDS = 20;
+
+// Curl reports a timed-out request in more than one way depending on version
+// and platform (exit code 28, "Operation timed out", a bare "timed out", or --
+// once formatUnknownError falls back to JSON.stringify on a plain rejection
+// object like `{ code: 28 }` -- the `"code":28` JSON form). Match all of them
+// case-insensitively and defensively: a cold load that trips the 20s bound is
+// not a broken Ollama, and misclassifying an unfamiliar timeout message as a
+// hard failure would incorrectly demote severity.
+//
+// The probe is built with `curl -fsS`: `-f` makes curl fail on a server error
+// and discard the response body, so a genuine Ollama failure reaches this
+// function only as something like "curl: (22) The requested URL returned
+// error: 500" -- never containing a timeout token. That is the only reason the
+// loose 'timeout'/'timed out' substring match below is safe today.
+//
+// If `-f` is ever dropped, this function is NOT the protection. Without `-f`
+// curl exits 0 on an HTTP 500, so the probe promise resolves and this is never
+// called -- Ollama's runner-crash string ("timed out waiting for llama runner
+// to start", precisely the fault OLM-006 exists to catch) would become a
+// silent pass, not a swallowed timeout. Protecting that case means inspecting
+// the response body for an `error` field, not extending the match below.
+//
+// The `looksLikeHttpResponse` guard is still worth keeping: it is cheap and it
+// pins the assumption above so a future reader sees it.
+function isProbeTimeout(message: string): boolean {
+  const lower = message.toLowerCase();
+  // Note: the `"code":28` pattern below only fires when formatUnknownError
+  // fell through to JSON.stringify -- it returns the FIRST non-empty of
+  // message/stderr/stdout/error, so `{ message: 'command failed', code: 28 }`
+  // formats to "command failed" and never reaches the structured match.
+  // The realistic path is covered: `curl -S` writes "curl: (28) ..." to stderr.
+  // Reading the exit code properly would mean widening CommandRunner.
+  const looksLikeHttpResponse = /\(22\)/.test(lower) || lower.includes('returned error');
+  if (looksLikeHttpResponse) {
+    return false;
+  }
+  return (
+    lower.includes('timed out') ||
+    lower.includes('timeout') ||
+    /\bexit code:?\s*28\b/.test(lower) ||
+    /\(28\)/.test(lower) ||
+    /"code"\s*:\s*28\b/.test(lower)
+  );
+}
+
+// Shared membership check: a persisted UI selection or an openclaw config
+// value can name a model that is no longer present in the host's model list
+// (e.g. the user deleted it). `finalize` clears exactly that case before
+// returning it to the UI, and the load probe below must use the same check
+// to gate itself -- probing a model that isn't installed produces a 404 that
+// looks identical to a broken Ollama.
+function isModelInstalled(models: OllamaModel[], candidate: string): boolean {
+  return candidate !== '' && models.some((model) => model.name === candidate);
+}
 
 export type DetectInput = {
   run: CommandRunner;
@@ -46,7 +109,7 @@ export async function runDetect(input: DetectInput): Promise<DetectOutput> {
       code?: string;
     }): DetectOutput => {
       let selected = params.selected;
-      if (selected !== '' && !params.models.some((model) => model.name === selected)) {
+      if (!isModelInstalled(params.models, selected)) {
         selected = '';
       }
 
@@ -84,7 +147,7 @@ export async function runDetect(input: DetectInput): Promise<DetectOutput> {
       tagsStdout = asText(result.stdout);
       step('tags_fetch', 'ok');
     } catch (error) {
-      const raw = error instanceof Error ? error.message : String(error);
+      const raw = formatUnknownError(error);
       const classification = classifyError('ollama.tags_fetch', raw);
       step('tags_fetch', 'error', { code: classification.code, error: { message: raw } });
       return finalize({
@@ -128,7 +191,7 @@ export async function runDetect(input: DetectInput): Promise<DetectOutput> {
       configured = normalizeOllamaModelName(asText(result.stdout));
       step('config_get', 'ok');
     } catch (error) {
-      const raw = error instanceof Error ? error.message : String(error);
+      const raw = formatUnknownError(error);
       const classification = classifyError('ollama.config_get', raw);
       step('config_get', classification.code === 'OLM-001' ? 'ok' : 'warning', {
         code: classification.code,
@@ -137,15 +200,53 @@ export async function runDetect(input: DetectInput): Promise<DetectOutput> {
     }
 
     const selected = initialSelected || configured || chooseRecommendedOllamaModel(models);
+
+    let severity: DetectOutput['severity'] = models.length > 0 ? 'success' : 'info';
+    let status =
+      models.length > 0
+        ? `Detected ${models.length} host Ollama model${models.length === 1 ? '' : 's'}.`
+        : 'Host Ollama responded, but no models were installed.';
+    let code: string | undefined;
+
+    // Only probe when the selection actually names an installed model. A
+    // persisted UI choice or openclaw config value can point at a model that
+    // was since deleted; probing that name would 404 and look identical to a
+    // broken Ollama, so this uses the same membership check `finalize` uses
+    // to silently clear a stale selection. With no models installed (or no
+    // resolvable selection) the state is already reported by the severity
+    // set above.
+    if (isModelInstalled(models, selected)) {
+      try {
+        await input.run('exec', [
+          containerId,
+          ...buildOllamaWarmupArgs(selected, MODEL_PROBE_TIMEOUT_SECONDS),
+        ]);
+        step('model_probe', 'ok');
+      } catch (error) {
+        const raw = formatUnknownError(error);
+        if (isProbeTimeout(raw)) {
+          // A slow cold load is not a broken Ollama: leave severity as-is and
+          // only surface it in the trace as a warning.
+          step('model_probe', 'warning', { error: { message: raw } });
+        } else {
+          const classification = classifyError('ollama.model_probe', raw);
+          step('model_probe', 'error', { code: classification.code, error: { message: raw } });
+          severity = 'error';
+          status = `${getTitle(classification.code)}: ${raw} [${classification.code}] ${getRemedy(
+            classification.code,
+          )}`;
+          code = classification.code;
+        }
+      }
+    }
+
     return finalize({
       models,
       configured,
       selected,
-      severity: models.length > 0 ? 'success' : 'info',
-      status:
-        models.length > 0
-          ? `Detected ${models.length} host Ollama model${models.length === 1 ? '' : 's'}.`
-          : 'Host Ollama responded, but no models were installed.',
+      severity,
+      status,
+      code,
     });
   });
 }
