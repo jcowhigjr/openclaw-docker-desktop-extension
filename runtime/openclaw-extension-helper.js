@@ -113,11 +113,13 @@ function executionModeConfig(mode) {
 }
 
 // Resolve the Ollama context window size (num_ctx) for the model entry.
-// Without num_ctx, Ollama defaults to a 4096-token context. OpenClaw's injected
-// system prompt is ~4-10k tokens, which fills that window and leaves room for
-// only ~1 token of generation, so chat replies come back as a single character.
-// A larger context (default 32768) restores full responses. Overridable via
-// OPENCLAW_OLLAMA_NUM_CTX, which must parse to a positive finite integer.
+// Left unset by default: Ollama derives its own default from available VRAM
+// (e.g. 4096 on an M4/24GB host), and OpenClaw's native adapter deliberately
+// omits num_ctx so Ollama decides. Forcing a fixed value here can exceed what
+// the host can serve — a 27.9B model at a forced 32768 returned nothing in 10
+// minutes, well past the 120s idle watchdog. Overridable via
+// OPENCLAW_OLLAMA_NUM_CTX, which must parse to a positive finite integer;
+// unset, blank, or invalid values leave num_ctx unset.
 function resolveOllamaNumCtx() {
   const raw = process.env.OPENCLAW_OLLAMA_NUM_CTX;
   if (typeof raw === 'string' && raw.trim() !== '') {
@@ -126,7 +128,7 @@ function resolveOllamaNumCtx() {
       return n;
     }
   }
-  return 32768;
+  return undefined;
 }
 
 // Resolve whether Ollama "thinking" (reasoning trace) is enabled for the model
@@ -212,6 +214,13 @@ function ollamaConfigWrite(model) {
   // request silently dropped, making the OPENCLAW_OLLAMA_THINKING rollback
   // switch inert. Deriving both from one resolved value keeps them in sync.
   const thinking = resolveOllamaThinking();
+  const numCtx = resolveOllamaNumCtx();
+  const params = { thinking };
+  if (numCtx !== undefined) {
+    // Only set num_ctx when explicitly overridden; otherwise omit the key
+    // entirely so Ollama picks its own default from available VRAM.
+    params.num_ctx = numCtx;
+  }
   config.models.providers.ollama = {
     api: 'ollama',
     apiKey: 'ollama-local',
@@ -221,10 +230,7 @@ function ollamaConfigWrite(model) {
         id: selectedModel,
         name: selectedModel,
         reasoning: thinking,
-        params: {
-          num_ctx: resolveOllamaNumCtx(),
-          thinking,
-        },
+        params,
       },
     ],
   };

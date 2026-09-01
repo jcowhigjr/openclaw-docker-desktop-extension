@@ -140,9 +140,9 @@ export OLLAMA_KEEP_ALIVE=30m
 
 ### Context Window Tuning
 
-The extension now sets `num_ctx: 32768` by default (fixing the single-character reply bug). On 16GB systems, this is appropriate. On 24GB systems, you can experiment with larger values via `OPENCLAW_OLLAMA_NUM_CTX`.
+The extension leaves `num_ctx` unset by default, so Ollama picks its own context window from available VRAM (e.g. 4096 on an M4/24GB host). Set `OPENCLAW_OLLAMA_NUM_CTX` to opt into a fixed value instead.
 
-**Trade-off:** Larger context = more memory, slower prompt evaluation. The default is tuned for reliable operation on typical hardware.
+**Trade-off:** Larger context = more memory, slower prompt evaluation, and on VRAM-constrained hosts can push a large model past the idle watchdog with no response at all. Prefer leaving `num_ctx` unset unless you have measured headroom for a larger value.
 
 ### Disabling Ollama Native Thinking (Qwen3-Style Models)
 
