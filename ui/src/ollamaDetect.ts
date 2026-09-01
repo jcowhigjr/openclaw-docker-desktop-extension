@@ -31,19 +31,29 @@ const MODEL_PROBE_TIMEOUT_SECONDS = 20;
 // not a broken Ollama, and misclassifying an unfamiliar timeout message as a
 // hard failure would incorrectly demote severity.
 //
-// The probe is built with `curl -fsS`: `-f` makes curl fail silently and
-// discard the HTTP response body on a server error, so a genuine Ollama
-// failure currently reaches this function only as something like
-// "curl: (22) The requested URL returned error: 500" -- never containing a
-// timeout token. That is the only reason the loose 'timeout'/'timed out'
-// substring match below is safe today: if `-f` is ever dropped, the response
-// body could carry Ollama's own runner-crash string, "timed out waiting for
-// llama runner to start" -- precisely the fault OLM-006 exists to catch. The
-// guard below keeps that case from being swallowed by treating a message that
-// looks like a received HTTP response as never a timeout, regardless of what
-// substrings it contains.
+// The probe is built with `curl -fsS`: `-f` makes curl fail on a server error
+// and discard the response body, so a genuine Ollama failure reaches this
+// function only as something like "curl: (22) The requested URL returned
+// error: 500" -- never containing a timeout token. That is the only reason the
+// loose 'timeout'/'timed out' substring match below is safe today.
+//
+// If `-f` is ever dropped, this function is NOT the protection. Without `-f`
+// curl exits 0 on an HTTP 500, so the probe promise resolves and this is never
+// called -- Ollama's runner-crash string ("timed out waiting for llama runner
+// to start", precisely the fault OLM-006 exists to catch) would become a
+// silent pass, not a swallowed timeout. Protecting that case means inspecting
+// the response body for an `error` field, not extending the match below.
+//
+// The `looksLikeHttpResponse` guard is still worth keeping: it is cheap and it
+// pins the assumption above so a future reader sees it.
 function isProbeTimeout(message: string): boolean {
   const lower = message.toLowerCase();
+  // Note: the `"code":28` pattern below only fires when formatUnknownError
+  // fell through to JSON.stringify -- it returns the FIRST non-empty of
+  // message/stderr/stdout/error, so `{ message: 'command failed', code: 28 }`
+  // formats to "command failed" and never reaches the structured match.
+  // The realistic path is covered: `curl -S` writes "curl: (28) ..." to stderr.
+  // Reading the exit code properly would mean widening CommandRunner.
   const looksLikeHttpResponse = /\(22\)/.test(lower) || lower.includes('returned error');
   if (looksLikeHttpResponse) {
     return false;
