@@ -11,6 +11,7 @@ import {
 import { classifyError, classifyOllamaTags, getRemedy, getTitle } from './diag/errorCodes';
 import { captureOllamaSnapshot, hasOllamaInvariantViolation } from './diag/snapshot';
 import { traceAction } from './diag/trace';
+import { formatUnknownError } from './requirementChecks';
 
 type CommandResult = { stdout?: string; stderr?: string };
 type CommandRunner = (cmd: string, args: string[]) => Promise<CommandResult>;
@@ -23,18 +24,47 @@ type CommandRunner = (cmd: string, args: string[]) => Promise<CommandResult>;
 const MODEL_PROBE_TIMEOUT_SECONDS = 20;
 
 // Curl reports a timed-out request in more than one way depending on version
-// and platform (exit code 28, "Operation timed out", a bare "timed out").
-// Match all of them case-insensitively and defensively: a cold load that trips
-// the 20s bound is not a broken Ollama, and misclassifying an unfamiliar
-// timeout message as a hard failure would incorrectly demote severity.
+// and platform (exit code 28, "Operation timed out", a bare "timed out", or --
+// once formatUnknownError falls back to JSON.stringify on a plain rejection
+// object like `{ code: 28 }` -- the `"code":28` JSON form). Match all of them
+// case-insensitively and defensively: a cold load that trips the 20s bound is
+// not a broken Ollama, and misclassifying an unfamiliar timeout message as a
+// hard failure would incorrectly demote severity.
+//
+// The probe is built with `curl -fsS`: `-f` makes curl fail silently and
+// discard the HTTP response body on a server error, so a genuine Ollama
+// failure currently reaches this function only as something like
+// "curl: (22) The requested URL returned error: 500" -- never containing a
+// timeout token. That is the only reason the loose 'timeout'/'timed out'
+// substring match below is safe today: if `-f` is ever dropped, the response
+// body could carry Ollama's own runner-crash string, "timed out waiting for
+// llama runner to start" -- precisely the fault OLM-006 exists to catch. The
+// guard below keeps that case from being swallowed by treating a message that
+// looks like a received HTTP response as never a timeout, regardless of what
+// substrings it contains.
 function isProbeTimeout(message: string): boolean {
   const lower = message.toLowerCase();
+  const looksLikeHttpResponse = /\(22\)/.test(lower) || lower.includes('returned error');
+  if (looksLikeHttpResponse) {
+    return false;
+  }
   return (
     lower.includes('timed out') ||
     lower.includes('timeout') ||
     /\bexit code:?\s*28\b/.test(lower) ||
-    /\(28\)/.test(lower)
+    /\(28\)/.test(lower) ||
+    /"code"\s*:\s*28\b/.test(lower)
   );
+}
+
+// Shared membership check: a persisted UI selection or an openclaw config
+// value can name a model that is no longer present in the host's model list
+// (e.g. the user deleted it). `finalize` clears exactly that case before
+// returning it to the UI, and the load probe below must use the same check
+// to gate itself -- probing a model that isn't installed produces a 404 that
+// looks identical to a broken Ollama.
+function isModelInstalled(models: OllamaModel[], candidate: string): boolean {
+  return candidate !== '' && models.some((model) => model.name === candidate);
 }
 
 export type DetectInput = {
@@ -69,7 +99,7 @@ export async function runDetect(input: DetectInput): Promise<DetectOutput> {
       code?: string;
     }): DetectOutput => {
       let selected = params.selected;
-      if (selected !== '' && !params.models.some((model) => model.name === selected)) {
+      if (!isModelInstalled(params.models, selected)) {
         selected = '';
       }
 
@@ -107,7 +137,7 @@ export async function runDetect(input: DetectInput): Promise<DetectOutput> {
       tagsStdout = asText(result.stdout);
       step('tags_fetch', 'ok');
     } catch (error) {
-      const raw = error instanceof Error ? error.message : String(error);
+      const raw = formatUnknownError(error);
       const classification = classifyError('ollama.tags_fetch', raw);
       step('tags_fetch', 'error', { code: classification.code, error: { message: raw } });
       return finalize({
@@ -151,7 +181,7 @@ export async function runDetect(input: DetectInput): Promise<DetectOutput> {
       configured = normalizeOllamaModelName(asText(result.stdout));
       step('config_get', 'ok');
     } catch (error) {
-      const raw = error instanceof Error ? error.message : String(error);
+      const raw = formatUnknownError(error);
       const classification = classifyError('ollama.config_get', raw);
       step('config_get', classification.code === 'OLM-001' ? 'ok' : 'warning', {
         code: classification.code,
@@ -168,9 +198,14 @@ export async function runDetect(input: DetectInput): Promise<DetectOutput> {
         : 'Host Ollama responded, but no models were installed.';
     let code: string | undefined;
 
-    // Only probe when there is an actual model to load. With no models
-    // installed the state is already reported by the `info` severity above.
-    if (models.length > 0 && selected !== '') {
+    // Only probe when the selection actually names an installed model. A
+    // persisted UI choice or openclaw config value can point at a model that
+    // was since deleted; probing that name would 404 and look identical to a
+    // broken Ollama, so this uses the same membership check `finalize` uses
+    // to silently clear a stale selection. With no models installed (or no
+    // resolvable selection) the state is already reported by the severity
+    // set above.
+    if (isModelInstalled(models, selected)) {
       try {
         await input.run('exec', [
           containerId,
@@ -178,7 +213,7 @@ export async function runDetect(input: DetectInput): Promise<DetectOutput> {
         ]);
         step('model_probe', 'ok');
       } catch (error) {
-        const raw = error instanceof Error ? error.message : String(error);
+        const raw = formatUnknownError(error);
         if (isProbeTimeout(raw)) {
           // A slow cold load is not a broken Ollama: leave severity as-is and
           // only surface it in the trace as a warning.

@@ -10,7 +10,11 @@ afterEach(() => resetDiagEvents());
 type Responses = {
   tags: string;
   config?: string | Error;
-  probe?: string | Error;
+  // A string means the probe resolves with that stdout body. An Error or a
+  // plain object means the probe rejects with it -- production's real `run`
+  // (ddClient.docker.cli.exec) rejects with a plain object, not an Error, so
+  // both shapes need coverage here.
+  probe?: string | Error | Record<string, unknown>;
 };
 
 // Mirrors the real `run` call shape used by runDetect: a single command
@@ -21,7 +25,7 @@ function makeRun(responses: Responses) {
   return vi.fn(async (_cmd: string, args: string[]) => {
     const joined = args.join(' ');
     if (joined.includes('/api/generate')) {
-      if (responses.probe instanceof Error) {
+      if (responses.probe !== undefined && typeof responses.probe !== 'string') {
         throw responses.probe;
       }
       return { stdout: responses.probe ?? '{}' };
@@ -100,4 +104,64 @@ it('skips the load probe entirely when no models are installed', async () => {
 
   expect(result.severity).toBe('info');
   expect(calledProbe(run)).toBe(false);
+});
+
+// Production's injected `run` (ddClient.docker.cli.exec) rejects with a
+// plain object, not an Error -- e.g. `{ stderr: 'curl: (28) ...' }`. The
+// tests above all throw real Errors, which is a shape gap: `String(plainObj)`
+// yields "[object Object]", which matches none of isProbeTimeout's patterns.
+it('does not demote severity when the probe rejects with a plain object (not an Error) reporting a timeout', async () => {
+  const run = makeRun({
+    tags: oneModelTags,
+    probe: { stderr: 'curl: (28) Operation timed out after 20001 ms' },
+  });
+
+  const result = await runDetect({ run, selectedOllamaModel: '' });
+
+  expect(result.severity).toBe('success');
+});
+
+it('surfaces the upstream text, not "[object Object]", when the probe rejects with a plain object reporting a non-timeout error', async () => {
+  const run = makeRun({
+    tags: oneModelTags,
+    probe: { stderr: 'curl: (7) Failed to connect to host.docker.internal port 11434: Connection refused' },
+  });
+
+  const result = await runDetect({ run, selectedOllamaModel: '' });
+
+  expect(result.severity).toBe('error');
+  expect(result.status).toContain('OLM-006');
+  expect(result.status).toContain('Connection refused');
+  expect(result.status).not.toContain('[object Object]');
+});
+
+it('does not invoke or get demoted by the load probe when the selected model is not among the installed models', async () => {
+  const run = makeRun({
+    tags: oneModelTags,
+    probe: new Error('curl: (7) Failed to connect to host.docker.internal port 11434: Connection refused'),
+  });
+
+  const result = await runDetect({ run, selectedOllamaModel: 'deleted-model:latest' });
+
+  expect(calledProbe(run)).toBe(false);
+  expect(result.severity).toBe('success');
+  expect(result.selectedOllamaModel).toBe('');
+});
+
+it('probes with the load-probe time budget and the selected model name, not the 120s restart-time defaults', async () => {
+  const run = makeRun({ tags: oneModelTags, probe: '{"done":true}' });
+
+  await runDetect({ run, selectedOllamaModel: 'qwen3.5:latest' });
+
+  const probeCall = run.mock.calls.find(([, args]: [string, string[]]) => args.join(' ').includes('/api/generate'));
+  expect(probeCall).toBeDefined();
+  const [, args] = probeCall as unknown as [string, string[]];
+
+  expect(args).toEqual(expect.arrayContaining(['--max-time', '20']));
+  expect(args).not.toEqual(expect.arrayContaining(['--max-time', '120']));
+
+  const bodyIndex = args.indexOf('-d');
+  expect(bodyIndex).toBeGreaterThanOrEqual(0);
+  const body = JSON.parse(args[bodyIndex + 1]);
+  expect(body.model).toBe('qwen3.5:latest');
 });
