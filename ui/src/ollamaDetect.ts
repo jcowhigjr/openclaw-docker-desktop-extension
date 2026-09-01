@@ -2,6 +2,7 @@
 // Copyright 2025-2026 John Cowhig Jr.
 import {
   buildOllamaTagsFetchArgs,
+  buildOllamaWarmupArgs,
   chooseRecommendedOllamaModel,
   normalizeOllamaModelName,
   parseOllamaTags,
@@ -13,6 +14,28 @@ import { traceAction } from './diag/trace';
 
 type CommandResult = { stdout?: string; stderr?: string };
 type CommandRunner = (cmd: string, args: string[]) => Promise<CommandResult>;
+
+// /api/tags lists models from disk and returns 200 even when Ollama cannot
+// load a single one (e.g. a Metal/GPU backend fault). A bounded load probe
+// after the tags parse is the only way to catch that before the user hits an
+// opaque chat timeout. Keep this well under the overall detect budget: a
+// timeout here must not read as "Ollama is broken" (see isProbeTimeout).
+const MODEL_PROBE_TIMEOUT_SECONDS = 20;
+
+// Curl reports a timed-out request in more than one way depending on version
+// and platform (exit code 28, "Operation timed out", a bare "timed out").
+// Match all of them case-insensitively and defensively: a cold load that trips
+// the 20s bound is not a broken Ollama, and misclassifying an unfamiliar
+// timeout message as a hard failure would incorrectly demote severity.
+function isProbeTimeout(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes('timed out') ||
+    lower.includes('timeout') ||
+    /\bexit code:?\s*28\b/.test(lower) ||
+    /\(28\)/.test(lower)
+  );
+}
 
 export type DetectInput = {
   run: CommandRunner;
@@ -137,15 +160,48 @@ export async function runDetect(input: DetectInput): Promise<DetectOutput> {
     }
 
     const selected = initialSelected || configured || chooseRecommendedOllamaModel(models);
+
+    let severity: DetectOutput['severity'] = models.length > 0 ? 'success' : 'info';
+    let status =
+      models.length > 0
+        ? `Detected ${models.length} host Ollama model${models.length === 1 ? '' : 's'}.`
+        : 'Host Ollama responded, but no models were installed.';
+    let code: string | undefined;
+
+    // Only probe when there is an actual model to load. With no models
+    // installed the state is already reported by the `info` severity above.
+    if (models.length > 0 && selected !== '') {
+      try {
+        await input.run('exec', [
+          containerId,
+          ...buildOllamaWarmupArgs(selected, MODEL_PROBE_TIMEOUT_SECONDS),
+        ]);
+        step('model_probe', 'ok');
+      } catch (error) {
+        const raw = error instanceof Error ? error.message : String(error);
+        if (isProbeTimeout(raw)) {
+          // A slow cold load is not a broken Ollama: leave severity as-is and
+          // only surface it in the trace as a warning.
+          step('model_probe', 'warning', { error: { message: raw } });
+        } else {
+          const classification = classifyError('ollama.model_probe', raw);
+          step('model_probe', 'error', { code: classification.code, error: { message: raw } });
+          severity = 'error';
+          status = `${getTitle(classification.code)}: ${raw} [${classification.code}] ${getRemedy(
+            classification.code,
+          )}`;
+          code = classification.code;
+        }
+      }
+    }
+
     return finalize({
       models,
       configured,
       selected,
-      severity: models.length > 0 ? 'success' : 'info',
-      status:
-        models.length > 0
-          ? `Detected ${models.length} host Ollama model${models.length === 1 ? '' : 's'}.`
-          : 'Host Ollama responded, but no models were installed.',
+      severity,
+      status,
+      code,
     });
   });
 }

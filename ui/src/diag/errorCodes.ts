@@ -8,6 +8,7 @@ export type DiagCode =
   | 'OLM-003'
   | 'OLM-004'
   | 'OLM-005'
+  | 'OLM-006'
   | 'START-001'
   | 'START-002'
   | 'GEN-000';
@@ -37,6 +38,11 @@ const REGISTRY: Record<DiagCode, RegistryEntry> = {
   'OLM-005': {
     title: 'Host Ollama response unreadable',
     remedy: 'The /api/tags response was not a model list. Check the Ollama version, then Detect.',
+  },
+  'OLM-006': {
+    title: 'Ollama lists models but cannot load them',
+    remedy:
+      'Ollama is reachable and returned a model list, but loading a model failed. Restart Ollama, and if it persists, check the Ollama server log for a GPU/backend error.',
   },
   'START-001': {
     title: 'Host port unavailable',
@@ -73,6 +79,9 @@ export function classifyError(context: string, rawMessage: string): { code: Diag
   }
   if (context === 'ollama.tags_fetch') {
     return { code: 'OLM-003', rawMessage };
+  }
+  if (context === 'ollama.model_probe') {
+    return { code: 'OLM-006', rawMessage };
   }
   return { code: 'GEN-000', rawMessage };
 }

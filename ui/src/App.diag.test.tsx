@@ -7,9 +7,17 @@ import { runDetect } from './ollamaDetect';
 
 afterEach(() => resetDiagEvents());
 
-function runnerMock(responses: { tags: { stdout?: string } | Error; config: { stdout?: string } | Error }) {
+function runnerMock(responses: {
+  tags: { stdout?: string } | Error;
+  config: { stdout?: string } | Error;
+  probe?: { stdout?: string } | Error;
+}) {
   return vi.fn(async (_cmd: string, args: string[]) => {
-    const target = args.some((arg) => arg.includes('/api/tags')) ? responses.tags : responses.config;
+    const target = args.some((arg) => arg.includes('/api/tags'))
+      ? responses.tags
+      : args.some((arg) => arg.includes('/api/generate'))
+        ? (responses.probe ?? { stdout: '{}' })
+        : responses.config;
     if (target instanceof Error) {
       throw target;
     }

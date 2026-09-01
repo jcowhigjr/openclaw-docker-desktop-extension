@@ -102,6 +102,24 @@ describe('ollamaSetup helpers', () => {
     expect(buildOllamaWarmupArgs('   ')).toEqual([]);
   });
 
+  it('defaults the warmup timeout to 120s but honors an explicit override for callers like a detect-time probe', () => {
+    expect(buildOllamaWarmupArgs('gemma4-fast:latest')).toEqual([
+      'curl',
+      '-fsS',
+      '--max-time',
+      '120',
+      '-X',
+      'POST',
+      '-H',
+      'Content-Type: application/json',
+      '-d',
+      '{"model":"gemma4-fast:latest","keep_alive":"30m"}',
+      'http://host.docker.internal:11434/api/generate',
+    ]);
+
+    expect(buildOllamaWarmupArgs('gemma4-fast:latest', 20)[3]).toBe('20');
+  });
+
   it('prefers a practical installed local model over the first Ollama result', () => {
     expect(
       chooseRecommendedOllamaModel([
