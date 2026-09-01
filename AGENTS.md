@@ -26,7 +26,7 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
   -> [#191](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/191)
   -> [#190](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/190)
   -> [#192](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/192)
-  is filed and specced, none started. Specs/checklist/contract land in PR [#193](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/193). Each carries a delivery order and minimum agent
+  is filed and specced, none started. Specs/checklist/contract land in PR [#194](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/194). Each carries a delivery order and minimum agent
   tier. The hardware-profile lane (#157/#160) is superseded by #190. Users should run
   `docs/preflight-checklist.md` before reporting local-model problems.
 - Previous live status as of 2026-06-26: latest release is `v0.3.6`; GHCR `stable` was promoted to `v0.3.6`; pinned GHCR and Docker Hub `0.3.6` install validation was recorded in #86; the latest committed real Docker Desktop stable-channel smoke packet remains `v0.3.4`.
