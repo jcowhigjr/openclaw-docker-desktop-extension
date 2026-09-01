@@ -144,6 +144,29 @@ The extension now sets `num_ctx: 32768` by default (fixing the single-character 
 
 **Trade-off:** Larger context = more memory, slower prompt evaluation. The default is tuned for reliable operation on typical hardware.
 
+### Disabling Ollama Native Thinking (Qwen3-Style Models)
+
+Qwen3-style and similar "thinking" models emit extended reasoning traces by default in Ollama. In the Control UI, this reasoning trace appears as the model's reply, sometimes ending in a literal `</think>` tag, which can look like a stuck or broken chat.
+
+OpenClaw's `reasoning: false` flag alone does **not** disable Ollama thinking. The extension configures `params.thinking: false` on the Ollama model entry, which OpenClaw forwards to Ollama's native `think` request parameter.
+
+**Critical technical detail:** `thinking` must be a model **parameter** (`params.thinking`), not an Ollama `option`. Placing `thinking` under Ollama's `options` object has no effect—Ollama silently ignores unknown option keys.
+
+**Re-enabling native thinking:**
+
+Set the `OPENCLAW_OLLAMA_THINKING` environment variable on the extension runtime:
+
+```bash
+OPENCLAW_OLLAMA_THINKING=true   # or 1, yes, on
+```
+
+Then re-apply the Ollama model from the extension UI (`Detect` → pick model → Apply and Restart). Accepted truthy values: `true`, `1`, `yes`, `on`.
+
+Verify the configuration:
+```bash
+openclaw-extension-helper ollama-config-read
+```
+
 ---
 
 ## Performance Profile: 32GB+ RAM, Dedicated GPU
@@ -220,4 +243,4 @@ Set these on your **host Ollama** before starting the service:
 
 ---
 
-*Last updated: 2026-06-18*
+*Last updated: 2026-09-01*
