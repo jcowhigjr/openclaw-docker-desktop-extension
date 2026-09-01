@@ -53,10 +53,16 @@ window (OpenClaw already tracks `contextWindow`/`maxTokens`; `resolveOllamaNumCt
 does exactly this for the compat path) instead of letting Ollama silently cap at
 4096. Optionally warn when the system prompt approaches the resolved `num_ctx`.
 
-### Extension-side mitigation (already applied in this repo)
-`ollamaConfigWrite` now writes `params.num_ctx` (default 32768, overridable via
-`OPENCLAW_OLLAMA_NUM_CTX`) on the model entry, which OpenClaw passes through to
-Ollama. This restores full responses without an upstream change.
+### Extension-side mitigation (superseded)
+`ollamaConfigWrite` previously wrote `params.num_ctx` with a hardcoded default of
+32768. That default was **removed** — it overrode Ollama's own VRAM-derived choice
+(4096 on a 24 GB Apple Silicon host) and made larger models unusable: a 27.9B model
+at 32768 returned nothing in 10 minutes, well past OpenClaw's 120s idle watchdog.
+
+The extension now writes `params.num_ctx` only when `OPENCLAW_OLLAMA_NUM_CTX` is
+set, and otherwise leaves the choice to Ollama. That makes the ask above more
+relevant, not less: a context sized from the model's own window would beat both a
+wrapper-side constant and Ollama's conservative floor.
 
 ---
 

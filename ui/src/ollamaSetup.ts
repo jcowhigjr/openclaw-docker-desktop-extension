@@ -8,8 +8,6 @@ export type OllamaModel = {
 export type JsonObject = Record<string, unknown>;
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://host.docker.internal:11434';
-const DEFAULT_OLLAMA_API_KEY = 'ollama-local';
-const OLLAMA_AUTH_PROFILE_ID = 'ollama:manual';
 const RECOMMENDED_MODEL_ORDER = [
   'gemma4:latest',
   'gemma4',
@@ -67,67 +65,6 @@ export function parseOllamaTags(stdout: string): OllamaTagsResult {
   }
 
   return { ok: true, models };
-}
-
-export function buildOllamaProviderPatch(model: string): JsonObject {
-  const selectedModel = model.trim();
-  if (!selectedModel) {
-    throw new Error('Choose an Ollama model before applying local setup.');
-  }
-
-  return {
-    agents: {
-      defaults: {
-        model: {
-          primary: `ollama/${selectedModel}`,
-        },
-        timeoutSeconds: 300,
-      },
-    },
-    models: {
-      providers: {
-        ollama: {
-          api: 'ollama',
-          apiKey: DEFAULT_OLLAMA_API_KEY,
-          baseUrl: DEFAULT_OLLAMA_BASE_URL,
-          models: [
-            {
-              id: selectedModel,
-              name: selectedModel,
-              reasoning: false,
-              params: {
-                thinking: false,
-              },
-            },
-          ],
-        },
-      },
-    },
-  };
-}
-
-export function buildOllamaAuthProfilesStore(): JsonObject {
-  return {
-    version: 1,
-    profiles: {
-      [OLLAMA_AUTH_PROFILE_ID]: {
-        type: 'api_key',
-        provider: 'ollama',
-        key: DEFAULT_OLLAMA_API_KEY,
-      },
-    },
-  };
-}
-
-export function buildOllamaAuthConfigProfile(): JsonObject {
-  return {
-    provider: 'ollama',
-    mode: 'api_key',
-  };
-}
-
-export function buildOllamaAuthOrder(): string[] {
-  return [OLLAMA_AUTH_PROFILE_ID];
 }
 
 export function buildOllamaTagsFetchArgs(): string[] {
@@ -189,62 +126,4 @@ export function normalizeOllamaModelName(model: string): string {
 // state, not an Ollama reachability failure.
 export function isConfigPathMissing(text: string): boolean {
   return text.toLowerCase().includes('config path not found');
-}
-
-function isJsonObject(value: unknown): value is JsonObject {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-export function mergeOllamaProviderConfig(existing: JsonObject, model: string): JsonObject {
-  const patch = buildOllamaProviderPatch(model);
-  const patchAuth = {
-    profiles: {
-      [OLLAMA_AUTH_PROFILE_ID]: buildOllamaAuthConfigProfile(),
-    },
-    order: {
-      ollama: buildOllamaAuthOrder(),
-    },
-  };
-  const existingAgents = isJsonObject(existing.agents) ? existing.agents : {};
-  const existingAgentDefaults = isJsonObject(existingAgents.defaults) ? existingAgents.defaults : {};
-  const existingAuth = isJsonObject(existing.auth) ? existing.auth : {};
-  const existingAuthProfiles = isJsonObject(existingAuth.profiles) ? existingAuth.profiles : {};
-  const existingAuthOrder = isJsonObject(existingAuth.order) ? existingAuth.order : {};
-  const patchAgents = patch.agents as JsonObject;
-  const patchAgentDefaults = patchAgents.defaults as JsonObject;
-  const existingModels = isJsonObject(existing.models) ? existing.models : {};
-  const existingProviders = isJsonObject(existingModels.providers) ? existingModels.providers : {};
-  const patchModels = patch.models as JsonObject;
-  const patchProviders = patchModels.providers as JsonObject;
-  const patchAuthProfiles = patchAuth.profiles;
-  const patchAuthOrder = patchAuth.order;
-
-  return {
-    ...existing,
-    auth: {
-      ...existingAuth,
-      profiles: {
-        ...existingAuthProfiles,
-        ...patchAuthProfiles,
-      },
-      order: {
-        ...existingAuthOrder,
-        ...patchAuthOrder,
-      },
-    },
-    agents: {
-      ...existingAgents,
-      defaults: {
-        ...existingAgentDefaults,
-        ...patchAgentDefaults,
-      },
-    },
-    models: {
-      ...existingModels,
-      providers: {
-        ...existingProviders,
-        ...patchProviders,
-      },
-    },
-  };
 }

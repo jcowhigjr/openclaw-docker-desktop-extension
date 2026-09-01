@@ -60,21 +60,28 @@ grep -F 'preserve-socket-token' "$approvals_path" >/dev/null
 env $helper_env node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
 grep -F '"primary": "ollama/qwen3.5:latest"' "$config_path" >/dev/null
 grep -F '"ollama:manual"' "$config_path" >/dev/null
-# Ollama defaults to a 4096-token context without num_ctx, which truncates
-# OpenClaw replies to ~1 token; the helper must write a large default num_ctx.
-grep -F '"num_ctx": 32768' "$config_path" >/dev/null
+# With OPENCLAW_OLLAMA_NUM_CTX unset, num_ctx must be omitted entirely so
+# Ollama derives its own default from available VRAM instead of a forced
+# value that can exceed what the host can serve.
+grep -F 'num_ctx' "$config_path" >/dev/null && {
+  echo "ollama-config-write must omit num_ctx when OPENCLAW_OLLAMA_NUM_CTX is unset" >&2
+  exit 1
+}
 
-# The num_ctx default is overridable via OPENCLAW_OLLAMA_NUM_CTX.
-env $helper_env OPENCLAW_OLLAMA_NUM_CTX=8192 node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
-grep -F '"num_ctx": 8192' "$config_path" >/dev/null
+# num_ctx is opt-in via OPENCLAW_OLLAMA_NUM_CTX.
+env $helper_env OPENCLAW_OLLAMA_NUM_CTX=16384 node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
+grep -F '"num_ctx": 16384' "$config_path" >/dev/null
 
 # `reasoning: false` alone does not disable Ollama thinking; the helper must
 # write params.thinking so OpenClaw promotes it to Ollama's top-level `think`
 # field. Default (OPENCLAW_OLLAMA_THINKING unset) is thinking OFF.
 env $helper_env node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
 grep -F '"thinking": false' "$config_path" >/dev/null
-# num_ctx must still be written and unchanged by the thinking rollback switch.
-grep -F '"num_ctx": 32768' "$config_path" >/dev/null
+# num_ctx must still be omitted, unaffected by the thinking rollback switch.
+grep -F 'num_ctx' "$config_path" >/dev/null && {
+  echo "ollama-config-write must omit num_ctx regardless of OPENCLAW_OLLAMA_THINKING" >&2
+  exit 1
+}
 # `reasoning` must track `thinking`: OpenClaw's native Ollama adapter refuses
 # to forward a truthy `think` for a model marked `reasoning: false`, so the
 # default (thinking off) must pair with `reasoning: false`.
@@ -83,7 +90,10 @@ grep -F '"reasoning": false' "$config_path" >/dev/null
 # OPENCLAW_OLLAMA_THINKING is the rollback switch to turn thinking back on.
 env $helper_env OPENCLAW_OLLAMA_THINKING=true node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
 grep -F '"thinking": true' "$config_path" >/dev/null
-grep -F '"num_ctx": 32768' "$config_path" >/dev/null
+grep -F 'num_ctx' "$config_path" >/dev/null && {
+  echo "ollama-config-write must omit num_ctx regardless of OPENCLAW_OLLAMA_THINKING" >&2
+  exit 1
+}
 # `reasoning` must flip with `thinking`, or OpenClaw drops the forwarded
 # `think` request and the rollback switch is inert.
 grep -F '"reasoning": true' "$config_path" >/dev/null
