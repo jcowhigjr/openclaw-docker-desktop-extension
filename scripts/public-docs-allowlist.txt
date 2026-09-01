@@ -45,6 +45,7 @@ docs/index.html
 docs/local-model-tuning.md
 docs/marketplace-listing.md
 docs/native-migration-investigation.md
+docs/preflight-checklist.md
 docs/skill-dependency-architecture.md
 docs/styles.css
 docs/submission-readiness.md

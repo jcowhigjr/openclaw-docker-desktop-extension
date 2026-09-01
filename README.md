@@ -41,6 +41,8 @@ Then:
 
 If Docker Desktop blocks local extensions, enable local or non-Marketplace extension installs first.
 
+If anything fails or a chat appears to hang, run the two-minute [preflight checklist](docs/preflight-checklist.md) before debugging. Docker and Ollama are separate apps that update themselves and do not start at login; the checklist proves each one is not just running but actually able to do work.
+
 ## Fast command guide
 
 Use these commands depending on where you are in the flow:
