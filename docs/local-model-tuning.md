@@ -144,6 +144,55 @@ The extension now sets `num_ctx: 32768` by default (fixing the single-character 
 
 **Trade-off:** Larger context = more memory, slower prompt evaluation. The default is tuned for reliable operation on typical hardware.
 
+### Disabling Ollama Native Thinking (Qwen3-Style Models)
+
+Qwen3-style and similar "thinking" models emit extended reasoning traces by default in Ollama. In the Control UI, this reasoning trace appears as the model's reply, sometimes ending in a literal `</think>` tag, which can look like a stuck or broken chat.
+
+OpenClaw's `reasoning: false` flag alone does **not** disable Ollama thinking. The extension configures `params.thinking: false` on the Ollama model entry, which OpenClaw forwards to Ollama's native `think` request parameter.
+
+**Critical technical detail:** `thinking` must be a model **parameter** (`params.thinking`), not an Ollama `option`. Placing `thinking` under Ollama's `options` object has no effect—Ollama silently ignores unknown option keys.
+
+**Re-enabling native thinking:**
+
+Set the `OPENCLAW_OLLAMA_THINKING` environment variable on the extension runtime:
+
+```bash
+OPENCLAW_OLLAMA_THINKING=true   # or 1, yes, on
+```
+
+Then re-write the Ollama model config with the environment variable set, and restart
+the service so it picks up the change. The extension UI's Apply button cannot do this
+for you here—it disables itself once the selected model already matches the configured
+model, which is exactly the state an already-configured install is in:
+
+```bash
+docker exec -e OPENCLAW_OLLAMA_THINKING=true openclaw-docker-extension-service \
+  node /usr/local/bin/openclaw-extension-helper.js ollama-config-write <model>
+docker restart openclaw-docker-extension-service
+```
+
+Replace `<model>` with your configured Ollama model id.
+
+**This requires a runtime image that already contains this behaviour.** On an
+older runtime the helper writes no `thinking` key at all, so the command appears
+to succeed while the verification below prints nothing. Update the extension
+first if that happens.
+
+Verify what is actually configured by reading the written OpenClaw config in the
+runtime container:
+
+```bash
+docker exec openclaw-docker-extension-service \
+  grep -o '"thinking":[^,}]*' /home/node/.openclaw/openclaw.json
+```
+
+On success this prints `"thinking": false` (the default) or `"thinking": true`
+(after the rollback above) — the config is written with two-space indentation, so
+there is a space after the colon.
+
+No output means no `thinking` key is configured. That is expected on installs
+predating this behaviour, and a signal to run the command above.
+
 ---
 
 ## Performance Profile: 32GB+ RAM, Dedicated GPU
@@ -220,4 +269,4 @@ Set these on your **host Ollama** before starting the service:
 
 ---
 
-*Last updated: 2026-06-18*
+*Last updated: 2026-09-01*

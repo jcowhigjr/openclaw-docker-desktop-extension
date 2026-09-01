@@ -68,6 +68,26 @@ grep -F '"num_ctx": 32768' "$config_path" >/dev/null
 env $helper_env OPENCLAW_OLLAMA_NUM_CTX=8192 node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
 grep -F '"num_ctx": 8192' "$config_path" >/dev/null
 
+# `reasoning: false` alone does not disable Ollama thinking; the helper must
+# write params.thinking so OpenClaw promotes it to Ollama's top-level `think`
+# field. Default (OPENCLAW_OLLAMA_THINKING unset) is thinking OFF.
+env $helper_env node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
+grep -F '"thinking": false' "$config_path" >/dev/null
+# num_ctx must still be written and unchanged by the thinking rollback switch.
+grep -F '"num_ctx": 32768' "$config_path" >/dev/null
+# `reasoning` must track `thinking`: OpenClaw's native Ollama adapter refuses
+# to forward a truthy `think` for a model marked `reasoning: false`, so the
+# default (thinking off) must pair with `reasoning: false`.
+grep -F '"reasoning": false' "$config_path" >/dev/null
+
+# OPENCLAW_OLLAMA_THINKING is the rollback switch to turn thinking back on.
+env $helper_env OPENCLAW_OLLAMA_THINKING=true node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
+grep -F '"thinking": true' "$config_path" >/dev/null
+grep -F '"num_ctx": 32768' "$config_path" >/dev/null
+# `reasoning` must flip with `thinking`, or OpenClaw drops the forwarded
+# `think` request and the rollback switch is inert.
+grep -F '"reasoning": true' "$config_path" >/dev/null
+
 env $helper_env node runtime/openclaw-extension-helper.js ollama-auth-profiles-write
 grep -F '"key": "ollama-local"' "$auth_profiles_path" >/dev/null
 
