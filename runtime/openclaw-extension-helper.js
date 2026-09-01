@@ -113,11 +113,13 @@ function executionModeConfig(mode) {
 }
 
 // Resolve the Ollama context window size (num_ctx) for the model entry.
-// Without num_ctx, Ollama defaults to a 4096-token context. OpenClaw's injected
-// system prompt is ~4-10k tokens, which fills that window and leaves room for
-// only ~1 token of generation, so chat replies come back as a single character.
-// A larger context (default 32768) restores full responses. Overridable via
-// OPENCLAW_OLLAMA_NUM_CTX, which must parse to a positive finite integer.
+// Left unset by default: Ollama derives its own default from available VRAM
+// (e.g. 4096 on an M4/24GB host), and OpenClaw's native adapter deliberately
+// omits num_ctx so Ollama decides. Forcing a fixed value here can exceed what
+// the host can serve — a 27.9B model at a forced 32768 returned nothing in 10
+// minutes, well past the 120s idle watchdog. Overridable via
+// OPENCLAW_OLLAMA_NUM_CTX, which must parse to a positive finite integer;
+// unset, blank, or invalid values leave num_ctx unset.
 function resolveOllamaNumCtx() {
   const raw = process.env.OPENCLAW_OLLAMA_NUM_CTX;
   if (typeof raw === 'string' && raw.trim() !== '') {
@@ -126,7 +128,23 @@ function resolveOllamaNumCtx() {
       return n;
     }
   }
-  return 32768;
+  return undefined;
+}
+
+// Resolve whether Ollama "thinking" (reasoning trace) is enabled for the model
+// entry. `reasoning: false` on the model entry does NOT disable Ollama
+// thinking; OpenClaw's native Ollama adapter only reads params.think ??
+// params.thinking and promotes it to Ollama's top-level `think` request field.
+// Without it, the model's reasoning monologue leaks into the visible reply.
+// Default is thinking OFF; set OPENCLAW_OLLAMA_THINKING to turn it back on
+// (rollback switch) if a model needs its native thinking behavior restored.
+function resolveOllamaThinking() {
+  const raw = process.env.OPENCLAW_OLLAMA_THINKING;
+  if (typeof raw !== 'string') {
+    return false;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'on';
 }
 
 function buildOllamaAuthConfigProfile() {
@@ -188,6 +206,21 @@ function ollamaConfigWrite(model) {
   config.agents.defaults.timeoutSeconds = 300;
   config.models = isObject(config.models) ? config.models : {};
   config.models.providers = isObject(config.models.providers) ? config.models.providers : {};
+  // `reasoning` must track `thinking`: OpenClaw's native Ollama adapter
+  // (shouldForwardNativeOllamaThink in extensions/ollama/src/stream.ts) only
+  // forwards params.think/thinking to Ollama when think === false OR the
+  // model's `reasoning` is not explicitly false. A model marked
+  // `reasoning: false` with `params.thinking: true` would have its thinking
+  // request silently dropped, making the OPENCLAW_OLLAMA_THINKING rollback
+  // switch inert. Deriving both from one resolved value keeps them in sync.
+  const thinking = resolveOllamaThinking();
+  const numCtx = resolveOllamaNumCtx();
+  const params = { thinking };
+  if (numCtx !== undefined) {
+    // Only set num_ctx when explicitly overridden; otherwise omit the key
+    // entirely so Ollama picks its own default from available VRAM.
+    params.num_ctx = numCtx;
+  }
   config.models.providers.ollama = {
     api: 'ollama',
     apiKey: 'ollama-local',
@@ -196,10 +229,8 @@ function ollamaConfigWrite(model) {
       {
         id: selectedModel,
         name: selectedModel,
-        reasoning: false,
-        params: {
-          num_ctx: resolveOllamaNumCtx(),
-        },
+        reasoning: thinking,
+        params,
       },
     ],
   };
