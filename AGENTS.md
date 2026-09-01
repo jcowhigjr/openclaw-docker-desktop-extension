@@ -78,6 +78,8 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
   - update milestones when priorities change
 - Planning freshness hook: after any PR that closes or materially changes a roadmap item, check whether README Roadmap path, AGENTS Current Roadmap, and issue #12 need a one-comment status update. Keep this to a small patch or comment; do not create a planning subsystem.
 - External review loop: before merging user-facing PRs, expect the maintainer may paste the PR into Gemini CLI for a review comment and Claude for a more critical review. Treat those reviews as input to verify, not orders to follow blindly.
+- **Merge without asking once the conditions above are satisfied.** Restating them as a question wastes the maintainer's time.
+- Escalate only for genuine judgment calls: product direction, scope changes, anything irreversible beyond a squash-merge, or a review finding that conflicts with what a spec mandates.
 
 ## Repo Hygiene
 
@@ -85,6 +87,9 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 - Prefer repo-local instructions and automation over repeated chat guidance.
 - Use `.dockerignore`, image metadata, and build validation to keep the repo publishable.
 - Keep the README crisp and public-facing.
+- **Verify claims about current behavior against `origin/main`, not the working tree.** Use `git show origin/main:<path>` to check what a file actually contains before describing it.
+- This checkout carries long-lived uncommitted changes; a working-tree read routinely describes unshipped work as shipped.
+- Applies to filing issues, writing specs, and any statement about current behavior — a wrong claim sourced this way has already reached filed GitHub issues and needed public correction.
 
 ## Issue Delivery Contract
 
@@ -133,6 +138,13 @@ instructions differently, which has produced duplicated and misattributed work.
 - **Before starting work, check whether it already exists on `origin/main`.** Repeated
   redundant commits in this repo have come from branching off stale local state and
   redoing merged work.
+- **Never run `git stash` (bare), `git rm --cached`, `git reset --hard`, or any other
+  command that rewrites the index or working tree wholesale.** Worktrees here share a
+  stash stack and an object store.
+- One such command has already wiped a worktree's index mid-task, staging every tracked
+  file as deleted and silently reverting a commit.
+- If the index needs resetting, use `git reset` (mixed) plus `git checkout -- <path>` —
+  prevention is the rule, that's the recovery.
 
 ## Public Repository Boundary
 
