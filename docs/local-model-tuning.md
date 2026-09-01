@@ -162,10 +162,16 @@ OPENCLAW_OLLAMA_THINKING=true   # or 1, yes, on
 
 Then re-apply the Ollama model from the extension UI (`Detect` → pick model → Apply and Restart). Accepted truthy values: `true`, `1`, `yes`, `on`.
 
-Verify the configuration:
+Verify what is actually configured by reading the written OpenClaw config in the
+runtime container:
+
 ```bash
-openclaw-extension-helper ollama-config-read
+docker exec openclaw-docker-extension-service \
+  grep -o '"thinking":[^,}]*' /home/node/.openclaw/openclaw.json
 ```
+
+No output means no `thinking` key is configured — expected on installs that predate
+this behaviour, and a signal to re-apply the model from the extension UI.
 
 ---
 
