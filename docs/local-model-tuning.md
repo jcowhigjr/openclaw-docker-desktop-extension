@@ -160,7 +160,18 @@ Set the `OPENCLAW_OLLAMA_THINKING` environment variable on the extension runtime
 OPENCLAW_OLLAMA_THINKING=true   # or 1, yes, on
 ```
 
-Then re-apply the Ollama model from the extension UI (`Detect` → pick model → Apply and Restart). Accepted truthy values: `true`, `1`, `yes`, `on`.
+Then re-write the Ollama model config with the environment variable set, and restart
+the service so it picks up the change. The extension UI's Apply button cannot do this
+for you here—it disables itself once the selected model already matches the configured
+model, which is exactly the state an already-configured install is in:
+
+```bash
+docker exec -e OPENCLAW_OLLAMA_THINKING=true openclaw-docker-extension-service \
+  node /usr/local/bin/openclaw-extension-helper.js ollama-config-write <model>
+docker restart openclaw-docker-extension-service
+```
+
+Replace `<model>` with your configured Ollama model id (e.g. `qwen3.5:latest`).
 
 Verify what is actually configured by reading the written OpenClaw config in the
 runtime container:
@@ -170,8 +181,9 @@ docker exec openclaw-docker-extension-service \
   grep -o '"thinking":[^,}]*' /home/node/.openclaw/openclaw.json
 ```
 
-No output means no `thinking` key is configured — expected on installs that predate
-this behaviour, and a signal to re-apply the model from the extension UI.
+On success this prints `"thinking":false` (the default) or `"thinking":true` (after
+the rollback above). No output means no `thinking` key is configured — expected on
+installs that predate this behaviour, and a signal to run the command above.
 
 ---
 

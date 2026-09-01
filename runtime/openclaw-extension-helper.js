@@ -204,6 +204,14 @@ function ollamaConfigWrite(model) {
   config.agents.defaults.timeoutSeconds = 300;
   config.models = isObject(config.models) ? config.models : {};
   config.models.providers = isObject(config.models.providers) ? config.models.providers : {};
+  // `reasoning` must track `thinking`: OpenClaw's native Ollama adapter
+  // (shouldForwardNativeOllamaThink in extensions/ollama/src/stream.ts) only
+  // forwards params.think/thinking to Ollama when think === false OR the
+  // model's `reasoning` is not explicitly false. A model marked
+  // `reasoning: false` with `params.thinking: true` would have its thinking
+  // request silently dropped, making the OPENCLAW_OLLAMA_THINKING rollback
+  // switch inert. Deriving both from one resolved value keeps them in sync.
+  const thinking = resolveOllamaThinking();
   config.models.providers.ollama = {
     api: 'ollama',
     apiKey: 'ollama-local',
@@ -212,10 +220,10 @@ function ollamaConfigWrite(model) {
       {
         id: selectedModel,
         name: selectedModel,
-        reasoning: false,
+        reasoning: thinking,
         params: {
           num_ctx: resolveOllamaNumCtx(),
-          thinking: resolveOllamaThinking(),
+          thinking,
         },
       },
     ],
