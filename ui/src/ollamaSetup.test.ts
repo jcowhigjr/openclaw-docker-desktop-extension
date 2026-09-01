@@ -95,12 +95,47 @@ describe('ollamaSetup helpers', () => {
                 id: 'qwen3.5:latest',
                 name: 'qwen3.5:latest',
                 reasoning: false,
+                params: {
+                  thinking: false,
+                },
               },
             ],
           },
         },
       },
     });
+  });
+
+  it('disables Ollama thinking via params, never under an options key', () => {
+    const patch = buildOllamaProviderPatch('qwen3:4b') as any;
+    const modelEntry = patch.models.providers.ollama.models[0];
+
+    expect(modelEntry.params).toEqual({ thinking: false });
+    expect(modelEntry.params.thinking).toBe(false);
+
+    // `thinking` must never be written under an `options` key anywhere in the
+    // patch: Ollama silently ignores unknown `options` keys, which is exactly
+    // the leak this config guards against.
+    const containsThinkingUnderOptions = (value: unknown): boolean => {
+      if (!value || typeof value !== 'object') {
+        return false;
+      }
+      if (Array.isArray(value)) {
+        return value.some(containsThinkingUnderOptions);
+      }
+      const obj = value as Record<string, unknown>;
+      if (
+        'options' in obj &&
+        obj.options &&
+        typeof obj.options === 'object' &&
+        !Array.isArray(obj.options) &&
+        'thinking' in (obj.options as Record<string, unknown>)
+      ) {
+        return true;
+      }
+      return Object.values(obj).some(containsThinkingUnderOptions);
+    };
+    expect(containsThinkingUnderOptions(patch)).toBe(false);
   });
 
   it('builds the per-agent Ollama auth store profile', () => {
@@ -232,6 +267,9 @@ describe('ollamaSetup helpers', () => {
           id: 'qwen3.5:latest',
           name: 'qwen3.5:latest',
           reasoning: false,
+          params: {
+            thinking: false,
+          },
         },
       ],
     });

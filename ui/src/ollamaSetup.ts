@@ -95,6 +95,9 @@ export function buildOllamaProviderPatch(model: string): JsonObject {
               id: selectedModel,
               name: selectedModel,
               reasoning: false,
+              params: {
+                thinking: false,
+              },
             },
           ],
         },

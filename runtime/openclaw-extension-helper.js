@@ -129,6 +129,22 @@ function resolveOllamaNumCtx() {
   return 32768;
 }
 
+// Resolve whether Ollama "thinking" (reasoning trace) is enabled for the model
+// entry. `reasoning: false` on the model entry does NOT disable Ollama
+// thinking; OpenClaw's native Ollama adapter only reads params.think ??
+// params.thinking and promotes it to Ollama's top-level `think` request field.
+// Without it, the model's reasoning monologue leaks into the visible reply.
+// Default is thinking OFF; set OPENCLAW_OLLAMA_THINKING to turn it back on
+// (rollback switch) if a model needs its native thinking behavior restored.
+function resolveOllamaThinking() {
+  const raw = process.env.OPENCLAW_OLLAMA_THINKING;
+  if (typeof raw !== 'string') {
+    return false;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'on';
+}
+
 function buildOllamaAuthConfigProfile() {
   return {
     provider: 'ollama',
@@ -199,6 +215,7 @@ function ollamaConfigWrite(model) {
         reasoning: false,
         params: {
           num_ctx: resolveOllamaNumCtx(),
+          thinking: resolveOllamaThinking(),
         },
       },
     ],
