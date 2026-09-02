@@ -172,6 +172,7 @@ instructions differently, which has produced duplicated and misattributed work.
 - Treat those screenshots as rollback and comparison evidence, not just decoration.
 - A CI guard (`scripts/test-ui-screenshot-sync.sh`, wired into `make test-pre-push` and the Build workflow) fails when `ui/src/` changed since the last `v*` release tag but no screenshot under `docs/` was updated.
   - To refresh a screenshot, run `make capture-readme-screenshot`. Onboarding screens can be forced in demo mode with `?demo=1&onboarding=<fork|free-needs-model|free-ready|resolved>`.
+  - Ollama failure states can be forced the same way: `models=<none|one|many>` controls the `/api/tags` fixture, `probe=<ok|fail|timeout>` controls the model-load probe, and `configured=stale` reports a configured model absent from the active tags fixture.
   - If a UI change has no visual diff, waive the requirement with a commit trailer (non-empty reason):
 
         Screenshots-Not-Needed: <reason>
