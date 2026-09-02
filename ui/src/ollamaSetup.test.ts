@@ -6,6 +6,7 @@ import {
   buildOllamaTagsFetchArgs,
   buildOllamaWarmupArgs,
   chooseRecommendedOllamaModel,
+  formatOllamaModelSize,
   isConfigPathMissing,
   normalizeOllamaModelName,
   parseOllamaTags,
@@ -120,21 +121,71 @@ describe('ollamaSetup helpers', () => {
     expect(buildOllamaWarmupArgs('gemma4-fast:latest', 20)[3]).toBe('20');
   });
 
-  it('prefers a practical installed local model over the first Ollama result', () => {
+  it('selects the smallest installed model over a larger, more recently modified one', () => {
+    // Real shapes from the #190 bug report: an 18.2 GB model landed first in
+    // /api/tags (most recently modified) while a working 2.5 GB model sat
+    // unused. Size, not list position, must win.
     expect(
       chooseRecommendedOllamaModel([
-        { name: 'batiai/qwen3.6-35b:iq4' },
-        { name: 'qwen3.5:latest' },
-        { name: 'gemma4:latest' },
+        { name: 'muse-glimmer:30b-q4_K_M', size: 18_200_000_000 },
+        { name: 'qwen3:4b', size: 2_500_000_000 },
       ]),
-    ).toBe('gemma4:latest');
+    ).toBe('qwen3:4b');
+  });
 
+  it('prefers any sized model over an unsized one, regardless of list order', () => {
+    expect(
+      chooseRecommendedOllamaModel([
+        { name: 'no-size-reported' },
+        { name: 'huge-but-sized', size: 50_000_000_000 },
+      ]),
+    ).toBe('huge-but-sized');
+  });
+
+  it('breaks ties on identical size by model name ascending, for deterministic selection', () => {
+    expect(
+      chooseRecommendedOllamaModel([
+        { name: 'zeta:latest', size: 4_000_000_000 },
+        { name: 'alpha:latest', size: 4_000_000_000 },
+        { name: 'mu:latest', size: 4_000_000_000 },
+      ]),
+    ).toBe('alpha:latest');
+  });
+
+  it('falls back to the first entry when no model reports a size', () => {
     expect(
       chooseRecommendedOllamaModel([
         { name: 'batiai/qwen3.6-35b:iq4' },
         { name: 'qwen3.5:latest' },
       ]),
-    ).toBe('qwen3.5:latest');
+    ).toBe('batiai/qwen3.6-35b:iq4');
+  });
+
+  it('returns an empty string for an empty model list', () => {
+    expect(chooseRecommendedOllamaModel([])).toBe('');
+  });
+
+  it('selects sensibly for a model list containing none of the old hardcoded names', () => {
+    expect(
+      chooseRecommendedOllamaModel([
+        { name: 'batiai/qwen3.6-35b:iq4', size: 20_000_000_000 },
+        { name: 'muse-glimmer:30b-q4_K_M', size: 18_200_000_000 },
+        { name: 'obscure-model:latest', size: 900_000_000 },
+      ]),
+    ).toBe('obscure-model:latest');
+  });
+
+  it('formats a model size in GB with one decimal place', () => {
+    expect(formatOllamaModelSize(2_500_000_000)).toBe('2.5 GB');
+    expect(formatOllamaModelSize(18_200_000_000)).toBe('18.2 GB');
+    expect(formatOllamaModelSize(0)).toBe('0.0 GB');
+  });
+
+  it('returns an empty string for a size that cannot be shown', () => {
+    expect(formatOllamaModelSize(undefined)).toBe('');
+    expect(formatOllamaModelSize(Number.NaN)).toBe('');
+    expect(formatOllamaModelSize(Number.POSITIVE_INFINITY)).toBe('');
+    expect(formatOllamaModelSize(-1)).toBe('');
   });
 
   it('normalizes configured Ollama model ids for selection comparison', () => {

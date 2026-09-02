@@ -30,6 +30,7 @@ import {
   buildOllamaTagsFetchArgs,
   buildOllamaWarmupArgs,
   chooseRecommendedOllamaModel,
+  formatOllamaModelSize,
   type OllamaModel,
 } from './ollamaSetup';
 import { ollamaApplyButtonLabel } from './ollamaUiState';
@@ -1410,11 +1411,14 @@ export function App() {
                 disabled={ollamaModels.length === 0}
               >
                 {ollamaModels.length === 0 && <option value="">No models detected yet</option>}
-                {ollamaModels.map((model) => (
-                  <option key={model.name} value={model.name}>
-                    {model.name}
-                  </option>
-                ))}
+                {ollamaModels.map((model) => {
+                  const size = formatOllamaModelSize(model.size);
+                  return (
+                    <option key={model.name} value={model.name}>
+                      {size ? `${model.name} — ${size}` : model.name}
+                    </option>
+                  );
+                })}
               </TextField>
               {ollamaStatus && (
                 <Alert severity={ollamaAlertSeverity}>{ollamaStatus}</Alert>
