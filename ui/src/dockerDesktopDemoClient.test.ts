@@ -61,6 +61,13 @@ describe('Docker Desktop demo client', () => {
     expect(parseDemoModelsSearch('?demo=1&models=bogus')).toBe('many');
   });
 
+  it('falls back to "many" for empty, mis-cased, or unrecognised models values without throwing', () => {
+    for (const search of ['?demo=1&models=', '?demo=1&models=ONE', '?demo=1&models=banana']) {
+      expect(() => parseDemoModelsSearch(search)).not.toThrow();
+      expect(parseDemoModelsSearch(search)).toBe('many');
+    }
+  });
+
   it('parses the probe fixture flag, falling back to "ok" for absent or unrecognised values', () => {
     expect(parseDemoProbeSearch('?demo=1&probe=fail')).toBe('fail');
     expect(parseDemoProbeSearch('?demo=1&probe=timeout')).toBe('timeout');
@@ -69,10 +76,24 @@ describe('Docker Desktop demo client', () => {
     expect(parseDemoProbeSearch('?demo=1&probe=bogus')).toBe('ok');
   });
 
+  it('falls back to "ok" for empty, mis-cased, or unrecognised probe values without throwing', () => {
+    for (const search of ['?demo=1&probe=', '?demo=1&probe=FAIL', '?demo=1&probe=banana']) {
+      expect(() => parseDemoProbeSearch(search)).not.toThrow();
+      expect(parseDemoProbeSearch(search)).toBe('ok');
+    }
+  });
+
   it('recognises the configured=stale flag only from its exact value', () => {
     expect(isDemoConfiguredStaleSearch('?demo=1&configured=stale')).toBe(true);
     expect(isDemoConfiguredStaleSearch('?demo=1&configured=fresh')).toBe(false);
     expect(isDemoConfiguredStaleSearch('?demo=1')).toBe(false);
+  });
+
+  it('falls back to false for empty, mis-cased, or unrecognised configured values without throwing', () => {
+    for (const search of ['?demo=1&configured=', '?demo=1&configured=STALE', '?demo=1&configured=banana']) {
+      expect(() => isDemoConfiguredStaleSearch(search)).not.toThrow();
+      expect(isDemoConfiguredStaleSearch(search)).toBe(false);
+    }
   });
 
   it('models=none reports zero installed models', async () => {
@@ -157,6 +178,18 @@ describe('Docker Desktop demo client', () => {
     const parsed = JSON.parse(tags.stdout) as { models: Array<{ name: string }> };
     expect(model).toEqual({ stdout: 'gone:latest\n', stderr: '' });
     expect(parsed.models.some((m) => m.name === 'gone:latest')).toBe(false);
+  });
+
+  it('configured=stale names a model absent from whichever tags fixture is active', async () => {
+    for (const modelsFlag of ['models=one', 'models=none']) {
+      const client = createDemoDDClient(`?demo=1&configured=stale&${modelsFlag}`);
+      const tags = await client.docker.cli.exec('exec', TAGS_ARGS);
+      const model = await client.docker.cli.exec('exec', CONFIGURED_ARGS);
+
+      const parsed = JSON.parse(tags.stdout) as { models: Array<{ name: string }> };
+      const configuredModel = model.stdout.trim();
+      expect(parsed.models.some((m) => m.name === configuredModel)).toBe(false);
+    }
   });
 
   it('default ?demo=1 produces the same tags payload and configured model as before', async () => {
