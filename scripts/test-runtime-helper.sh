@@ -98,6 +98,73 @@ grep -F 'num_ctx' "$config_path" >/dev/null && {
 # `think` request and the rollback switch is inert.
 grep -F '"reasoning": true' "$config_path" >/dev/null
 
+# --- localModelLean (#198) ---
+# Fresh config (no `experimental` key) must gain localModelLean: true — the
+# Ollama path is by definition the constrained-hardware path.
+grep -F '"localModelLean": true' "$config_path" >/dev/null
+
+# An explicit `false` must survive a re-apply. This is an own-property
+# presence check, not a truthiness check: a truthiness check would flip a
+# deliberate opt-out back to `true` on every re-apply.
+lean_false_path="${tmp_dir}/openclaw-lean-false.json"
+cat >"$lean_false_path" <<'JSON'
+{
+  "agents": {
+    "defaults": {
+      "experimental": {
+        "localModelLean": false
+      }
+    }
+  }
+}
+JSON
+env "OPENCLAW_CONFIG_PATH=${lean_false_path}" node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
+grep -F '"localModelLean": false' "$lean_false_path" >/dev/null
+
+# An explicit `true` must stay `true` (idempotent).
+lean_true_path="${tmp_dir}/openclaw-lean-true.json"
+cat >"$lean_true_path" <<'JSON'
+{
+  "agents": {
+    "defaults": {
+      "experimental": {
+        "localModelLean": true
+      }
+    }
+  }
+}
+JSON
+env "OPENCLAW_CONFIG_PATH=${lean_true_path}" node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
+grep -F '"localModelLean": true' "$lean_true_path" >/dev/null
+
+# A sibling key already under `experimental` must be preserved (merge, not
+# clobber) when localModelLean is filled in alongside it.
+lean_sibling_path="${tmp_dir}/openclaw-lean-sibling.json"
+cat >"$lean_sibling_path" <<'JSON'
+{
+  "agents": {
+    "defaults": {
+      "experimental": {
+        "someOtherFlag": true
+      }
+    }
+  }
+}
+JSON
+env "OPENCLAW_CONFIG_PATH=${lean_sibling_path}" node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
+grep -F '"localModelLean": true' "$lean_sibling_path" >/dev/null
+grep -F '"someOtherFlag": true' "$lean_sibling_path" >/dev/null
+
+# The #197/#189 invariants must still hold in the same written config:
+# params.thinking present, reasoning matching it, num_ctx absent when
+# OPENCLAW_OLLAMA_NUM_CTX is unset.
+grep -F '"thinking": false' "$lean_false_path" >/dev/null
+grep -F '"reasoning": false' "$lean_false_path" >/dev/null
+grep -F 'num_ctx' "$lean_false_path" >/dev/null && {
+  echo "ollama-config-write must omit num_ctx when OPENCLAW_OLLAMA_NUM_CTX is unset" >&2
+  exit 1
+}
+
 env $helper_env node runtime/openclaw-extension-helper.js ollama-auth-profiles-write
 grep -F '"key": "ollama-local"' "$auth_profiles_path" >/dev/null
 

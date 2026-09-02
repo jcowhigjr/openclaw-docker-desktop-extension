@@ -96,7 +96,9 @@ sudo systemctl restart ollama
 
 ### OpenClaw Extension Configuration
 
-Use the leanest agent configuration to reduce prompt size:
+The extension applies the leanest agent configuration automatically whenever
+you apply a model through it — every Ollama model is by definition on the
+constrained-hardware path:
 
 ```json
 {
@@ -110,7 +112,10 @@ Use the leanest agent configuration to reduce prompt size:
 }
 ```
 
-This removes heavyweight tools (browser, cron, message) from the system prompt.
+This removes heavyweight tools (browser, cron, message) from the system
+prompt. If you have already set `localModelLean` yourself — including
+explicitly to `false` — the extension preserves that value on every re-apply
+instead of overwriting it.
 
 ---
 
@@ -237,7 +242,10 @@ export OLLAMA_MAX_LOADED_MODELS=2    # Keep multiple models loaded
 1. Switch to a faster model (gemma4-fast)
 2. Enable `OLLAMA_FLASH_ATTENTION=1`
 3. Reduce prompt size (trim AGENTS.md, SOUL.md)
-4. Use `localModelLean: true`
+4. Confirm `localModelLean: true` is still in effect — the extension sets it
+   automatically on every applied Ollama model, but preserves an explicit
+   `false` you (or something else) may have set, so check it hasn't been
+   turned off
 
 ### Symptom: Single-character replies
 
