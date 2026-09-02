@@ -8,14 +8,6 @@ export type OllamaModel = {
 export type JsonObject = Record<string, unknown>;
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://host.docker.internal:11434';
-const RECOMMENDED_MODEL_ORDER = [
-  'gemma4:latest',
-  'gemma4',
-  'llama3.2:latest',
-  'llama3.2',
-  'qwen3.5:latest',
-  'qwen3.5',
-];
 
 type OllamaTagsResponse = {
   models?: Array<{
@@ -107,15 +99,38 @@ export function buildOllamaWarmupArgs(model: string, timeoutSeconds = 120): stri
   ];
 }
 
+// Auto-select the smallest installed model, since local disk space and model
+// turnover mean there is no stable name to hardcode, and Ollama exposes no
+// endpoint that reports the host's VRAM budget for a "largest that fits"
+// choice (see issue #190). Models with a known `size` always outrank models
+// without one, so an unreported size is never mistaken for "small". Ties on
+// identical size resolve by model name so selection is deterministic.
 export function chooseRecommendedOllamaModel(models: OllamaModel[]): string {
-  const installed = new Set(models.map((model) => model.name));
-  for (const candidate of RECOMMENDED_MODEL_ORDER) {
-    if (installed.has(candidate)) {
-      return candidate;
-    }
+  const sized = models.filter((model) => typeof model.size === 'number' && Number.isFinite(model.size));
+
+  if (sized.length === 0) {
+    return models[0]?.name ?? '';
   }
 
-  return models[0]?.name ?? '';
+  const [smallest] = [...sized].sort((a, b) => {
+    if (a.size !== b.size) {
+      return (a.size as number) - (b.size as number);
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  return smallest?.name ?? '';
+}
+
+// Pure formatter for showing an installed model's size in the picker, e.g.
+// "2.5 GB". Returns '' for anything that isn't a usable positive size so
+// callers can render the model name alone with no trailing separator.
+export function formatOllamaModelSize(bytes: number | undefined): string {
+  if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) {
+    return '';
+  }
+
+  return `${(bytes / 1e9).toFixed(1)} GB`;
 }
 
 export function normalizeOllamaModelName(model: string): string {
