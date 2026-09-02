@@ -204,6 +204,22 @@ function ollamaConfigWrite(model) {
   config.agents.defaults.model = isObject(config.agents.defaults.model) ? config.agents.defaults.model : {};
   config.agents.defaults.model.primary = 'ollama/' + selectedModel;
   config.agents.defaults.timeoutSeconds = 300;
+  // Enable local-model-lean unconditionally for the Ollama path, unless the
+  // user has already set it explicitly (including to `false`). The Ollama
+  // path is by definition the constrained-hardware path, and lean mode's
+  // substantive benefit — routing tool exposure through toolSearch instead
+  // of listing the full catalogue in the system prompt — materially shrinks
+  // the ~20k-token prompt-eval cost that trips OpenClaw's 120s idle
+  // watchdog on slow local models. This must be a presence check, not a
+  // truthiness check: an explicit `false` counts as present and must be
+  // preserved across re-applies, or a deliberate opt-out would silently
+  // flip back to `true` every time a model is re-applied. No env override —
+  // the presence check is the escape hatch.
+  config.agents.defaults.experimental = isObject(config.agents.defaults.experimental) ?
+    config.agents.defaults.experimental : {};
+  if (!Object.prototype.hasOwnProperty.call(config.agents.defaults.experimental, 'localModelLean')) {
+    config.agents.defaults.experimental.localModelLean = true;
+  }
   config.models = isObject(config.models) ? config.models : {};
   config.models.providers = isObject(config.models.providers) ? config.models.providers : {};
   // `reasoning` must track `thinking`: OpenClaw's native Ollama adapter
