@@ -158,6 +158,29 @@ instructions differently, which has produced duplicated and misattributed work.
 - For local runtime secrets, prefer the persistent OpenClaw volume and write-only UI flows.
 - If a secret has already been pasted into chat, recommend rotation without derailing the task.
 
+## Local Model Work
+
+Before debugging anything involving Ollama or a local model, read these. They exist
+because each failure below cost hours to re-derive at least once.
+
+- `docs/local-model-diagnostics.md` — symptom -> real cause -> command. Start here when
+  the agent "does nothing", replies emptily, invents filenames, or a turn fails.
+- `openspec/specs/ollama-health-contract.md` — why a successful `/api/tags` proves
+  nothing, and the four coherence checks (version, model store, load, context).
+- `docs/local-model-tuning.md` — model choice, context sizing, disabling thinking.
+
+Three rules that override intuition here:
+
+- **The error message names the subsystem that noticed the failure, not the one that
+  caused it.** `network connection error` has been a timeout; `/api/tags` succeeding has
+  coexisted with every load failing. Verify the named subsystem is actually at fault.
+- **Verify an agent turn through the CLI, not the Control UI.** Use
+  `openclaw agent --session-key "agent:main:<fresh>" -m "..."` inside the container. The
+  Control UI composer silently drops programmatic input, which produces messages that look
+  sent and never run.
+- **Confirm results on disk.** A local model will report success it did not achieve. If a
+  turn was supposed to write a file, read the file.
+
 ## Verification
 
 - Do not claim success without verifying the relevant path:
