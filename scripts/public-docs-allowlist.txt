@@ -42,6 +42,7 @@ docs/exploratory/2026-06-05-stable-channel-smoke/report.md
 docs/exploratory/2026-06-05-stable-channel-smoke/verify-channel-install-dry-run.txt
 docs/exploratory/2026-06-05-stable-channel-smoke/verify-release-channel.txt
 docs/index.html
+docs/local-model-diagnostics.md
 docs/local-model-tuning.md
 docs/marketplace-listing.md
 docs/native-migration-investigation.md
