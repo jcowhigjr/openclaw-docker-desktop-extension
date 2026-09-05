@@ -145,9 +145,30 @@ export OLLAMA_KEEP_ALIVE=30m
 
 ### Context Window Tuning
 
-The extension leaves `num_ctx` unset by default, so Ollama picks its own context window from available VRAM (e.g. 4096 on an M4/24GB host). Set `OPENCLAW_OLLAMA_NUM_CTX` to opt into a fixed value instead.
+The extension writes `num_ctx: 24576` by default, with a matching `contextTokens` so
+OpenClaw's input budget tracks the window Ollama will actually serve. Override in either
+direction with `OPENCLAW_OLLAMA_NUM_CTX`.
 
-**Trade-off:** Larger context = more memory, slower prompt evaluation, and on VRAM-constrained hosts can push a large model past the idle watchdog with no response at all. Prefer leaving `num_ctx` unset unless you have measured headroom for a larger value.
+**Do not set this back to unset.** Ollama does not size the context window from available
+VRAM. It applies a small fixed default — measured at **4096** for `qwen3:8b` on an
+M4/24 GB host, against an advertised context of 40960 — and 4096 cannot carry an agent
+turn. At 4096 the workspace bootstrap is truncated, the model invents filenames instead
+of reading them, and the run ends in `empty response detected` followed by a timeout.
+
+Measured on an M4 Air / 24 GB, `qwen3:8b` at ~20 tok/s, on the task *"list a folder, read
+the files, write an INDEX.md"*:
+
+| `num_ctx` | Result |
+|-----------|--------|
+| 4096 (Ollama's own default) | fails — hallucinated filenames, `empty response detected`, run timeout |
+| 16384 | fails — model wanders off the task, no file written |
+| **24576** | **passes** — correct listing, all files read, accurate `INDEX.md`, reproduced twice |
+
+**Trade-off, still real:** larger context costs memory and slows prompt evaluation, and on
+a VRAM-constrained host a *large* model at a *large* context can exceed the idle watchdog
+and return nothing — a 27.9B model at a forced 32768 returned nothing in 10 minutes. That
+is the reason the default is 24576 rather than higher. If you run a model in the 27B+
+range on 24 GB, lower `OPENCLAW_OLLAMA_NUM_CTX` rather than raising it.
 
 ### Disabling Ollama Native Thinking (Qwen3-Style Models)
 
