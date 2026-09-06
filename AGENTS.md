@@ -180,6 +180,12 @@ Three rules that override intuition here:
   sent and never run.
 - **Confirm results on disk.** A local model will report success it did not achieve. If a
   turn was supposed to write a file, read the file.
+- **Read the provider's own integration guide before opening a long test loop.** Local
+  model failures are usually documented setup requirements, not novel bugs. The 4096
+  context default that broke agent turns here is stated plainly in Ollama's integration
+  docs; it was found by testing instead, at a cost of hours. One documentation pass, then
+  a short control test to confirm it applies to this host, beats an open-ended test loop.
+  Tests still decide the outcome — the guide narrows what to test.
 
 ## Verification
 
