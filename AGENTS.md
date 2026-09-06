@@ -22,7 +22,39 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 
 - Treat issue [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12) as the source of truth for roadmap and decision gates.
 - **Resume point (update this at the end of any session that changes priorities).**
-  Current live status as of 2026-09-02: [#197](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/197) (thinking-trace leak) is done, merged as `ba4b24e` via PR [#199](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/199), issue closed. [#189](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/189) (dead Ollama config-writer code / forced `num_ctx`) is done, merged as `3a9fccf` via PR [#202](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/202), issue closed. It removed five dead exports from `ui/src/ollamaSetup.ts` and stopped the runtime helper forcing `num_ctx: 32768`; Ollama now sizes context itself unless `OPENCLAW_OLLAMA_NUM_CTX` is set. [#191](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/191) (load preflight — `/api/tags` success reported as healthy while loads fail) is done, merged as `51dc605` via PR [#205](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/205), issue closed. [#198](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/198) (`localModelLean` never set) is done, merged as `8b0952f` via PR [#206](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/206), issue closed. [#190](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/190) (hardcoded model recommendations / arbitrary auto-selection) is done, merged as `e14d581` via PR [#208](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/208), issue closed. It now selects the smallest installed model by size and shows model sizes in the dropdown; "largest that fits" was rejected because no Ollama API exposes the VRAM budget. The remaining local-usability batch is now [#192](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/192) alone.
+  Current live status as of 2026-09-05: a full local-model debugging pass ran end to end
+  on the maintainer host and produced two open PRs and seven new issues. **Nothing from
+  this session is merged.**
+  [#213](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/213) is the
+  substantive one: Ollama does not size `num_ctx` from available VRAM as #189 assumed — it
+  applies a small fixed default (measured 4096) that cannot carry an agent turn. Fix in PR
+  [#222](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/222), which
+  partially reverses #189 and wants review on that basis. Docs in PR
+  [#224](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/224) (#223):
+  `docs/local-model-diagnostics.md`, `openspec/specs/ollama-health-contract.md`, AGENTS.md
+  guidance. New issues filed from observed failures, not speculation:
+  [#214](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/214) OpenClaw
+  version frozen at runtime-image build time and the update control cannot move it;
+  [#215](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/215) a
+  runtime upgrade leaves installs unbootable, **confirmed in the wild** — the extension's
+  own control removed a working container and started one that exited(1);
+  [#216](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/216) no host
+  folder can be mounted, so the agent cannot touch any file on the user's Mac;
+  [#217](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/217) a T1
+  upgrade runbook; [#218](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/218)
+  the pre-push hook is load-sensitive, not broken (pushes succeed in ~5.5 min on an idle
+  machine); [#219](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/219)
+  turn timeouts are reported as `network connection error`;
+  [#220](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/220) the
+  OpenClaw Image setting appears not to persist, re-arming #215's downgrade banner;
+  [#221](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/221) record
+  the demo video, fixture and exact prompt already verified.
+  **Do not assume the maintainer host reflects shipped state.** It was upgraded by hand to
+  OpenClaw 2026.9.1 on a local `openclaw-docker-extension-runtime:dev` image with a
+  hand-tuned config; released artifacts are still on 2026.6.1. A known-good volume snapshot
+  is at `~/openclaw-backups/`. Migrations are forward-only, so a retained container is not
+  a rollback — snapshot the volume before any `doctor --fix`.
+  Previous live status as of 2026-09-02: [#197](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/197) (thinking-trace leak) is done, merged as `ba4b24e` via PR [#199](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/199), issue closed. [#189](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/189) (dead Ollama config-writer code / forced `num_ctx`) is done, merged as `3a9fccf` via PR [#202](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/202), issue closed. It removed five dead exports from `ui/src/ollamaSetup.ts` and stopped the runtime helper forcing `num_ctx: 32768`; Ollama now sizes context itself unless `OPENCLAW_OLLAMA_NUM_CTX` is set. [#191](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/191) (load preflight — `/api/tags` success reported as healthy while loads fail) is done, merged as `51dc605` via PR [#205](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/205), issue closed. [#198](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/198) (`localModelLean` never set) is done, merged as `8b0952f` via PR [#206](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/206), issue closed. [#190](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/190) (hardcoded model recommendations / arbitrary auto-selection) is done, merged as `e14d581` via PR [#208](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/208), issue closed. It now selects the smallest installed model by size and shows model sizes in the dropdown; "largest that fits" was rejected because no Ollama API exposes the VRAM budget. The remaining local-usability batch is now [#192](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/192) alone.
   [#196](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/196) (positioning: extension unreachable when the Docker Desktop dashboard is) was added since the original batch. [#204](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/204) was filed during #191's review: the load probe is skipped entirely when the selected Ollama model is stale, leaving a narrow re-opening of #191's blind spot. It is unsequenced and small. Specs/checklist/contract land in PR [#194](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/194). Each carries a delivery order and minimum agent
   tier. The hardware-profile lane (#157/#160) is superseded by #190, now shipped. Users should run
   `docs/preflight-checklist.md` before reporting local-model problems.
