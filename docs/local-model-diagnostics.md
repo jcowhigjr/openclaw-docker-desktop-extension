@@ -143,6 +143,44 @@ grep -o 'OLLAMA_MODELS:[^ ]*' ~/.ollama/logs/server.log | tail -1
 
 ---
 
+## The context setting keeps getting overwritten
+
+Symptom: `num_ctx` was configured, worked, and later reverted to a small value without
+anyone editing it.
+
+The extension's **Detect Ollama Models** / apply flow rewrites
+`models.providers.ollama` wholesale. Anything hand-tuned in that block — `num_ctx`,
+`contextTokens`, `params` — is replaced by whatever the helper writes. Re-applying a model
+is therefore not a no-op.
+
+A client-independent alternative is to bake the context into a **Modelfile variant**. The
+value then lives in the model itself, so it survives config rewrites, applies to every
+client, and needs no coordination with whatever the extension writes:
+
+```bash
+cat > /tmp/Modelfile <<'EOF'
+FROM qwen3:8b
+PARAMETER num_ctx 24576
+EOF
+ollama create qwen3:8b-agent -f /tmp/Modelfile
+```
+
+This reuses the existing weights — no download, negligible extra disk. Verify:
+
+```bash
+ollama show qwen3:8b-agent --parameters
+```
+
+Then select `qwen3:8b-agent` as the configured model. Confirmed working on this pattern:
+an equivalent variant built for OpenCode carried `num_ctx 32768` in its manifest and
+restored tool use independently of client-side settings.
+
+**Trade-off:** it is another model entry to keep track of, and the value is now in two
+places if the client also sets one. Prefer it when a setting keeps getting clobbered or
+must hold across several clients; prefer client config when one client owns the setting.
+
+---
+
 ## The gateway will not start
 
 The container's log lives on tmpfs and dies with the container, so a crashed container
