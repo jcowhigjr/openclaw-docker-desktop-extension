@@ -113,13 +113,30 @@ function executionModeConfig(mode) {
 }
 
 // Resolve the Ollama context window size (num_ctx) for the model entry.
-// Left unset by default: Ollama derives its own default from available VRAM
-// (e.g. 4096 on an M4/24GB host), and OpenClaw's native adapter deliberately
-// omits num_ctx so Ollama decides. Forcing a fixed value here can exceed what
-// the host can serve — a 27.9B model at a forced 32768 returned nothing in 10
-// minutes, well past the 120s idle watchdog. Overridable via
-// OPENCLAW_OLLAMA_NUM_CTX, which must parse to a positive finite integer;
-// unset, blank, or invalid values leave num_ctx unset.
+// Defaults to OLLAMA_NUM_CTX_DEFAULT rather than being omitted. Omitting it
+// lets Ollama apply its own default, which is NOT derived from available VRAM
+// as previously assumed (#189): it is a small fixed value — measured at 4096
+// for qwen3:8b on an M4/24GB host, against an advertised context of 40960.
+// 4096 cannot carry an agent turn. OpenClaw's provider docs put the floor at
+// 16K-24K because system prompt, tool definitions and history consume 8-12k
+// before the model reasons at all; at 4096 the workspace bootstrap is
+// truncated, the model hallucinates rather than reading, and the turn ends in
+// `empty response detected` (#213).
+//
+// 24576 is the top of that documented band, chosen by measurement rather than
+// by picking the safest-looking number: at 16384 the same agent turn still
+// failed (the model wandered off the task instead of completing it), while
+// 24576 completed it correctly on two consecutive runs. It also stays clear of
+// the opposite failure, which is equally real: a 27.9B model at a forced 32768
+// returned nothing in 10 minutes, past the 120s idle watchdog. Large models on
+// constrained hosts should lower this via OPENCLAW_OLLAMA_NUM_CTX rather than
+// have the default lowered for everyone back into the range that does not work.
+//
+// Overridable in both directions via OPENCLAW_OLLAMA_NUM_CTX, which must parse
+// to a positive finite integer; unset, blank, or invalid values fall back to
+// the default.
+const OLLAMA_NUM_CTX_DEFAULT = 24576;
+
 function resolveOllamaNumCtx() {
   const raw = process.env.OPENCLAW_OLLAMA_NUM_CTX;
   if (typeof raw === 'string' && raw.trim() !== '') {
@@ -128,7 +145,7 @@ function resolveOllamaNumCtx() {
       return n;
     }
   }
-  return undefined;
+  return OLLAMA_NUM_CTX_DEFAULT;
 }
 
 // Resolve whether Ollama "thinking" (reasoning trace) is enabled for the model
@@ -231,12 +248,7 @@ function ollamaConfigWrite(model) {
   // switch inert. Deriving both from one resolved value keeps them in sync.
   const thinking = resolveOllamaThinking();
   const numCtx = resolveOllamaNumCtx();
-  const params = { thinking };
-  if (numCtx !== undefined) {
-    // Only set num_ctx when explicitly overridden; otherwise omit the key
-    // entirely so Ollama picks its own default from available VRAM.
-    params.num_ctx = numCtx;
-  }
+  const params = { thinking, num_ctx: numCtx };
   config.models.providers.ollama = {
     api: 'ollama',
     apiKey: 'ollama-local',
@@ -246,6 +258,13 @@ function ollamaConfigWrite(model) {
         id: selectedModel,
         name: selectedModel,
         reasoning: thinking,
+        // contextTokens caps OpenClaw's active input budget; num_ctx sets the
+        // native Ollama request context. The provider docs require these be
+        // kept aligned when the host cannot serve the model's full advertised
+        // context, which is the normal case on the hardware this extension
+        // targets. Setting num_ctx alone leaves OpenClaw budgeting against a
+        // window Ollama will not actually serve.
+        contextTokens: numCtx,
         params,
       },
     ],
