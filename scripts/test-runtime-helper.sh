@@ -60,26 +60,51 @@ grep -F 'preserve-socket-token' "$approvals_path" >/dev/null
 env $helper_env node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
 grep -F '"primary": "ollama/qwen3.5:latest"' "$config_path" >/dev/null
 grep -F '"ollama:manual"' "$config_path" >/dev/null
-# With OPENCLAW_OLLAMA_NUM_CTX unset, num_ctx must be omitted entirely so
-# Ollama derives its own default from available VRAM instead of a forced
-# value that can exceed what the host can serve.
-grep -F 'num_ctx' "$config_path" >/dev/null && {
-  echo "ollama-config-write must omit num_ctx when OPENCLAW_OLLAMA_NUM_CTX is unset" >&2
+# With OPENCLAW_OLLAMA_NUM_CTX unset, num_ctx must be written at the 24576
+# default. Omitting it lets Ollama apply a small fixed default (measured 4096),
+# which cannot carry an agent turn -- see #213.
+grep -F '"num_ctx": 24576' "$config_path" >/dev/null || {
+  echo "ollama-config-write must default num_ctx to 24576 when OPENCLAW_OLLAMA_NUM_CTX is unset" >&2
+  exit 1
+}
+# contextTokens caps OpenClaw's input budget and must track num_ctx, or
+# OpenClaw budgets against a window Ollama will not serve.
+grep -F '"contextTokens": 24576' "$config_path" >/dev/null || {
+  echo "ollama-config-write must align contextTokens with num_ctx" >&2
   exit 1
 }
 
-# num_ctx is opt-in via OPENCLAW_OLLAMA_NUM_CTX.
-env $helper_env OPENCLAW_OLLAMA_NUM_CTX=16384 node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
-grep -F '"num_ctx": 16384' "$config_path" >/dev/null
+# OPENCLAW_OLLAMA_NUM_CTX overrides upward.
+env $helper_env OPENCLAW_OLLAMA_NUM_CTX=40960 node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
+grep -F '"num_ctx": 40960' "$config_path" >/dev/null
+grep -F '"contextTokens": 40960' "$config_path" >/dev/null
+
+# ...and downward, which is the escape hatch for large models on constrained
+# hosts (a 27.9B model at a forced 32768 hung past the idle watchdog).
+env $helper_env OPENCLAW_OLLAMA_NUM_CTX=8192 node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
+grep -F '"num_ctx": 8192' "$config_path" >/dev/null
+grep -F '"contextTokens": 8192' "$config_path" >/dev/null
+
+# Invalid and blank values fall back to the default rather than omitting.
+env $helper_env OPENCLAW_OLLAMA_NUM_CTX=not-a-number node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
+grep -F '"num_ctx": 24576' "$config_path" >/dev/null || {
+  echo "invalid OPENCLAW_OLLAMA_NUM_CTX must fall back to the 24576 default" >&2
+  exit 1
+}
+env $helper_env OPENCLAW_OLLAMA_NUM_CTX=0 node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
+grep -F '"num_ctx": 24576' "$config_path" >/dev/null || {
+  echo "non-positive OPENCLAW_OLLAMA_NUM_CTX must fall back to the 24576 default" >&2
+  exit 1
+}
 
 # `reasoning: false` alone does not disable Ollama thinking; the helper must
 # write params.thinking so OpenClaw promotes it to Ollama's top-level `think`
 # field. Default (OPENCLAW_OLLAMA_THINKING unset) is thinking OFF.
 env $helper_env node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
 grep -F '"thinking": false' "$config_path" >/dev/null
-# num_ctx must still be omitted, unaffected by the thinking rollback switch.
-grep -F 'num_ctx' "$config_path" >/dev/null && {
-  echo "ollama-config-write must omit num_ctx regardless of OPENCLAW_OLLAMA_THINKING" >&2
+# num_ctx keeps its default, unaffected by the thinking rollback switch.
+grep -F '"num_ctx": 24576' "$config_path" >/dev/null || {
+  echo "num_ctx default must be independent of OPENCLAW_OLLAMA_THINKING" >&2
   exit 1
 }
 # `reasoning` must track `thinking`: OpenClaw's native Ollama adapter refuses
@@ -90,8 +115,8 @@ grep -F '"reasoning": false' "$config_path" >/dev/null
 # OPENCLAW_OLLAMA_THINKING is the rollback switch to turn thinking back on.
 env $helper_env OPENCLAW_OLLAMA_THINKING=true node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
 grep -F '"thinking": true' "$config_path" >/dev/null
-grep -F 'num_ctx' "$config_path" >/dev/null && {
-  echo "ollama-config-write must omit num_ctx regardless of OPENCLAW_OLLAMA_THINKING" >&2
+grep -F '"num_ctx": 24576' "$config_path" >/dev/null || {
+  echo "num_ctx default must be independent of OPENCLAW_OLLAMA_THINKING" >&2
   exit 1
 }
 # `reasoning` must flip with `thinking`, or OpenClaw drops the forwarded
@@ -155,13 +180,13 @@ env "OPENCLAW_CONFIG_PATH=${lean_sibling_path}" node runtime/openclaw-extension-
 grep -F '"localModelLean": true' "$lean_sibling_path" >/dev/null
 grep -F '"someOtherFlag": true' "$lean_sibling_path" >/dev/null
 
-# The #197/#189 invariants must still hold in the same written config:
-# params.thinking present, reasoning matching it, num_ctx absent when
-# OPENCLAW_OLLAMA_NUM_CTX is unset.
+# The #197/#213 invariants must still hold in the same written config:
+# params.thinking present, reasoning matching it, and num_ctx defaulted rather
+# than omitted.
 grep -F '"thinking": false' "$lean_false_path" >/dev/null
 grep -F '"reasoning": false' "$lean_false_path" >/dev/null
-grep -F 'num_ctx' "$lean_false_path" >/dev/null && {
-  echo "ollama-config-write must omit num_ctx when OPENCLAW_OLLAMA_NUM_CTX is unset" >&2
+grep -F '"num_ctx": 24576' "$lean_false_path" >/dev/null || {
+  echo "ollama-config-write must default num_ctx to 24576 when OPENCLAW_OLLAMA_NUM_CTX is unset" >&2
   exit 1
 }
 
