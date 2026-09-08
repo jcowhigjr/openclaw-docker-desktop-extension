@@ -43,6 +43,8 @@ If Docker Desktop blocks local extensions, enable local or non-Marketplace exten
 
 If anything fails or a chat appears to hang, run the two-minute [preflight checklist](docs/preflight-checklist.md) before debugging. Docker and Ollama are separate apps that update themselves and do not start at login; the checklist proves each one is not just running but actually able to do work.
 
+If the extension is already **running** and healthy but Settings, **Update and Restart**, or Manage → **Share** look wrong or dangerous, read [user operations](docs/user-operations.md) before clicking those controls. In particular: **Update and Restart** recreates from the Settings image (it can downgrade a newer local runtime), and **Share** fails for GHCR/unpublished installs because Docker Desktop only shares Docker Hub–hosted extension images.
+
 ## Fast command guide
 
 Use these commands depending on where you are in the flow:
