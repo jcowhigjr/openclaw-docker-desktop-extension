@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   describeRuntimeImageVersion,
   isRuntimeImageUpdateable,
+  migrateStoredRuntimeImage,
   parseLocalImageInspect,
   parseRemoteDigestFromBuildxOutput,
   parseRemoteDigestFromManifest,
@@ -17,6 +18,35 @@ describe('runtimeUpdate helpers', () => {
     expect(isRuntimeImageUpdateable('ghcr.io/example/openclaw-runtime:beta')).toBe(true);
     expect(isRuntimeImageUpdateable('ghcr.io/example/openclaw-runtime:v2026.4.11')).toBe(false);
     expect(isRuntimeImageUpdateable('openclaw-docker-extension-runtime:dev')).toBe(false);
+  });
+
+  it('migrates only genuinely obsolete upstream refs, never a local tag (#220)', () => {
+    const fallback = 'ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest';
+
+    // The two known-obsolete refs from earlier extension versions still migrate.
+    expect(migrateStoredRuntimeImage('ghcr.io/openclaw/openclaw:latest', fallback)).toBe(fallback);
+    expect(
+      migrateStoredRuntimeImage('ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest', fallback),
+    ).toBe(fallback);
+
+    // A locally-scoped tag -- exactly what `make install-dev` produces, and
+    // what a maintainer pins Settings to on a recovery host -- must round-trip
+    // unchanged. This is the regression #220 was filed against: this value
+    // was silently rewritten back to `fallback` on every load.
+    expect(migrateStoredRuntimeImage('openclaw-docker-extension-runtime:dev', fallback)).toBe(
+      'openclaw-docker-extension-runtime:dev',
+    );
+
+    // Any other locally-scoped or pinned-release ref is left alone too.
+    expect(migrateStoredRuntimeImage('openclaw-docker-extension-runtime:working', fallback)).toBe(
+      'openclaw-docker-extension-runtime:working',
+    );
+    expect(
+      migrateStoredRuntimeImage('ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:0.3.6', fallback),
+    ).toBe('ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:0.3.6');
+
+    // Whitespace from a hand-edited field does not defeat the exact match.
+    expect(migrateStoredRuntimeImage('  ghcr.io/openclaw/openclaw:latest  ', fallback)).toBe(fallback);
   });
 
   it('parses local inspect digests and version labels', () => {

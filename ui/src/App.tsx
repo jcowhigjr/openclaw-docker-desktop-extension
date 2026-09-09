@@ -59,6 +59,7 @@ import {
   parseDockerPublishedPortConflicts,
 } from './requirementChecks';
 import { updateActionButtonSx } from './updateActionButton';
+import { isRuntimeImageUpdateable, migrateStoredRuntimeImage } from './runtimeUpdate';
 import {
   chatGateMessage,
   deriveOnboardingPhase,
@@ -83,6 +84,7 @@ type ContainerSnapshot = {
   id: string;
   state: string;
   status: string;
+  image?: string;
 };
 
 type CliExecResult = {
@@ -122,22 +124,10 @@ function loadConfig(): ExtensionConfig {
 
     const parsed = JSON.parse(raw) as Partial<ExtensionConfig>;
     return {
-      image: ((): string => {
-        if (typeof parsed.image !== 'string' || !parsed.image.trim()) {
-          return DEFAULT_CONFIG.image;
-        }
-        const stored = parsed.image.trim();
-        if (stored === 'ghcr.io/openclaw/openclaw:latest') {
-          return DEFAULT_CONFIG.image;
-        }
-        if (
-          stored === 'openclaw-docker-extension-runtime:dev' ||
-          stored === 'ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest'
-        ) {
-          return DEFAULT_CONFIG.image;
-        }
-        return stored;
-      })(),
+      image:
+        typeof parsed.image === 'string' && parsed.image.trim()
+          ? migrateStoredRuntimeImage(parsed.image, DEFAULT_CONFIG.image)
+          : DEFAULT_CONFIG.image,
       port: typeof parsed.port === 'number' && Number.isFinite(parsed.port) ? parsed.port : DEFAULT_CONFIG.port,
       autoStart: parsed.autoStart ?? DEFAULT_CONFIG.autoStart,
       providerChoice: parseProviderChoice(parsed.providerChoice),
@@ -166,6 +156,11 @@ export function App() {
   const [config, setConfig] = useState<ExtensionConfig>(loadConfig);
   const [phase, setPhase] = useState<ContainerPhase>('missing');
   const [statusText, setStatusText] = useState('No OpenClaw container yet');
+  // The image the running container was actually created from, as reported by
+  // Docker -- independent of `config.image`, which is only the user's saved
+  // setting. Showing both lets a mismatch (e.g. #220's silent rewrite) be seen
+  // instead of inferred from an update banner.
+  const [runningImage, setRunningImage] = useState('');
   const [token, setToken] = useState('');
   const [tokenStatus, setTokenStatus] = useState<TokenStatus>('unknown');
   const [busy, setBusy] = useState(false);
@@ -242,25 +237,36 @@ export function App() {
       Id: string;
       State: string;
       Status: string;
+      Image?: string;
       Names?: string[];
       Name?: string;
     }>;
 
     if (containers.length > 0) {
       const container = containers[0];
-      return { id: container.Id, state: container.State, status: container.Status };
+      return {
+        id: container.Id,
+        state: container.State,
+        status: container.Status,
+        image: container.Image,
+      };
     }
 
     const byName = (await ddClient.docker.listContainers({
       all: true,
       filters: { name: [CONTAINER_NAME] },
-    })) as Array<{ Id: string; State: string; Status: string }>;
+    })) as Array<{ Id: string; State: string; Status: string; Image?: string }>;
 
     if (byName.length === 0) {
       return null;
     }
 
-    return { id: byName[0].Id, state: byName[0].State, status: byName[0].Status };
+    return {
+      id: byName[0].Id,
+      state: byName[0].State,
+      status: byName[0].Status,
+      image: byName[0].Image,
+    };
   }, [ddClient]);
 
   const appendDebug = useCallback((entry: string) => {
@@ -481,8 +487,11 @@ export function App() {
         setStatusText('No OpenClaw container yet');
         setToken('');
         setTokenStatus('unknown');
+        setRunningImage('');
         return { phase: 'missing', ready: false };
       }
+
+      setRunningImage(container.image ?? '');
 
       if (container.state === 'running') {
         const ready = await checkReady();
@@ -873,7 +882,20 @@ export function App() {
 
   const checkForUpdate = useCallback(async () => {
     const image = configImageRef.current;
-    if (!image.startsWith('ghcr.io/')) {
+    // Only floating/channel-style GHCR tags are eligible for an update check --
+    // this is the design decision from openspec/changes/add-runtime-update-on-open
+    // ("pinned version tags should stay reproducible and unchanged"). A pinned
+    // release tag (e.g. `:0.3.6`) or a locally-scoped tag (e.g. `:dev`) must
+    // never reach the `docker pull` below: pulling a pin can only ever produce
+    // "unrelated/older SHA" -- there is nothing newer to find -- and comparing
+    // that SHA against the running container's SHA reports it as an available
+    // update regardless of which one is actually newer. That mislabeled banner
+    // is what previously led to a working install being downgraded (#215).
+    // This also removes the periodic `docker pull` this function's interval
+    // caller performs against pinned/local images -- there is no separate gate
+    // for the timer, so fixing this check fixes both call sites.
+    if (!isRuntimeImageUpdateable(image)) {
+      setUpdateAvailable(false);
       return;
     }
     setUpdateChecking(true);
@@ -1339,6 +1361,15 @@ export function App() {
           <CardContent>
             <Stack spacing={2}>
               <Typography variant="h5">Settings</Typography>
+              {runningImage && runningImage !== config.image && (
+                <Alert severity="warning">
+                  The running container was created from <strong>{runningImage}</strong>, which does
+                  not match the Configured image below (<strong>{config.image}</strong>). Plain Restart
+                  does not change this -- it restarts the existing container in place. Only Update and
+                  Restart, or Remove Container followed by Start, recreates it from the Configured
+                  image. Confirm that is what you want before doing either.
+                </Alert>
+              )}
               <TextField
                 label="OpenClaw Image"
                 value={config.image}
@@ -1346,6 +1377,15 @@ export function App() {
                 onChange={(event) => setConfig((current) => ({ ...current, image: event.target.value }))}
                 helperText="The runtime image with the macOS socat bridge. Defaults to the official registry image."
               />
+              {runningImage && (
+                <TextField
+                  label="Running Image"
+                  value={runningImage}
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                  helperText="What the currently running container was actually created from. Read-only; edit Configured image above and recreate to change it."
+                />
+              )}
               <TextField
                 label="Host Port"
                 type="number"
