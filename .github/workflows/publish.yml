@@ -1,6 +1,17 @@
 name: Publish
 
 on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Existing v* tag to publish (from release-please or another caller)
+        required: true
+        type: string
+      promote_channel:
+        description: Move the floating stable/beta channel tag for this release
+        required: false
+        default: true
+        type: boolean
   workflow_dispatch:
     inputs:
       release_tag:
@@ -38,7 +49,8 @@ jobs:
           INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
           INPUT_PROMOTE_CHANNEL: ${{ inputs.promote_channel }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          event_name="${{ github.event_name }}"
+          if [ "${event_name}" = "workflow_dispatch" ] || [ "${event_name}" = "workflow_call" ]; then
             release_tag="${INPUT_RELEASE_TAG}"
           else
             release_tag="${GITHUB_REF_NAME}"
@@ -55,7 +67,7 @@ jobs:
 
           echo "RELEASE_TAG=${release_tag}" >> "${GITHUB_ENV}"
           echo "RELEASE_VERSION=${release_tag#v}" >> "${GITHUB_ENV}"
-          ./scripts/release-channel.sh "${release_tag}" "${{ github.event_name }}" "${INPUT_PROMOTE_CHANNEL}" >> "${GITHUB_OUTPUT}"
+          ./scripts/release-channel.sh "${release_tag}" "${event_name}" "${INPUT_PROMOTE_CHANNEL}" >> "${GITHUB_OUTPUT}"
 
       - name: Checkout release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

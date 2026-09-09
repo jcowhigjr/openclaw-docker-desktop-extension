@@ -37,5 +37,8 @@ assert_case "manual repair keeps version-only publish" "v1.2.3" "workflow_dispat
 assert_case "manual prerelease repair keeps version-only publish" "v1.2.3-rc.1" "workflow_dispatch" "0" "" "false"
 assert_case "manual repair can promote stable channel" "v1.2.3" "workflow_dispatch" "1" "stable" "true"
 assert_case "manual repair can promote beta channel" "v1.2.3-rc.1" "workflow_dispatch" "1" "beta" "true"
+assert_case "workflow_call without promote stays version-only" "v1.2.3" "workflow_call" "0" "" "false"
+assert_case "workflow_call with promote moves stable" "v1.2.3" "workflow_call" "1" "stable" "true"
+assert_case "workflow_call with promote moves beta" "v1.2.3-rc.1" "workflow_call" "1" "beta" "true"
 
 echo "release-channel checks passed"
