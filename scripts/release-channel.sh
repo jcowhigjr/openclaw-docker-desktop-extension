@@ -28,7 +28,9 @@ esac
 channel_tag=""
 has_channel_tag=false
 
-if [ "$event_name" != "workflow_dispatch" ] || [ "$promote_channel" = "1" ]; then
+# Tag pushes always promote the matching channel. workflow_dispatch / workflow_call
+# only promote when promote_channel is explicitly enabled (automation passes true).
+if [ "$event_name" = "push" ] || [ "$promote_channel" = "1" ]; then
   case "$release_tag" in
     *-alpha|*-alpha.*|*-beta|*-beta.*|*-rc|*-rc.*)
       channel_tag="beta"

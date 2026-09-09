@@ -71,11 +71,23 @@ Use these commands depending on where you are in the flow:
 
 ## Release-image path
 
-Tagged releases now publish both images to GHCR through GitHub Actions and create the matching GitHub release automatically:
+Tagged releases publish both images to GHCR through GitHub Actions and create the matching GitHub release automatically:
 
 - extension image: `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:<tag>`
 - runtime image: `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:<tag>`
 - published architectures: `linux/arm64` and `linux/amd64`
+
+### Automated release preparation (release-please)
+
+On every push to `main` that touches extension-affecting paths, the **Prepare release** workflow runs [release-please](https://github.com/googleapis/release-please). It opens or updates a `chore: release X.Y.Z` pull request (docs/openspec/README-only changes are excluded). When that PR merges:
+
+1. release-please creates a **draft** GitHub release and a `vX.Y.Z` tag (manifest baseline is `0.3.6`)
+2. Prepare release calls the single **Publish** workflow with `promote_channel=true`
+3. Publish builds multi-arch images, tags immutable semver + `v*` tags, and moves `stable` or `beta`
+
+**Secret required:** repository secret `RELEASE_PLEASE_TOKEN` — a PAT that can open release PRs, create tags/releases, and invoke workflows (default `GITHUB_TOKEN` cannot re-trigger Publish from a tag it created). Without the secret, Prepare release fails closed instead of silently skipping automation.
+
+Manual `v*` tag pushes and **Publish** `workflow_dispatch` remain supported repair paths.
 
 The release workflow also publishes the extension image to Docker Hub for Docker Marketplace validation:
 
@@ -216,6 +228,18 @@ For the floating channel install path:
 make update-channel RELEASE_CHANNEL=stable
 make update-channel RELEASE_CHANNEL=stable DRY_RUN=1
 ```
+
+### Unpublished-install update contract
+
+While the extension is **not** listed in Docker Marketplace (#86), Docker Desktop will **not** show a native Marketplace **Update** control for GHCR/unpublished installs. Supported update paths are explicit:
+
+| Install style | How to update |
+| --- | --- |
+| Pinned tag (`…:vX.Y.Z` or `…:0.3.6`) | `docker extension update …:vX.Y.Z` / `make update-release RELEASE_TAG=vX.Y.Z` after a newer tag exists |
+| Channel (`…:stable` / `…:beta`) | `make update-channel RELEASE_CHANNEL=stable` (or `docker extension update` on the channel ref) after Publish promotes the channel |
+| Local dev (`make install-dev`) | `make update-extension` |
+
+Do not expect Desktop’s extension Share/Update chrome to discover GHCR channel moves. Runtime-only freshness (scheduled `publish-runtime` → `…-runtime:latest`) does **not** replace an extension bundle update when UI or metadata changed.
 
 To validate the Docker Desktop install and uninstall path for the current published channel image:
 

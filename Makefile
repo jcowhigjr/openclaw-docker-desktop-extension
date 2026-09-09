@@ -62,6 +62,7 @@ verify-release-tag:
 verify-release-channel: ; @RELEASE_CHANNEL="$(RELEASE_CHANNEL)" GHCR_OWNER="$(GHCR_OWNER)" EXPECTED_RELEASE_TAG="$(EXPECTED_RELEASE_TAG)" ./scripts/verify-release-channel.sh
 
 test-release-channel: ; @./scripts/test-release-channel.sh
+test-release-automation: ; @./scripts/test-release-automation.sh
 test-runtime-bridge: ; @sh ./scripts/test-runtime-bridge.sh
 test-runtime-base-pull: ; @sh ./scripts/test-runtime-base-pull.sh
 test-extension-metadata: ; @./scripts/test-extension-metadata.sh
@@ -79,7 +80,7 @@ test-public-repo-boundary: ; @node ./scripts/test-public-repo-boundary.js
 test-security-local: ; @sh ./scripts/test-security-local.sh
 test-ui-screenshot-sync: ; @bash ./scripts/test-ui-screenshot-sync-selftest.sh
 test-ui: ; @cd ui && npm ci && npm test && npm run build
-test-pre-push: test-ui test-runtime-bridge test-runtime-base-pull test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-runtime-image-helper test-docs-landing-page test-public-repo-boundary test-security-local test-ui-screenshot-sync
+test-pre-push: test-ui test-runtime-bridge test-runtime-base-pull test-extension-metadata test-release-channel test-release-automation test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-runtime-image-helper test-docs-landing-page test-public-repo-boundary test-security-local test-ui-screenshot-sync
 install-hooks: ; @git config core.hooksPath .githooks && chmod +x .githooks/pre-push && echo "installed repo git hooks from .githooks"
 
 verify-release-bundle:
@@ -104,4 +105,4 @@ capture-readme-screenshot:
 create-smoke-report:
 	@REPORT_DATE="$(REPORT_DATE)" RELEASE_CHANNEL="$(RELEASE_CHANNEL)" RELEASE_TAG="$(RELEASE_TAG)" REPORT_DIR="$(REPORT_DIR)" sh ./scripts/create-smoke-report.sh
 
-.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-runtime-bridge test-runtime-base-pull test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-docs-landing-page test-public-repo-boundary test-security-local test-ui-screenshot-sync test-ui test-pre-push install-hooks verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot create-smoke-report
+.PHONY: build-runtime build-extension install-dev update-extension publish-runtime install-release update-release install-channel update-channel verify-release-tag verify-release-channel test-release-channel test-release-automation test-runtime-bridge test-runtime-base-pull test-extension-metadata test-release-tag-dry-run test-verify-release-tag-dockerhub-error test-verify-release-tag-title test-release-install-dry-run test-release-channel-dry-run test-verify-release-channel-digest test-create-smoke-report test-runtime-helper test-docs-landing-page test-public-repo-boundary test-security-local test-ui-screenshot-sync test-ui test-pre-push install-hooks verify-release-bundle verify-release-install verify-channel-install publish-release ship-release uninstall capture-readme-screenshot create-smoke-report
