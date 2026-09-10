@@ -28,6 +28,7 @@ with open(".release-please-manifest.json", encoding="utf-8") as handle:
 
 assert config["release-type"] == "simple"
 assert config["include-v-in-tag"] is True
+assert config.get("include-component-in-tag") is False
 assert config["draft"] is True
 assert config["force-tag-creation"] is True
 assert config["packages"]["."]["package-name"] == "openclaw-docker-desktop-extension"
@@ -47,8 +48,10 @@ require_file_contains "$workflow" "promote_channel: true" "automated stable/beta
 require_file_contains "$publish_workflow" "workflow_call:" "reusable publish contract"
 require_file_contains "$publish_workflow" "release_tag:" "workflow_call release_tag input"
 require_file_contains "$publish_workflow" "promote_channel:" "workflow_call promote_channel input"
+require_file_contains "$publish_workflow" 'if [ -n "${INPUT_RELEASE_TAG}" ]; then' "prefer explicit release_tag input over parent event ref"
 require_file_contains "$publish_workflow" 'type=raw,value=${{ env.RELEASE_VERSION }}' "immutable semver tag"
 require_file_contains "$publish_workflow" "VITE_DEFAULT_RUNTIME_IMAGE=" "extension defaults to matching runtime version"
+require_file_contains "$workflow" "Normalize release tag to v*" "normalize component tags to v*"
 
 # Channel promotion must remain opt-in for manual repair (workflow_dispatch without promote).
 require_file_contains "scripts/release-channel.sh" 'event_name" = "push"' "push events promote channels by default"

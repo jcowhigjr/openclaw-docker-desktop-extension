@@ -23,6 +23,7 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
+      release_tag: ${{ steps.tag.outputs.release_tag }}
     steps:
       - name: Require release automation token
         env:
@@ -42,11 +43,37 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      - name: Normalize release tag to v*
+        id: tag
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        env:
+          RAW_TAG: ${{ steps.release.outputs.tag_name }}
+        run: |
+          raw="${RAW_TAG}"
+          case "${raw}" in
+            v*)
+              tag="${raw}"
+              ;;
+            *)
+              # Legacy component tags look like name-vX.Y.Z
+              tag="v${raw##*-v}"
+              ;;
+          esac
+          case "${tag}" in
+            v[0-9]*)
+              ;;
+            *)
+              echo "could not normalize release tag from: ${raw}" >&2
+              exit 1
+              ;;
+          esac
+          echo "release_tag=${tag}" >> "${GITHUB_OUTPUT}"
+
   publish:
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     needs: release-please
     uses: ./.github/workflows/publish.yml
     with:
-      release_tag: ${{ needs.release-please.outputs.tag_name }}
+      release_tag: ${{ needs.release-please.outputs.release_tag }}
       promote_channel: true
     secrets: inherit
