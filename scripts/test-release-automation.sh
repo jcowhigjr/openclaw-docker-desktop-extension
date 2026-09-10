@@ -19,6 +19,7 @@ require_file_contains() {
 
 python3 - <<'PY'
 import json
+import re
 
 with open("release-please-config.json", encoding="utf-8") as handle:
     config = json.load(handle)
@@ -32,7 +33,9 @@ assert config["force-tag-creation"] is True
 assert config["packages"]["."]["package-name"] == "openclaw-docker-desktop-extension"
 assert "docs/**" in config["packages"]["."]["exclude-paths"]
 assert "openspec/**" in config["packages"]["."]["exclude-paths"]
-assert manifest["."] == "0.3.6"
+# Manifest version advances on each release-please PR; only require a sane semver.
+version = manifest["."]
+assert isinstance(version, str) and re.fullmatch(r"\d+\.\d+\.\d+", version), version
 PY
 
 require_file_contains "$workflow" "googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0" "pinned release-please action"
