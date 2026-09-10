@@ -1,6 +1,7 @@
 {
   "release-type": "simple",
   "include-v-in-tag": true,
+  "include-component-in-tag": false,
   "draft": true,
   "force-tag-creation": true,
   "pull-request-title-pattern": "chore: release ${version}",

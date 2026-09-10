@@ -50,8 +50,13 @@ jobs:
           INPUT_PROMOTE_CHANNEL: ${{ inputs.promote_channel }}
         run: |
           event_name="${{ github.event_name }}"
-          if [ "${event_name}" = "workflow_dispatch" ] || [ "${event_name}" = "workflow_call" ]; then
+          # Nested workflow_call keeps the parent event_name (often "push" on main).
+          # Prefer an explicit release_tag input whenever the caller provided one.
+          if [ -n "${INPUT_RELEASE_TAG}" ]; then
             release_tag="${INPUT_RELEASE_TAG}"
+          elif [ "${event_name}" = "workflow_dispatch" ] || [ "${event_name}" = "workflow_call" ]; then
+            echo "release_tag input is required for ${event_name}" >&2
+            exit 1
           else
             release_tag="${GITHUB_REF_NAME}"
           fi
@@ -65,9 +70,22 @@ jobs:
               ;;
           esac
 
+          # Channel promotion: tag pushes always promote; callers pass promote_channel.
+          # When this job is invoked via workflow_call from a main push, event_name is
+          # still "push" — force promote_channel from the input so repair stays opt-in
+          # only for true workflow_dispatch without promote.
+          promote_arg="${INPUT_PROMOTE_CHANNEL}"
+          if [ "${event_name}" = "push" ] && [ -n "${INPUT_RELEASE_TAG}" ]; then
+            # Called with an explicit tag from automation while parent event is push.
+            event_name="workflow_call"
+            if [ -z "${promote_arg}" ]; then
+              promote_arg=true
+            fi
+          fi
+
           echo "RELEASE_TAG=${release_tag}" >> "${GITHUB_ENV}"
           echo "RELEASE_VERSION=${release_tag#v}" >> "${GITHUB_ENV}"
-          ./scripts/release-channel.sh "${release_tag}" "${event_name}" "${INPUT_PROMOTE_CHANNEL}" >> "${GITHUB_OUTPUT}"
+          ./scripts/release-channel.sh "${release_tag}" "${event_name}" "${promote_arg}" >> "${GITHUB_OUTPUT}"
 
       - name: Checkout release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
