@@ -50,6 +50,7 @@ docs/preflight-checklist.md
 docs/skill-dependency-architecture.md
 docs/styles.css
 docs/submission-readiness.md
+docs/release-test-setup.md
 docs/superpowers/plans/2026-06-04-observability-actionable-diagnostics.md
 docs/superpowers/specs/2026-06-04-observability-actionable-diagnostics-design.md
 docs/upstream-openclaw-issues.md
