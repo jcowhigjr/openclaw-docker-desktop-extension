@@ -48,6 +48,28 @@ export function isRuntimeImageUpdateable(image: string): boolean {
   return tag !== null && UPDATEABLE_RUNTIME_TAGS.has(tag);
 }
 
+// Genuinely obsolete image references from earlier extension versions, kept
+// as an exact-match allowlist rather than a pattern. Do NOT add a
+// locally-scoped tag (no registry host, e.g. `openclaw-docker-extension-runtime:dev`)
+// here: those are intentional user pins -- exactly what `make install-dev`
+// produces and what a maintainer or recovery host deliberately configures --
+// not stale artifacts. Rewriting one back to `fallback` on every load
+// silently discarded a saved Settings value with no way to make it stick
+// (#220), which in turn made the update banner offer what was actually a
+// downgrade (#215).
+const OBSOLETE_RUNTIME_IMAGE_REFS = new Set([
+  'ghcr.io/openclaw/openclaw:latest',
+  'ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest',
+]);
+
+export function migrateStoredRuntimeImage(stored: string, fallback: string): string {
+  const trimmed = stored.trim();
+  if (OBSOLETE_RUNTIME_IMAGE_REFS.has(trimmed)) {
+    return fallback;
+  }
+  return trimmed;
+}
+
 export function shouldAutoApplyRuntimeUpdate(
   policy: UpdatePolicy,
   result: RuntimeUpdateCheckResult | null,

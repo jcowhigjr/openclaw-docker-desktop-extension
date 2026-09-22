@@ -38,6 +38,7 @@ describe('Docker Desktop demo client', () => {
         Id: 'demo-openclaw',
         State: 'running',
         Status: 'Up 3 minutes (healthy)',
+        Image: 'ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest',
         Names: ['/openclaw-docker-extension-service'],
       },
     ]);

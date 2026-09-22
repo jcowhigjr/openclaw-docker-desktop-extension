@@ -11,6 +11,7 @@ export type DemoDockerDesktopClient = {
       Id: string;
       State: string;
       Status: string;
+      Image: string;
       Names: string[];
     }>>;
     cli: {
@@ -149,6 +150,10 @@ export function createDemoDDClient(search = ''): DemoDockerDesktopClient {
           Id: 'demo-openclaw',
           State: 'running',
           Status: 'Up 3 minutes (healthy)',
+          // Matches App.tsx's DEFAULT_RUNTIME_IMAGE so the demo screenshot's
+          // baseline shows no Configured/Running mismatch warning -- only the
+          // new read-only Running Image field.
+          Image: 'ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest',
           Names: ['/openclaw-docker-extension-service'],
         },
       ],
