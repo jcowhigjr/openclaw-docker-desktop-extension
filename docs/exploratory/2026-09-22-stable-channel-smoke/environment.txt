@@ -1,0 +1,41 @@
+captured_at=2026-09-22T15:32:09Z
+repo_root=<redacted>
+release_channel=stable
+release_tag=v0.5.0
+
+[sw_vers]
+ProductName:		macOS
+ProductVersion:		26.6.2
+BuildVersion:		25G83
+
+[uname]
+Darwin <hostname> 25.6.0 Darwin Kernel Version 25.6.0: Fri Jul 31 19:11:03 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T8132 arm64
+
+[docker version]
+Client: Docker Engine - Community
+ Version:           29.8.1
+ API version:       1.55 (downgraded from 1.56)
+ Go version:        go1.27.1
+ Git commit:        4a63305d74
+ Built:             Tue Sep 15 11:21:13 2026
+ OS/Arch:           darwin/arm64
+ Context:           desktop-linux
+
+Server: Docker Desktop 4.89.0 (238018)
+ Engine:
+  Version:          29.7.2
+  API version:      1.55 (minimum version 1.40)
+  Go version:       go1.26.5
+  Git commit:       6a43e3d
+  Built:            Wed Aug  5 18:28:35 2026
+  OS/Arch:          linux/arm64
+  Experimental:     false
+ containerd:
+  Version:          v2.3.3
+  GitCommit:        aad11006b869517fcd3009450b6f82da282e1a9b
+ runc:
+  Version:          1.4.3
+  GitCommit:        v1.4.3-0-gbb14dabe
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0

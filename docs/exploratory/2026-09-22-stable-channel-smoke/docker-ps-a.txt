@@ -1,0 +1,3 @@
+NAMES                                                            IMAGE                                                               STATUS                      PORTS
+openclaw-docker-extension-service                                openclaw-docker-extension-runtime:dev                               Exited (255) 3 hours ago    127.0.0.1:18789->18790/tcp
+openclaw-docker-extension-service-pre-2026.9.1                   ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:0.3.6   Exited (1) 2 weeks ago      
