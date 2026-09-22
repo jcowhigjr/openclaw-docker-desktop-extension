@@ -22,7 +22,51 @@ This repo is a small, maintained product surface, not an open-ended experiment. 
 
 - Treat issue [#12](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/12) as the source of truth for roadmap and decision gates.
 - **Resume point (update this at the end of any session that changes priorities).**
-  Current live status as of 2026-09-05: a full local-model debugging pass ran end to end
+  Current live status as of 2026-09-22:
+  - Release automation landed: [#229](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/229)
+    wired release-please for gated extension releases. `v0.4.0`
+    ([#230](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/230)) and `v0.5.0`
+    ([#232](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/232)) shipped as the
+    first real semver-tagged releases since the hand-managed `0.3.x` line. GHCR `stable` confirmed
+    resolving to `v0.5.0` on both the extension and runtime images, publicly readable.
+  - From the 2026-09-05 local-model pass: [#222](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/222)
+    (num_ctx default) and [#224](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/224)
+    (diagnostics docs + health contract) both merged 2026-09-08; [#213](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/213)
+    and [#223](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/223) closed.
+    [#226](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/226) merged
+    `docs/user-operations.md`, documenting the OpenClaw Image pin, the Update-and-Restart hazard, and
+    Share/GHCR limits.
+  - [#234](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/234) merged 2026-09-22,
+    fixing the root cause behind [#220](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/220):
+    `checkForUpdate` was never wired to `isRuntimeImageUpdateable()` — the original design's own gate,
+    dead code since the flow was built in #34 — so a pinned or locally-scoped image tag still triggered
+    an unconditional pull and a directionless SHA comparison, reporting "update available" regardless of
+    direction. `loadConfig`'s rewrite of `openclaw-docker-extension-runtime:dev` (this repo's own
+    `make install-dev` tag, not a stale artifact) is narrowed to an exact-match allowlist of genuinely
+    obsolete refs. Settings now shows Running Image next to Configured Image, warning on mismatch.
+    [#220](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/220) and
+    [#215](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/215) are left **open on
+    purpose**: #220 because the two-obsolete-ref migration still happens silently, with no UI notice
+    (one of this fix's own stated acceptance criteria, unmet); #215 because `updateAndRestart` itself
+    still has no safe-recreate path — `rm -f` before anything else, no pull-first, no health check, no
+    keep-last-good — only the false-positive *trigger* is fixed, not the brick risk if the container is
+    recreated some other way.
+  - Untouched by any of the above, still open: [#214](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/214)
+    (version frozen at image build time), [#216](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/216)
+    (no host folder can be mounted — the largest gap against the "point it at my files" use case),
+    [#217](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/217)/[#218](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/218)
+    (upgrade runbook, pre-push hook audit), [#219](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/219)
+    (turn timeouts reported as `network connection error`), [#221](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/221)
+    (demo video — fixture and working prompt already verified, just needs recording),
+    [#225](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/225) (broader UX audit
+    of the whole image/update/share surface, superset of #220+#215's narrow fix),
+    [#204](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/204),
+    [#195](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/195)/[#196](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/196),
+    [#139](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/139)/[#140](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/140)/[#143](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/143),
+    and [#192](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/192).
+  - If continuing this thread, #216 (host mount) is the highest product value and #215 (safe recreate)
+    is the highest risk reduction; neither has a PR yet.
+  Previous live status as of 2026-09-05: a full local-model debugging pass ran end to end
   on the maintainer host and produced two open PRs and seven new issues. **Nothing from
   this session is merged.**
   [#213](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/213) is the
