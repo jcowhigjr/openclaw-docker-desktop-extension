@@ -47,9 +47,15 @@ not included in this public document.
   synthetic backup/restore results above remain the 2026-09-22 execution evidence;
   they are not a new release acceptance pass.
 
-To continue, establish reliable engine access and profile-bound UI control first.
-Re-query all Docker cleanup candidates after engine recovery; a previous inventory
-does not authorize deletion or establish that an image is still unused.
+An explicitly approved Docker Desktop restart subsequently restored CLI access
+to Engine 29.7.2. Existing OpenClaw containers remained stopped and their volumes
+were present. The old-image candidates were rechecked against all current container
+references; none were deleted. Low host free space still prevents large backups,
+pulls or builds until scoped cleanup is approved and actual capacity is remeasured.
+
+To continue, establish sufficient disk capacity and profile-bound UI control.
+A previous cleanup inventory does not authorize deletion or establish that an
+image is still unused; recheck references immediately before an approved removal.
 
 ## Repeat the disposable rehearsal
 
