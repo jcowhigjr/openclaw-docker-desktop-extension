@@ -49,11 +49,13 @@ not included in this public document.
 
 An explicitly approved Docker Desktop restart subsequently restored CLI access
 to Engine 29.7.2. Existing OpenClaw containers remained stopped and their volumes
-were present. The old-image candidates were rechecked against all current container
-references; none were deleted. Low host free space still prevents large backups,
-pulls or builds until scoped cleanup is approved and actual capacity is remeasured.
+were present. An approved, scoped image cleanup subsequently restored host free
+space to 25.2 GB. Container states, volumes and installed extensions were unchanged;
+installed extension images were explicitly retained even without container references.
+This resolves the immediate disk-pressure gate, but each real backup, pull or build
+still needs a capacity budget. No real application backup or UI acceptance test ran.
 
-To continue, establish sufficient disk capacity and profile-bound UI control.
+To continue, establish profile-bound UI control and budget the next test's disk use.
 A previous cleanup inventory does not authorize deletion or establish that an
 image is still unused; recheck references immediately before an approved removal.
 
@@ -107,9 +109,10 @@ Check both host free space and Docker disk usage before real backups, pulls or
 builds. Budget for the archive, an uncompressed restored copy, candidate images
 and Docker's working space. If capacity is insufficient, stop before creating
 large artifacts. Review old unused image/cache candidates by exact IDs; retain
-all application data and images needed by running **or stopped** containers and
-the selected rollback pair. Recheck references immediately before any approved
-deletion, use no force/prune-wide operation, and measure actual host space afterward.
+all application data and images needed by running **or stopped** containers,
+installed extensions and the selected rollback pair. Recheck references immediately
+before any approved deletion, use no force/prune-wide operation, and measure actual
+host space afterward.
 Logical image sizes include shared layers and are not a space-recovery promise.
 
 1. Record the exact Docker context, all matching labeled/named containers, every
