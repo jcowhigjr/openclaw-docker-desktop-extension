@@ -30,6 +30,27 @@ no provider was contacted, and no browser test profile was created. The observed
 Docker Desktop screen included unrelated workstation state, so that screenshot is
 not included in this public document.
 
+## Follow-up verification on 2026-09-23
+
+- Native Chrome profile selection worked. The operator-designated test profile
+  was selected and its menu offered **Sign in to Chrome**, confirming it was
+  signed out. No new profile or extension was installed.
+- The complete extension inventory was not readable through the UI connection.
+  Re-selecting the Chrome app later selected a different profile's window. Stop
+  before any interaction when the observed profile differs from the intended
+  one; app-level selection alone is not a reliable profile binding.
+- Docker Desktop displayed **Engine running**, but the configured engine socket
+  returned `ConnectionRefusedError` (errno 61). The normal start command reported
+  **already running** without restoring CLI access. No runtime or cleanup checks
+  were rerun against an unavailable engine, and no existing Docker state changed.
+- Shell syntax and the public repository boundary check passed again. The
+  synthetic backup/restore results above remain the 2026-09-22 execution evidence;
+  they are not a new release acceptance pass.
+
+To continue, establish reliable engine access and profile-bound UI control first.
+Re-query all Docker cleanup candidates after engine recovery; a previous inventory
+does not authorize deletion or establish that an image is still unused.
+
 ## Repeat the disposable rehearsal
 
 Use an **already local** image containing Node.js and GNU tar. The script resolves
