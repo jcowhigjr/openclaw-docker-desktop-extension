@@ -12,6 +12,8 @@ separate runtime update control and no way to point the extension at another
 runtime image
 ([#249](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/249)).
 
+![Settings card showing the read-only OpenClaw Runtime field](assets/openclaw-extension-settings.png)
+
 To update OpenClaw, update the extension. The next time the extension opens (or
 when you click **Start**), it finds the service running the previous release's
 image and recreates it from the new one:
