@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/compare/v0.5.0...v0.5.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* fresh install works end to end on current OpenClaw (auth bootstrap, Ollama relay, local tool set, honest exec mode) ([#250](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/250)) ([24ee0cc](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/commit/24ee0cc1df039cd629cb73416f6ac654327fc03a))
+* stop the update banner and Settings from misrepresenting the running image ([#234](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/234)) ([676a90b](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/commit/676a90bff264be64750086a6fd007653e4189f3c))
+
 ## [0.5.0](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/compare/v0.4.0...v0.5.0) (2026-09-10)
 
 
