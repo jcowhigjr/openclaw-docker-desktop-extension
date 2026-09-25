@@ -59,7 +59,7 @@ cat >"$report_file" <<EOF
 7. Confirm the \`Gateway Token\` field fills automatically, shows \`Auto-attached\`, and uses success styling. If it remains blank, click \`Refresh Token\` once and record the result.
 8. Click \`Open Control UI\`.
 9. Confirm the Control UI opens on localhost without manual token editing.
-10. Confirm update status does not flicker or repeatedly switch after startup while the extension is idle.
+10. Confirm Settings shows the OpenClaw Runtime pinned by this release (no image field, no update banner).
 11. If testing the local-model path, confirm host Ollama is already running with a model pulled, then reopen or refresh the extension.
 12. Confirm \`Local Model Setup\` detects installed host Ollama models automatically or after clicking \`Detect Ollama Models\`.
 13. If no Ollama model is configured yet, confirm the setup banner appears, click \`Select Recommended Model\`, then click \`Apply and Restart\`.
@@ -92,7 +92,7 @@ cat >"$report_file" <<EOF
 | Quick Start onboarding | TODO | |
 | Gateway token auto-attached UX | TODO | |
 | Control UI bootstrap from extension button | TODO | |
-| Runtime update status stability | TODO | |
+| Pinned runtime shown in Settings | TODO | |
 | Local-model flow (if used) | TODO | |
 | Ollama setup banner persistence (if used) | TODO | |
 

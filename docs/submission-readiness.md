@@ -10,7 +10,7 @@ This repository provides a Docker Desktop extension for trying OpenClaw on macOS
 - a localhost-only OpenClaw Control UI launch path
 - a Docker-managed runtime container and persistent named volume
 - GHCR release/channel install paths
-- runtime update and restart controls
+- a runtime pinned per extension release, recreated onto the new release after an update with the data volume kept
 - host Ollama setup for offline-first local model use after initial model download
 - explicit execution-mode controls for safer vs full-access command execution
 
@@ -61,7 +61,7 @@ one capture command fails.
 9. Confirm the `Gateway Token` field fills automatically, shows the `Auto-attached` chip, and uses the success styling. If it remains blank, click `Refresh Token` once and record the result.
 10. Click `Open Control UI`.
 11. Confirm the Control UI opens at localhost and does not require manual URL/token editing.
-12. Confirm the extension does not repeatedly switch update status while idle after startup.
+12. Confirm Settings shows the OpenClaw Runtime pinned by this release, with no image field or update banner.
 13. If testing local models, start Ollama on the host Mac, ensure a model is already pulled, then reopen or refresh the extension.
 14. Confirm `Local Model Setup` auto-detects installed host Ollama models after startup or after clicking `Detect Ollama Models`.
 15. If no Ollama model is configured yet, confirm the setup banner appears when models are detected, click `Select Recommended Model`, then click `Apply and Restart`.

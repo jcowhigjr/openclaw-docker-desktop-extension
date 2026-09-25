@@ -119,21 +119,18 @@ only step that proves the stack can do work.
 
 ---
 
-## After the stack is healthy: image Settings, Update and Restart, Share
+## After the stack is healthy: updates and Share
 
 Preflight only proves Docker and Ollama can work. Once OpenClaw is already
-**running**, a different class of footguns lives in the extension UI itself:
+**running**, two extension-level behaviours are worth knowing:
 
-- **Settings → OpenClaw Image** is what the next *create* uses, not a live
-  readout of the running container.
-- **Update and Restart** deletes the service container and recreates it from
-  that Settings value — a downgrade if Settings still points at an old GHCR tag.
+- OpenClaw updates only when the extension is updated. The runtime image is
+  pinned per release, and the service is recreated onto it (volume kept) the
+  next time the extension opens or starts.
 - Manage → **Share** fails on GHCR/unpublished installs (`sharing extensions
   that are not hosted in DockerHub is not yet supported`).
 
-Step-by-step recovery (including the verified
-`openclaw-docker-extension-runtime:working` pin) is in
-[user-operations.md](user-operations.md).
+Details are in [user-operations.md](user-operations.md).
 
 ---
 
