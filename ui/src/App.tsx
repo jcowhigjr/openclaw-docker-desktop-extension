@@ -1488,8 +1488,8 @@ export function App() {
             <Stack spacing={2}>
               <Typography variant="h5">Execution Mode</Typography>
               <Typography variant="body2" color="text.secondary">
-                OpenClaw may cache exec approval policy until the gateway restarts. Changing this mode writes
-                both OpenClaw exec policy and the host approvals file, then restarts OpenClaw automatically.
+                OpenClaw may cache exec approval policy until the gateway restarts. Changing this mode applies
+                OpenClaw&apos;s built-in exec policy preset, then restarts OpenClaw automatically.
               </Typography>
               <RadioGroup
                 value={executionMode}
