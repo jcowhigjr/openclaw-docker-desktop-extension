@@ -46,6 +46,7 @@ import { useDiagLogText } from './diag/useDiagEvents';
 import { buildRuntimeHelperArgs } from './dockerExec';
 import { readGatewayTokenWithRetry } from './tokenRetry';
 import {
+  DEFAULT_EXECUTION_MODE,
   parseExecModeReadOutput,
   type ExecutionMode,
 } from './execMode';
@@ -185,8 +186,8 @@ export function App() {
   const [ollamaBannerDismissed, setOllamaBannerDismissed] = useState(
     () => window.localStorage.getItem(OLLAMA_BANNER_DISMISS_KEY) === 'true',
   );
-  const [executionMode, setExecutionMode] = useState<ExecutionMode>('safer');
-  const [appliedExecutionMode, setAppliedExecutionMode] = useState<ExecutionMode>('safer');
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>(DEFAULT_EXECUTION_MODE);
+  const [appliedExecutionMode, setAppliedExecutionMode] = useState<ExecutionMode>(DEFAULT_EXECUTION_MODE);
   const [executionModeChecking, setExecutionModeChecking] = useState(false);
   const [executionModeStatus, setExecutionModeStatus] = useState('');
   const [executionModeAlertSeverity, setExecutionModeAlertSeverity] = useState<'success' | 'info' | 'warning' | 'error'>('info');
@@ -769,13 +770,16 @@ export function App() {
         appendDebug(`execution mode detect stderr: ${stderr}`);
       }
 
-      const detected = parseExecModeReadOutput(asText(result.stdout)).mode;
+      const detected = parseExecModeReadOutput(asText(result.stdout));
+      if (!detected) {
+        throw new Error("OpenClaw did not report its execution policy.");
+      }
       setExecutionMode(detected);
       setAppliedExecutionMode(detected);
       setExecutionModeAlertSeverity('success');
       setExecutionModeStatus(
         detected === 'full'
-          ? 'Full access is currently applied. Commands can run without approval prompts inside the OpenClaw container.'
+          ? 'Full access is currently applied (OpenClaw\'s default). Commands run without approval prompts inside the OpenClaw container.'
           : 'Safer mode is currently applied. Unknown commands require allowlist matching or approval.',
       );
     } catch (err) {
@@ -851,15 +855,13 @@ export function App() {
       ]);
       await ddClient.docker.cli.exec('exec', [
         container.id,
-        ...buildRuntimeHelperArgs('ollama-auth-profiles-write'),
+        ...buildRuntimeHelperArgs('ollama-auth-write'),
       ]);
-      // Auth resolution is entirely file-based: ollama-config-write sets
-      // openclaw.json auth.profiles/order and ollama-auth-profiles-write seeds
-      // each agent's auth-profiles.json, both loaded on the restart below. The
-      // previous `models auth order set` CLI call here targeted a separate
-      // sqlite auth-state store that these writes never populate, so it always
-      // failed ("Auth profile ollama:manual not found") and aborted before the
-      // restart — making "Apply and Restart" neither apply cleanly nor restart.
+      // ollama-config-write sets openclaw.json's auth.profiles/order entry for
+      // `ollama:manual`; ollama-auth-write registers the key for every agent
+      // through `openclaw models auth paste-api-key`, which owns OpenClaw's
+      // SQLite auth store. Writing auth-profiles.json directly produced a
+      // legacy file OpenClaw 2026.9.3 refuses to run with (#242).
       appendDebug(`OpenClaw default model set to ollama/${model}`);
       setOllamaStatus(`Configured OpenClaw to use Ollama model ${model}. Restarting OpenClaw...`);
       await restart(model);
@@ -1418,6 +1420,10 @@ export function App() {
               <Typography variant="body2" color="text.secondary">
                 Use an already installed host Ollama model. The extension verifies Ollama from inside
                 the OpenClaw container and writes only the OpenClaw provider config in the named volume.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                On a laptop, the first reply in a new chat can take about 1–2 minutes while the model
+                reads its instructions. Later replies in the same chat are much faster.
               </Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap">
                 <Button

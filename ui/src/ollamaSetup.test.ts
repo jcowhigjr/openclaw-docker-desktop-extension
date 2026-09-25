@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildOllamaTagsFetchArgs,
   buildOllamaWarmupArgs,
+  isOllamaWarmupArgs,
   chooseRecommendedOllamaModel,
   formatOllamaModelSize,
   isConfigPathMissing,
@@ -80,45 +81,26 @@ describe('ollamaSetup helpers', () => {
     ]);
   });
 
-  it('builds Docker SDK-safe argv that preloads a model into host Ollama', () => {
+  it('preloads a model through the runtime helper instead of a curl argv the SDK would mangle', () => {
     expect(buildOllamaWarmupArgs('gemma4-fast:latest')).toEqual([
-      'curl',
-      '-fsS',
-      '--max-time',
+      'node',
+      '/usr/local/bin/openclaw-extension-helper.js',
+      'ollama-warmup',
+      'gemma4-fast:latest',
       '120',
-      '-X',
-      'POST',
-      '-H',
-      'Content-Type: application/json',
-      '-d',
-      '{"model":"gemma4-fast:latest","keep_alive":"30m"}',
-      'http://host.docker.internal:11434/api/generate',
     ]);
+    expect(isOllamaWarmupArgs(buildOllamaWarmupArgs('gemma4-fast:latest'))).toBe(true);
+    expect(isOllamaWarmupArgs(buildOllamaTagsFetchArgs())).toBe(false);
   });
 
   it('trims the model name when building warmup argv and rejects empty', () => {
-    expect(buildOllamaWarmupArgs('  qwen3.5:latest  ')[9]).toBe(
-      '{"model":"qwen3.5:latest","keep_alive":"30m"}',
-    );
+    expect(buildOllamaWarmupArgs('  qwen3.5:latest  ')[3]).toBe('qwen3.5:latest');
     expect(buildOllamaWarmupArgs('   ')).toEqual([]);
   });
 
   it('defaults the warmup timeout to 120s but honors an explicit override for callers like a detect-time probe', () => {
-    expect(buildOllamaWarmupArgs('gemma4-fast:latest')).toEqual([
-      'curl',
-      '-fsS',
-      '--max-time',
-      '120',
-      '-X',
-      'POST',
-      '-H',
-      'Content-Type: application/json',
-      '-d',
-      '{"model":"gemma4-fast:latest","keep_alive":"30m"}',
-      'http://host.docker.internal:11434/api/generate',
-    ]);
-
-    expect(buildOllamaWarmupArgs('gemma4-fast:latest', 20)[3]).toBe('20');
+    expect(buildOllamaWarmupArgs('gemma4-fast:latest')[4]).toBe('120');
+    expect(buildOllamaWarmupArgs('gemma4-fast:latest', 20)[4]).toBe('20');
   });
 
   it('selects the smallest installed model over a larger, more recently modified one', () => {
