@@ -37,6 +37,14 @@ if [ -z "$doctor_line" ] || [ -z "$gateway_line" ] || [ "$doctor_line" -ge "$gat
   exit 1
 fi
 
+# Upgraded installs get the extension-managed Ollama settings re-asserted after
+# doctor and before the gateway reads the config (#249).
+refresh_line="$(grep -n -F 'openclaw-extension-helper.js ollama-config-refresh' "$script" | head -1 | cut -d: -f1)"
+if [ -z "$refresh_line" ] || [ "$refresh_line" -le "$doctor_line" ] || [ "$refresh_line" -ge "$gateway_line" ]; then
+  echo "runtime bridge must run ollama-config-refresh after doctor and before starting the gateway" >&2
+  exit 1
+fi
+
 # The Ollama relay must exist, bind container loopback only, and be supervised (#246).
 if ! grep -F 'socat TCP-LISTEN:11434,bind=127.0.0.1,reuseaddr,fork TCP:host.docker.internal:11434' "$script" >/dev/null; then
   echo "runtime bridge must relay 127.0.0.1:11434 to host.docker.internal:11434" >&2
