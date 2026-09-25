@@ -30,16 +30,34 @@ In every pass the model called `exec` directly on its first tool call.
 
 Cost of `false` on this machine: a **new session** pays the whole ~19.5K-token prefill (≈2.5–3.5 min at ~95–130 tok/s under normal memory pressure). The prefix cache doesn't carry across sessions. Follow-up turns in the same session take 10–25s.
 
+## Tool-set trim (measured on a fresh hardened volume, same day)
+
+`tools.toolSearch=false` in every row. Exec task verified on disk.
+
+| Tool set | Prompt | First model call | Turn total | Result |
+|---|---|---|---|---|
+| everything (no profile) | 20.7K tok | 3m19s | 209s | PASS |
+| `tools.profile: "coding"` | 15.9K tok | 3m32s* | 229s | PASS |
+| coding − sessions, cron, goals, progress_card, skill_workshop, image/music/video generation | 10.2K tok | 2m40s* | 191s | PASS |
+| above − `web_search`, `x_search`, `view_image`, `code_execution` | **9.9K tok** | **1m22s** | **93s** | PASS |
+| same set scoped via `tools.byProvider.ollama` | 9.9K tok | 41s (warm cache) | 49s | PASS |
+
+\* Slowed by a competing call. With prompts near the 24,576 `num_ctx`, OpenClaw runs budget compaction on the previous session (`[compaction-diag] … trigger=budget`). Those ~6K-token calls contend for Ollama's single slot, and one timed out. The 9.9K prompt leaves headroom, and no compaction calls appeared.
+
 ## Proposed fix
 
-1. `ollama-config-write` sets `tools.toolSearch = false`. Use a presence check like the existing `localModelLean` one, so an explicit user value survives re-apply. If `2026.9.3` supports scoping it to the Ollama model or agent instead of globally, prefer that; confirm in the docs before choosing.
-2. Raise the helper's hard-coded `agents.defaults.timeoutSeconds = 300`. A cold multi-step demo (first call ~3.5 min, then several 10–25s steps) exceeds 300s. Use 900, or derive it from measured first-call latency.
-3. The UI tells the user the first reply in a new chat can take a few minutes on local models. That's a one-line note near Local Model Setup.
+The maintainer confirmed no backward compatibility is needed, so the helper sets these unconditionally on Apply.
+
+1. `ollama-config-write` sets:
+   - `tools.toolSearch = false`. Cloud routes already use direct exposure, so this only changes local routes.
+   - `tools.byProvider.ollama = { profile: "coding", deny: ["group:sessions","cron","get_goal","create_goal","update_goal","progress_card","skill_workshop","image_generate","music_generate","video_generate","web_search","x_search","view_image","code_execution"] }`
+2. Raise the helper's hard-coded `agents.defaults.timeoutSeconds = 300` to 900.
+3. The UI tells the user the first reply in a new chat can take about 1–2 minutes on a laptop, and later replies are faster.
 4. Fix the #221 demo prompt: `bash` → `exec`. Re-verify the full demo (ls, read, write INDEX.md) with this setting and the relay.
 
 ## Acceptance criteria
 
-- [ ] After Apply, `openclaw config get tools.toolSearch` returns `false` (or the scoped equivalent), and an explicit user value is preserved on re-apply (helper test).
+- [ ] After Apply, `openclaw config get tools.toolSearch` returns `false` and `tools.byProvider.ollama` holds the trimmed set (helper test).
 - [ ] With #246 landed: the exec task above passes 3/3 in fresh sessions via `openclaw agent`, and 1/1 through the Control UI.
 - [ ] The #221 demo prompt completes end to end inside the configured run timeout.
 - [ ] README / Local Model Setup copy mentions the slow first reply and why.
