@@ -38,3 +38,14 @@ export function buildRuntimeRunArgs(options: RuntimeRunArgsOptions): string[] {
     options.image,
   ];
 }
+
+// Whether an existing service container must be recreated to run the image
+// pinned by this extension build (#249). Docker reports the image reference
+// the container was created from, or a bare image ID once that tag has moved
+// on (e.g. after a local rebuild); either way, anything but the pinned
+// reference means the service is not running this release. An unknown image
+// is left alone rather than recreated on a guess.
+export function needsRuntimeRecreate(containerImage: string | undefined, pinnedImage: string): boolean {
+  const current = containerImage?.trim();
+  return Boolean(current) && current !== pinnedImage.trim();
+}

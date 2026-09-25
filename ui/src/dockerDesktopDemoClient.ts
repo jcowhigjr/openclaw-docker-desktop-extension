@@ -94,18 +94,6 @@ export function createDemoDDClient(search = ''): DemoDockerDesktopClient {
       return { stdout: '', stderr: '' };
     }
 
-    if (command === 'inspect' && args.includes('{{.Image}}')) {
-      return { stdout: 'sha256:demo-running\n', stderr: '' };
-    }
-
-    if (command === 'inspect' && args.includes('{{.Id}}')) {
-      return { stdout: 'sha256:demo-running\n', stderr: '' };
-    }
-
-    if (command === 'pull') {
-      return { stdout: '', stderr: '' };
-    }
-
     if (command === 'exec' && args.some((arg) => arg.endsWith('/api/tags'))) {
       return { stdout: JSON.stringify(tagsPayload()), stderr: '' };
     }
@@ -156,9 +144,8 @@ export function createDemoDDClient(search = ''): DemoDockerDesktopClient {
           Id: 'demo-openclaw',
           State: 'running',
           Status: 'Up 3 minutes (healthy)',
-          // Matches App.tsx's DEFAULT_RUNTIME_IMAGE so the demo screenshot's
-          // baseline shows no Configured/Running mismatch warning -- only the
-          // new read-only Running Image field.
+          // Matches App.tsx's RUNTIME_IMAGE fallback so the demo service counts
+          // as already running the pinned runtime and is not recreated.
           Image: 'ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest',
           Names: ['/openclaw-docker-extension-service'],
         },

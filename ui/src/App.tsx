@@ -5,7 +5,6 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import StopIcon from '@mui/icons-material/Stop';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
 import {
   Alert,
   AlertColor,
@@ -50,7 +49,7 @@ import {
   parseExecModeReadOutput,
   type ExecutionMode,
 } from './execMode';
-import { buildRuntimeRunArgs } from './runtimeContainer';
+import { buildRuntimeRunArgs, needsRuntimeRecreate } from './runtimeContainer';
 import { getGatewayTokenHelperText, type TokenStatus } from './tokenStatus';
 import {
   buildDockerPsPortCheckArgs,
@@ -59,8 +58,6 @@ import {
   formatUnknownError,
   parseDockerPublishedPortConflicts,
 } from './requirementChecks';
-import { updateActionButtonSx } from './updateActionButton';
-import { isRuntimeImageUpdateable, migrateStoredRuntimeImage } from './runtimeUpdate';
 import {
   chatGateMessage,
   deriveOnboardingPhase,
@@ -75,7 +72,6 @@ import {
 type ContainerPhase = 'missing' | 'running' | 'stopped' | 'starting' | 'error';
 
 type ExtensionConfig = {
-  image: string;
   port: number;
   autoStart: boolean;
   providerChoice: ProviderChoice;
@@ -103,11 +99,13 @@ const OLLAMA_BANNER_DISMISS_KEY = 'openclaw-docker-extension-ollama-banner-dismi
 const CONTAINER_NAME = 'openclaw-docker-extension-service';
 const VOLUME_NAME = 'openclaw-docker-extension-home';
 const BRIDGE_PORT = 18790;
-const DEFAULT_RUNTIME_IMAGE = (import.meta.env.VITE_DEFAULT_RUNTIME_IMAGE || 'ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest') as string;
-const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+// The runtime image is pinned per extension release at build time. There is no
+// setting to change it and no separate runtime update: installing a newer
+// extension is how OpenClaw updates, and Start recreates a service created from
+// any other image (#249).
+const RUNTIME_IMAGE = (import.meta.env.VITE_DEFAULT_RUNTIME_IMAGE || 'ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest') as string;
 const DEFAULT_OLLAMA_ONBOARDING_MODEL = 'gemma4:latest';
 const DEFAULT_CONFIG: ExtensionConfig = {
-  image: DEFAULT_RUNTIME_IMAGE,
   port: 18789,
   autoStart: true,
   providerChoice: 'unset',
@@ -123,12 +121,10 @@ function loadConfig(): ExtensionConfig {
       return DEFAULT_CONFIG;
     }
 
+    // Older builds also stored an `image`; it is ignored, since the runtime is
+    // pinned to this build.
     const parsed = JSON.parse(raw) as Partial<ExtensionConfig>;
     return {
-      image:
-        typeof parsed.image === 'string' && parsed.image.trim()
-          ? migrateStoredRuntimeImage(parsed.image, DEFAULT_CONFIG.image)
-          : DEFAULT_CONFIG.image,
       port: typeof parsed.port === 'number' && Number.isFinite(parsed.port) ? parsed.port : DEFAULT_CONFIG.port,
       autoStart: parsed.autoStart ?? DEFAULT_CONFIG.autoStart,
       providerChoice: parseProviderChoice(parsed.providerChoice),
@@ -157,10 +153,8 @@ export function App() {
   const [config, setConfig] = useState<ExtensionConfig>(loadConfig);
   const [phase, setPhase] = useState<ContainerPhase>('missing');
   const [statusText, setStatusText] = useState('No OpenClaw container yet');
-  // The image the running container was actually created from, as reported by
-  // Docker -- independent of `config.image`, which is only the user's saved
-  // setting. Showing both lets a mismatch (e.g. #220's silent rewrite) be seen
-  // instead of inferred from an update banner.
+  // The image the existing service container was created from, as reported by
+  // Docker. When it differs from RUNTIME_IMAGE the service is recreated.
   const [runningImage, setRunningImage] = useState('');
   const [token, setToken] = useState('');
   const [tokenStatus, setTokenStatus] = useState<TokenStatus>('unknown');
@@ -172,11 +166,6 @@ export function App() {
   const [requirementsChecking, setRequirementsChecking] = useState(false);
   const [requirementsStatus, setRequirementsStatus] = useState('');
   const [requirementsSeverity, setRequirementsSeverity] = useState<AlertColor>('info');
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const configImageRef = useRef(config.image);
-  configImageRef.current = config.image;
-  const [updateChecking, setUpdateChecking] = useState(false);
-  const [updateError, setUpdateError] = useState('');
   const [ollamaModels, setOllamaModels] = useState<OllamaModel[]>([]);
   const [selectedOllamaModel, setSelectedOllamaModel] = useState('');
   const [configuredOllamaModel, setConfiguredOllamaModel] = useState('');
@@ -316,7 +305,7 @@ export function App() {
     const bundle = buildDiagnosticsBundle(
       {
         extensionVersion: 'unknown',
-        runtimeImage: config.image,
+        runtimeImage: RUNTIME_IMAGE,
         dockerDesktop: 'unknown',
         os: navigator.platform,
       },
@@ -331,7 +320,7 @@ export function App() {
     } catch {
       setError('Could not copy diagnostics to clipboard.');
     }
-  }, [config.image, currentOllamaState, findContainer]);
+  }, [currentOllamaState, findContainer]);
 
   const checkRequirements = useCallback(async (modelOverride?: string) => {
     // modelOverride lets callers (e.g. applyOllamaSetup) refresh the banner with a
@@ -537,7 +526,18 @@ export function App() {
     setStatusText('Creating OpenClaw container...');
     try {
       await traceAction('container.start', async ({ step }) => {
-        const existing = await findContainer();
+        let existing = await findContainer();
+        // A service created from any other image (an older extension release,
+        // or a local build since replaced) is recreated from the pinned image.
+        // The named volume is kept, and the runtime's doctor-on-start applies
+        // OpenClaw's own migrations before the gateway starts.
+        if (existing && needsRuntimeRecreate(existing.image, RUNTIME_IMAGE)) {
+          step('runtime_mismatch', 'ok', { attrs: { running: existing.image ?? '', pinned: RUNTIME_IMAGE } });
+          appendDebug(`recreating OpenClaw service: created from ${existing.image}, this extension runs ${RUNTIME_IMAGE}`);
+          setStatusText('Updating OpenClaw to the version bundled with this extension...');
+          await ddClient.docker.cli.exec('rm', ['-f', existing.id]);
+          existing = null;
+        }
         if (existing) {
           step('find_existing', 'ok', { attrs: { state: existing.state } });
           await ddClient.docker.cli.exec('start', [existing.id]);
@@ -552,10 +552,10 @@ export function App() {
             );
           }
 
-          step('docker_run', 'ok', { attrs: { image: config.image } });
+          step('docker_run', 'ok', { attrs: { image: RUNTIME_IMAGE } });
           const result = (await ddClient.docker.cli.exec('run', buildRuntimeRunArgs({
             containerName: CONTAINER_NAME,
-            image: config.image,
+            image: RUNTIME_IMAGE,
             volumeName: VOLUME_NAME,
             hostPort: config.port,
             bridgePort: BRIDGE_PORT,
@@ -587,7 +587,7 @@ export function App() {
     } finally {
       setBusy(false);
     }
-  }, [asText, config.image, config.port, ddClient, findContainer, findPortConflicts, runAndPoll]);
+  }, [appendDebug, asText, config.port, ddClient, findContainer, findPortConflicts, runAndPoll]);
 
   const stop = useCallback(async () => {
     setBusy(true);
@@ -882,93 +882,6 @@ export function App() {
     }
   }, [appendDebug, checkRequirements, config, ddClient, findContainer, persistConfig, restart, selectedOllamaModel]);
 
-  const checkForUpdate = useCallback(async () => {
-    const image = configImageRef.current;
-    // Only floating/channel-style GHCR tags are eligible for an update check --
-    // this is the design decision from openspec/changes/add-runtime-update-on-open
-    // ("pinned version tags should stay reproducible and unchanged"). A pinned
-    // release tag (e.g. `:0.3.6`) or a locally-scoped tag (e.g. `:dev`) must
-    // never reach the `docker pull` below: pulling a pin can only ever produce
-    // "unrelated/older SHA" -- there is nothing newer to find -- and comparing
-    // that SHA against the running container's SHA reports it as an available
-    // update regardless of which one is actually newer. That mislabeled banner
-    // is what previously led to a working install being downgraded (#215).
-    // This also removes the periodic `docker pull` this function's interval
-    // caller performs against pinned/local images -- there is no separate gate
-    // for the timer, so fixing this check fixes both call sites.
-    if (!isRuntimeImageUpdateable(image)) {
-      setUpdateAvailable(false);
-      return;
-    }
-    setUpdateChecking(true);
-    setUpdateError('');
-    try {
-      const container = await findContainer();
-      if (!container || container.state !== 'running') {
-        return;
-      }
-
-      const inspectContainer = (await ddClient.docker.cli.exec('inspect', [
-        '--format',
-        '{{.Image}}',
-        container.id,
-      ])) as CliExecResult;
-      const runningImageSha = asText(inspectContainer.stdout).trim();
-      if (!runningImageSha) {
-        return;
-      }
-      appendDebug(`running container image SHA: ${runningImageSha}`);
-
-      appendDebug(`pulling ${image} to check for updates...`);
-      await ddClient.docker.cli.exec('pull', [image]);
-
-      const inspectImage = (await ddClient.docker.cli.exec('inspect', [
-        '--format',
-        '{{.Id}}',
-        image,
-      ])) as CliExecResult;
-      const latestImageSha = asText(inspectImage.stdout).trim();
-      appendDebug(`latest image SHA: ${latestImageSha}`);
-
-      if (latestImageSha && runningImageSha !== latestImageSha) {
-        appendDebug('update available: image SHAs differ');
-        setUpdateAvailable(true);
-      } else {
-        appendDebug('no update: image SHAs match');
-        setUpdateAvailable(false);
-      }
-    } catch (err) {
-      const text = formatUnknownError(err);
-      appendDebug(`update check failed: ${text}`);
-      setUpdateError(text);
-    } finally {
-      setUpdateChecking(false);
-    }
-  }, [appendDebug, asText, ddClient, findContainer]);
-
-  const updateAndRestart = useCallback(async () => {
-    setError('');
-    setMessage('');
-    setUpdateAvailable(false);
-    setPhase('starting');
-    setStatusText('Applying update and restarting OpenClaw...');
-    try {
-      const container = await findContainer();
-      if (container) {
-        appendDebug(`removing container ${container.id} for update`);
-        await ddClient.docker.cli.exec('rm', ['-f', container.id]);
-      }
-      appendDebug('creating fresh container from updated image');
-      await createOrStart();
-      setMessage('OpenClaw updated and restarted successfully.');
-    } catch (err) {
-      setPhase('error');
-      const text = formatUnknownError(err);
-      appendDebug(`update/restart failed: ${text}`);
-      setError(text);
-    }
-  }, [appendDebug, createOrStart, ddClient, findContainer]);
-
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -979,25 +892,28 @@ export function App() {
     }
   }, [busy, config.autoStart, createOrStart, phase]);
 
+  // Opening a newly installed extension over a service that is still running
+  // the previous release's image moves it onto this release's image once per
+  // session. A stopped service is left alone until the user clicks Start, which
+  // performs the same recreate.
+  const runtimeRecreateAttempted = useRef(false);
+  useEffect(() => {
+    if (busy || runtimeRecreateAttempted.current || phase !== 'running') {
+      return;
+    }
+    if (!needsRuntimeRecreate(runningImage, RUNTIME_IMAGE)) {
+      return;
+    }
+    runtimeRecreateAttempted.current = true;
+    void createOrStart();
+  }, [busy, createOrStart, phase, runningImage]);
+
   useEffect(() => {
     if (phase === 'running') {
-      void checkForUpdate();
       void detectExecutionMode();
       void detectOllamaModels();
     }
-  }, [phase, checkForUpdate, detectExecutionMode, detectOllamaModels]);
-
-  useEffect(() => {
-    if (phase !== 'running') {
-      return;
-    }
-    const id = window.setInterval(() => {
-      void checkForUpdate();
-    }, UPDATE_CHECK_INTERVAL_MS);
-    return () => {
-      window.clearInterval(id);
-    };
-  }, [phase, checkForUpdate]);
+  }, [phase, detectExecutionMode, detectOllamaModels]);
 
   const tokenHelperText = getGatewayTokenHelperText(token, tokenStatus);
 
@@ -1226,30 +1142,6 @@ export function App() {
           <Alert severity="warning">{chatGateWarning}</Alert>
         )}
 
-        {updateAvailable && (
-          <Alert
-            severity="info"
-            action={
-              <Button
-                color="inherit"
-                size="small"
-                sx={updateActionButtonSx}
-                startIcon={<SystemUpdateAltIcon />}
-                onClick={() => void updateAndRestart()}
-                disabled={busy || updateChecking}
-              >
-                Update and Restart
-              </Button>
-            }
-          >
-            A new runtime image version is available for {config.image}
-          </Alert>
-        )}
-        {updateError && (
-          <Alert severity="warning" onClose={() => setUpdateError('')}>
-            Update check failed: {updateError}
-          </Alert>
-        )}
         {requirementsStatus && (
           <Alert severity={requirementsSeverity} onClose={() => setRequirementsStatus('')}>
             {requirementsStatus}
@@ -1363,31 +1255,13 @@ export function App() {
           <CardContent>
             <Stack spacing={2}>
               <Typography variant="h5">Settings</Typography>
-              {runningImage && runningImage !== config.image && (
-                <Alert severity="warning">
-                  The running container was created from <strong>{runningImage}</strong>, which does
-                  not match the Configured image below (<strong>{config.image}</strong>). Plain Restart
-                  does not change this -- it restarts the existing container in place. Only Update and
-                  Restart, or Remove Container followed by Start, recreates it from the Configured
-                  image. Confirm that is what you want before doing either.
-                </Alert>
-              )}
               <TextField
-                label="OpenClaw Image"
-                value={config.image}
+                label="OpenClaw Runtime"
+                value={needsRuntimeRecreate(runningImage, RUNTIME_IMAGE) ? `${runningImage} (updating to ${RUNTIME_IMAGE})` : RUNTIME_IMAGE}
                 fullWidth
-                onChange={(event) => setConfig((current) => ({ ...current, image: event.target.value }))}
-                helperText="The runtime image with the macOS socat bridge. Defaults to the official registry image."
+                InputProps={{ readOnly: true }}
+                helperText="Bundled with this extension release. Installing a newer extension updates OpenClaw; your data volume is kept."
               />
-              {runningImage && (
-                <TextField
-                  label="Running Image"
-                  value={runningImage}
-                  fullWidth
-                  InputProps={{ readOnly: true }}
-                  helperText="What the currently running container was actually created from. Read-only; edit Configured image above and recreate to change it."
-                />
-              )}
               <TextField
                 label="Host Port"
                 type="number"
