@@ -4,9 +4,14 @@ This guide helps you tune OpenClaw for local Ollama models on constrained hardwa
 
 ## The Core Constraint
 
-OpenClaw has a **120-second idle timeout watchdog** that aborts requests when no tokens are received. On CPU-only hardware, evaluating a large prompt can exceed this limit, causing timeouts before the first token arrives. This guide provides practical workarounds and tuning strategies to work within this constraint.
+The first reply in a new chat is slow. The model has to read its whole prompt first (the system prompt, workspace files, and tool definitions) before it writes a single token. On an M4 MacBook Air (24 GB) with `qwen3:8b`, that prompt is about 10,000 tokens and takes roughly 1–1.5 minutes. Later replies in the same chat reuse that work and take 10–25 seconds.
 
-**Key insight:** No configuration currently available can raise this 120s limit. The strategies below help you stay under it through hardware-appropriate model selection and prompt optimization.
+Earlier versions of this guide blamed a "120-second idle timeout" for failed local chats. That was wrong. Measured on 2026-09-24, the real causes were:
+
+- **A network cut at ~70 seconds.** Node's TCP keepalive through `host.docker.internal` is not answered by Docker Desktop, so any request that waited ~70s for its first byte was dropped. The extension now routes Ollama traffic through a relay inside the container, which removes the cut ([#246](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/246)).
+- **The tool surface.** OpenClaw hides tools behind a search step for local models, and 8B models can't use it; they loop instead of running a command. The extension now exposes a trimmed set of tools directly ([#247](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/247)).
+
+OpenClaw's own idle timeout for self-hosted models is 300s, and the extension sets a 900s budget for a whole agent run. What remains is the prompt-reading time itself. The strategies below reduce it.
 
 ---
 
@@ -60,7 +65,7 @@ Default is `1`, which causes cache eviction when switching models.
 
 ## Light Profile: CPU-Only, 8-16GB RAM
 
-**Target:** Stay under 60-90s prompt evaluation to avoid the 120s timeout.
+**Target:** Keep the first reply in a new chat to a few minutes. CPU-only prompt reading is several times slower than Apple Silicon, so prefer the smallest capable model.
 
 ### Recommended Models
 
@@ -96,32 +101,50 @@ sudo systemctl restart ollama
 
 ### OpenClaw Extension Configuration
 
-The extension applies the leanest agent configuration automatically whenever
-you apply a model through it — every Ollama model is by definition on the
-constrained-hardware path:
+The extension applies this automatically whenever you apply a model through
+Local Model Setup:
 
-```json
+```json5
 {
-  "agents": {
-    "defaults": {
-      "experimental": {
-        "localModelLean": true
-      }
-    }
-  }
+  agents: {
+    defaults: {
+      timeoutSeconds: 900,
+      experimental: { localModelLean: true },
+    },
+  },
+  tools: {
+    // Local routes otherwise default to Tool Search, which 8B models cannot drive.
+    toolSearch: false,
+    byProvider: {
+      // Only Ollama models get the trimmed set; cloud providers keep every tool.
+      ollama: {
+        profile: "coding",
+        deny: ["group:sessions", "cron", "get_goal", "create_goal", "update_goal",
+               "progress_card", "skill_workshop", "image_generate", "music_generate",
+               "video_generate", "web_search", "x_search", "view_image", "code_execution"],
+      },
+    },
+  },
 }
 ```
 
-This removes heavyweight tools (browser, cron, message) from the system
-prompt. If you have already set `localModelLean` yourself — including
-explicitly to `false` — the extension preserves that value on every re-apply
-instead of overwriting it.
+The trimmed tool set keeps `exec`, `read`, `write`, `edit`, `apply_patch`,
+`process`, `web_fetch`, and memory tools. It cuts the prompt from ~20,700 to
+~9,900 tokens, which halves the first reply (3m19s → 1m22s measured). It also
+keeps turns clear of OpenClaw's budget compaction, whose extra model calls
+otherwise compete for Ollama's single slot. The denied tools cannot work in
+this setup anyway: web/X search need provider keys, `view_image` needs a vision
+model, and `code_execution` needs a separate sandbox.
+
+`localModelLean` also trims optional tools such as browser and message. If you
+set it yourself, including explicitly to `false`, the extension preserves your
+value on every re-apply.
 
 ---
 
 ## Balanced Profile: Apple Silicon or 16-24GB RAM
 
-**Target:** Comfortable margin under 120s even with larger prompts.
+**Target:** First reply in a new chat in about 1–1.5 minutes, follow-ups in 10–25 seconds (measured: M4 Air / 24 GB, `qwen3:8b`).
 
 ### Recommended Models
 
@@ -165,8 +188,8 @@ the files, write an INDEX.md"*:
 | **24576** | **passes** — correct listing, all files read, accurate `INDEX.md`, reproduced twice |
 
 **Trade-off, still real:** larger context costs memory and slows prompt evaluation, and on
-a VRAM-constrained host a *large* model at a *large* context can exceed the idle watchdog
-and return nothing — a 27.9B model at a forced 32768 returned nothing in 10 minutes. That
+a VRAM-constrained host a *large* model at a *large* context can run out the whole turn
+budget and return nothing — a 27.9B model at a forced 32768 returned nothing in 10 minutes. That
 is the reason the default is 24576 rather than higher. If you run a model in the 27B+
 range on 24 GB, lower `OPENCLAW_OLLAMA_NUM_CTX` rather than raising it.
 
@@ -247,6 +270,28 @@ export OLLAMA_MAX_LOADED_MODELS=2    # Keep multiple models loaded
 
 ## Troubleshooting Timeouts
 
+### Symptom: "network connection error" after about 70 seconds
+
+**Cause:** The request went straight to `host.docker.internal:11434` and was cut by
+Docker Desktop's forwarder, which does not answer Node's TCP keepalive probes. Ollama's
+log shows `500 | 1m10s–1m14s | POST "/api/chat"` ([#246](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/246)).
+
+**Fix:** Re-apply your model in Local Model Setup. Current versions point OpenClaw at
+the in-container relay (`http://127.0.0.1:11434`). Check with:
+
+```bash
+docker exec openclaw-docker-extension-service openclaw config get models.providers.ollama.baseUrl
+```
+
+### Symptom: The model says it will run a command, but nothing runs
+
+**Cause:** Tool Search is on. The model calls the `tool_call` wrapper with a
+command's arguments instead of running `exec`, and repeats until the turn times out
+([#247](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/247)).
+
+**Fix:** Re-apply your model in Local Model Setup, which sets `tools.toolSearch: false`.
+In prompts, name the shell tool `exec`; it is not called `bash` in current OpenClaw.
+
 ### Symptom: "Turn 1 works, turn 2 times out"
 
 **Cause:** Model switching evicted the KV cache.
@@ -270,13 +315,12 @@ export OLLAMA_MAX_LOADED_MODELS=2    # Keep multiple models loaded
 
 ### Symptom: Single-character replies
 
-**Cause:** A context window too small for the prompt. PR #154 originally addressed
-this by forcing `num_ctx: 32768`, but that default was removed — it overrode Ollama's
-own VRAM-derived choice and made large models unusable on constrained hardware.
-
-Ollama now sizes the context itself. If you still see single-character replies, raise
-it explicitly with `OPENCLAW_OLLAMA_NUM_CTX` (see Context Window Tuning above) rather
-than assuming the extension has set a large value for you.
+**Cause:** A context window too small for the prompt. The extension writes
+`num_ctx: 24576` (see Context Window Tuning above) because Ollama's own default is a
+fixed 4096, not a VRAM-derived size. If you see single-character replies, confirm the
+configured value with
+`docker exec openclaw-docker-extension-service grep -o '"num_ctx":[^,}]*' /home/node/.openclaw/openclaw.json`
+and re-apply your model if it is missing.
 
 ---
 
@@ -296,10 +340,12 @@ Set these on your **host Ollama** before starting the service:
 
 ## See Also
 
-- [GitHub Issue #156](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/156) - 120s timeout discussion
+- [GitHub Issue #246](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/246) - the ~70s network cut and the in-container relay
+- [GitHub Issue #247](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/247) - Tool Search and the trimmed Ollama tool set
+- [GitHub Issue #156](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/156) - earlier timeout discussion (attributed to a 120s watchdog; see #246)
 - [GitHub Issue #158](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/158) - Ollama environment variable guidance
 - [GitHub Issue #159](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/159) - Workspace file size optimization
 
 ---
 
-*Last updated: 2026-09-01*
+*Last updated: 2026-09-24*

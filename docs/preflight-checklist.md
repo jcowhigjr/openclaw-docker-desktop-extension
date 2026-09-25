@@ -83,8 +83,10 @@ Measured reference (M4, 24 GB, 27.9B model at ~18.2 GB of weights):
 | 6 tokens | 52 s |
 | ~20k tokens (a realistic agent system prompt) | no reply in 10 minutes |
 
-That second row is why chats appear to hang: OpenClaw's 120-second idle watchdog
-fires long before the first token arrives.
+That second row is why chats appeared to hang. Long first-token waits used to be cut at
+~70 seconds by a keepalive failure between the container and host Ollama (#246); current
+versions route through an in-container relay. The extension also trims the tool set so a
+new chat's prompt is ~10k tokens rather than ~20k (#247).
 
 ## 5. Did anything update since it last worked?
 

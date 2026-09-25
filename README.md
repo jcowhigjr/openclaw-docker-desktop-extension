@@ -335,25 +335,27 @@ Expected flow:
 5. If a host model is already available, use the one-click apply action to set it as the OpenClaw default. If no model is ready, use the provided `ollama pull <model>` guidance, then re-detect.
 6. Restart OpenClaw through the extension if prompted after applying the local model. After the model is already downloaded, core chat can continue without hosted-provider network access.
 
+Expect the first reply in a new chat to take about 1–2 minutes on a laptop, because the model reads its instructions and tool definitions first. Later replies in the same chat take seconds. Measured on an M4 MacBook Air (24 GB) with `qwen3:8b`: about 1.5 minutes for a first reply that runs a command, 10–25 seconds after that. The shell tool is called `exec`; small models do best when a prompt names the tool, for example "Use the exec tool to run: ls".
+
 Validated local path on macOS:
 
 - host Ollama responds on `127.0.0.1:11434`
-- the OpenClaw service container can reach Ollama at `host.docker.internal:11434`
-- OpenClaw can be configured to use an `ollama/<model>` default
-- a direct container-to-host Ollama generation request succeeds after the model is downloaded
+- the OpenClaw service container reaches Ollama through an in-container relay at `127.0.0.1:11434`, forwarded to `host.docker.internal:11434`. The relay exists because Docker Desktop drops Node connections that wait ~70s for a first byte ([#246](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/246)).
+- OpenClaw is configured to use an `ollama/<model>` default with a tool set sized for local models ([#247](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/247))
+- a tool-using first chat (run a shell command, file verified on disk) completes on a fresh volume
 
 Model guidance should stay conservative. Prefer an already installed small or mid-sized model that responds quickly on the user's Mac before suggesting larger models. A bundled local inference runtime remains out of scope until the host-Ollama path has enough real user validation to justify the packaging, performance, and platform cost.
 
 ## Execution mode
 
-OpenClaw exec approval settings can be cached by the running gateway. If the approvals file changes on disk but the gateway is not restarted, webchat command behavior may still reflect the older in-memory policy.
+OpenClaw exec approval settings can be cached by the running gateway. If the policy changes but the gateway is not restarted, webchat command behavior may still reflect the older in-memory policy.
 
 The extension exposes an `Execution Mode` control to make that restart requirement explicit:
 
 - `Safer`: configures gateway exec to use allowlisted commands and approval prompts, with denied fallback when no approval UI is reachable.
 - `Full access`: configures gateway exec to run without approval prompts inside the OpenClaw service container.
 
-Changing the mode writes both `/home/node/.openclaw/openclaw.json` and `/home/node/.openclaw/exec-approvals.json`, then restarts OpenClaw automatically so the new policy is loaded. `Full access` is opt-in because it reduces command approval protections.
+A fresh install runs in `Full access`, because that is OpenClaw's own default, and the extension shows it honestly. Choosing a mode applies OpenClaw's built-in preset (`openclaw exec-policy preset cautious` for Safer, `yolo` for Full access), then restarts OpenClaw so the new policy is loaded. The mode shown is read back from `openclaw exec-policy show`, so it always reflects what OpenClaw actually enforces.
 
 ## Installed Control UI on macOS
 
