@@ -57,7 +57,7 @@ does exactly this for the compat path) instead of letting Ollama silently cap at
 `ollamaConfigWrite` previously wrote `params.num_ctx` with a hardcoded default of
 32768. That default was **removed** — it overrode Ollama's own VRAM-derived choice
 (4096 on a 24 GB Apple Silicon host) and made larger models unusable: a 27.9B model
-at 32768 returned nothing in 10 minutes, well past OpenClaw's 120s idle watchdog.
+at 32768 returned nothing in 10 minutes.
 
 The extension now writes `params.num_ctx` only when `OPENCLAW_OLLAMA_NUM_CTX` is
 set, and otherwise leaves the choice to Ollama. That makes the ask above more

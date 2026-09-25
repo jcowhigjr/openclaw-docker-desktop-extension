@@ -10,9 +10,10 @@ import {
   parseDemoModelsSearch,
   parseDemoProbeSearch,
 } from './dockerDesktopDemoClient';
+import { parseExecModeReadOutput } from './execMode';
 
 const TAGS_ARGS = ['curl', 'http://host.docker.internal:11434/api/tags'];
-const GENERATE_ARGS = ['curl', '-X', 'POST', 'http://host.docker.internal:11434/api/generate'];
+const GENERATE_ARGS = ['demo-openclaw', 'node', '/usr/local/bin/openclaw-extension-helper.js', 'ollama-warmup', 'qwen3.5:latest', '20'];
 const CONFIGURED_ARGS = ['openclaw', 'config', 'get', 'agents.defaults.model.primary'];
 
 describe('Docker Desktop demo client', () => {
@@ -131,7 +132,7 @@ describe('Docker Desktop demo client', () => {
     }
   });
 
-  it('probe=fail rejects with a plain object carrying a non-timeout curl error', async () => {
+  it('probe=fail rejects with a plain object carrying an Ollama HTTP error', async () => {
     const client = createDemoDDClient('?demo=1&probe=fail');
 
     expect.assertions(3);
@@ -141,12 +142,12 @@ describe('Docker Desktop demo client', () => {
       expect(error).not.toBeInstanceOf(Error);
       expect(typeof error).toBe('object');
       expect((error as { stderr: string }).stderr).toBe(
-        'curl: (22) The requested URL returned error: 500',
+        'ollama-warmup: Ollama returned error HTTP 500: {"error":"timed out waiting for llama runner to start"}',
       );
     }
   });
 
-  it('probe=timeout rejects with a plain object carrying a curl timeout', async () => {
+  it('probe=timeout rejects with a plain object carrying a warmup timeout', async () => {
     const client = createDemoDDClient('?demo=1&probe=timeout');
 
     expect.assertions(3);
@@ -156,7 +157,7 @@ describe('Docker Desktop demo client', () => {
       expect(error).not.toBeInstanceOf(Error);
       expect(typeof error).toBe('object');
       expect((error as { stderr: string }).stderr).toBe(
-        'curl: (28) Operation timed out after 20001 milliseconds',
+        'ollama-warmup timed out after 20s loading qwen3.5:latest',
       );
     }
   });
@@ -208,5 +209,17 @@ describe('Docker Desktop demo client', () => {
       stderr: '',
     });
     expect(model).toEqual({ stdout: 'llama3.2:latest\n', stderr: '' });
+  });
+
+  it('reports OpenClaw\'s default exec policy so the demo shows the mode a fresh install really has', async () => {
+    const client = createDemoDDClient('?demo=1');
+    const mode = await client.docker.cli.exec('exec', [
+      'demo-openclaw',
+      'node',
+      '/usr/local/bin/openclaw-extension-helper.js',
+      'exec-mode-read',
+    ]);
+
+    expect(parseExecModeReadOutput(mode.stdout)).toBe('full');
   });
 });

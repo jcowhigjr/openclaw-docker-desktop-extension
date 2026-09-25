@@ -2,61 +2,57 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2025-2026 John Cowhig Jr.
 
+const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
 const OPENCLAW_CONFIG_PATH = process.env.OPENCLAW_CONFIG_PATH || '/home/node/.openclaw/openclaw.json';
-const EXEC_APPROVALS_PATH = process.env.EXEC_APPROVALS_PATH || '/home/node/.openclaw/exec-approvals.json';
-// Explicit single-file override (kept for back-compat / tests). When set, the
-// Ollama auth profile is written only to this path.
-const OPENCLAW_AUTH_PROFILES_OVERRIDE = process.env.OPENCLAW_AUTH_PROFILES_PATH || null;
-// Base directory holding per-agent dirs (<agents>/<id>/agent/auth-profiles.json).
-// OpenClaw resolves auth per-agent, so the profile must reach every agent.
-const OPENCLAW_AGENTS_DIR = process.env.OPENCLAW_AGENTS_DIR || '/home/node/.openclaw/agents';
+// OpenClaw CLI used for every write that OpenClaw owns the storage format of.
+// OpenClaw 2026.9.3 moved auth profiles and exec approvals into SQLite and
+// refuses the JSON files this helper used to write (#242, #245), so those
+// writes go through its documented CLI instead of files. Resolved from PATH;
+// tests put a fake `openclaw` first on PATH rather than overriding the binary.
+const OPENCLAW_BIN = 'openclaw';
 const MAIN_AGENT_ID = 'main';
-
-const OLLAMA_AUTH_PROFILE = {
-  type: 'api_key',
-  provider: 'ollama',
-  key: 'ollama-local',
+const OLLAMA_API_KEY = 'ollama-local';
+// In-container loopback relay to host Ollama, started by openclaw-bridge.sh.
+// Node's TCP keepalive probes through host.docker.internal go unanswered by
+// Docker Desktop's forwarder, so any request that waits ~70s for a first byte
+// (cold load, long prefill) dies with ETIMEDOUT. On loopback the kernel answers
+// the probes and socat's outbound leg carries no keepalive (#246).
+const OLLAMA_RELAY_URL = 'http://127.0.0.1:11434';
+// Tools OpenClaw exposes to Ollama models. Direct schemas (no Tool Search) are
+// required: an 8B model cannot drive tool_search -> tool_call and loops on the
+// wrapper instead (#247). The trimmed "coding" set keeps the prompt near 10K
+// tokens, which halves the first reply and keeps turns clear of budget
+// compaction; the denied tools cannot work here anyway (no provider keys for
+// web/x search, no vision model, no code-execution sandbox).
+const OLLAMA_TOOL_POLICY = {
+  profile: 'coding',
+  deny: [
+    'group:sessions',
+    'cron',
+    'get_goal',
+    'create_goal',
+    'update_goal',
+    'progress_card',
+    'skill_workshop',
+    'image_generate',
+    'music_generate',
+    'video_generate',
+    'web_search',
+    'x_search',
+    'view_image',
+    'code_execution',
+  ],
 };
+// Whole-run budget. A new session on a laptop spends ~1-2 minutes on the first
+// model call alone, so a multi-step tool task does not fit in 300s.
+const OLLAMA_AGENT_TIMEOUT_SECONDS = 900;
+const OLLAMA_WARMUP_TIMEOUT_SECONDS_DEFAULT = 120;
 
 function resolvedPath(value) {
   return path.resolve(String(value || ''));
-}
-
-function isSafePathSegment(value) {
-  return typeof value === 'string' &&
-    value.length > 0 &&
-    value !== '.' &&
-    value !== '..' &&
-    !value.includes('/') &&
-    !value.includes('\\') &&
-    !path.isAbsolute(value);
-}
-
-function safeJoin(base, ...segments) {
-  const root = resolvedPath(base);
-  const cleanSegments = segments.map((segment) => {
-    if (!isSafePathSegment(segment)) {
-      throw new Error('unsafe path segment: ' + segment);
-    }
-    return segment;
-  });
-  const target = path.resolve(root, ...cleanSegments);
-  const relative = path.relative(root, target);
-  if (relative === '..' || relative.startsWith('..' + path.sep)) {
-    throw new Error('resolved path escapes base directory');
-  }
-  return target;
-}
-
-function authProfilesPath(file) {
-  const resolved = resolvedPath(file);
-  if (path.basename(resolved) !== 'auth-profiles.json') {
-    throw new Error('auth profile path must end with auth-profiles.json');
-  }
-  return resolved;
 }
 
 function readJson(file) {
@@ -80,36 +76,41 @@ function isObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function executionModeConfig(mode) {
-  if (mode === 'full') {
-    return {
-      approvalsDefaults: {
-        security: 'full',
-        ask: 'off',
-        askFallback: 'full',
-        autoAllowSkills: false,
-      },
-      toolsExec: {
-        host: 'gateway',
-        security: 'full',
-        ask: 'off',
-      },
-    };
+function runOpenclaw(args, input) {
+  const result = spawnSync(OPENCLAW_BIN, args, {
+    input,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  const label = 'openclaw ' + args.slice(0, 3).join(' ');
+  if (result.error) {
+    throw new Error(label + ' could not run: ' + result.error.message);
   }
+  if (result.status !== 0) {
+    const detail = String(result.stderr || result.stdout || '').trim().split('\n').pop();
+    throw new Error(label + ' exited ' + result.status + (detail ? ': ' + detail : ''));
+  }
+  return String(result.stdout || '');
+}
 
-  return {
-    approvalsDefaults: {
-      security: 'allowlist',
-      ask: 'on-miss',
-      askFallback: 'deny',
-      autoAllowSkills: false,
-    },
-    toolsExec: {
-      host: 'gateway',
-      security: 'allowlist',
-      ask: 'on-miss',
-    },
-  };
+// OpenClaw may print diagnostics (for example "[config] warnings: ...") ahead of
+// the JSON document on stdout, so parse from the first line that opens one.
+function parseJsonOutput(stdout, label) {
+  const text = String(stdout || '');
+  const starts = [0];
+  const pattern = /\n(?=[[{])/g;
+  let match;
+  while ((match = pattern.exec(text)) !== null) {
+    starts.push(match.index + 1);
+  }
+  for (const start of starts) {
+    try {
+      return JSON.parse(text.slice(start));
+    } catch (error) {
+      // Try the next candidate start.
+    }
+  }
+  throw new Error(label + ' did not return JSON');
 }
 
 // Resolve the Ollama context window size (num_ctx) for the model entry.
@@ -128,7 +129,7 @@ function executionModeConfig(mode) {
 // failed (the model wandered off the task instead of completing it), while
 // 24576 completed it correctly on two consecutive runs. It also stays clear of
 // the opposite failure, which is equally real: a 27.9B model at a forced 32768
-// returned nothing in 10 minutes, past the 120s idle watchdog. Large models on
+// returned nothing in 10 minutes. Large models on
 // constrained hosts should lower this via OPENCLAW_OLLAMA_NUM_CTX rather than
 // have the default lowered for everyone back into the range that does not work.
 //
@@ -178,35 +179,39 @@ function gatewayToken() {
   process.stdout.write(typeof auth.token === 'string' ? auth.token : '');
 }
 
+// Report the exec policy OpenClaw actually enforces (requested config
+// intersected with host approvals), not what files say. With nothing
+// configured OpenClaw enforces security=full / ask=off, so reading files and
+// defaulting to "safer" misreported every fresh install (#245).
 function execModeRead() {
-  const approvals = readJson(EXEC_APPROVALS_PATH);
-  const config = readJson(OPENCLAW_CONFIG_PATH);
-  const defaults = isObject(approvals.defaults) ? approvals.defaults : {};
-  const tools = isObject(config.tools) ? config.tools : {};
-  const exec = isObject(tools.exec) ? tools.exec : {};
-
-  process.stdout.write(JSON.stringify({
-    approvals: { defaults },
-    config: { tools: { exec } },
-  }));
+  const report = parseJsonOutput(runOpenclaw(['exec-policy', 'show', '--json']), 'openclaw exec-policy show');
+  const policy = isObject(report) && isObject(report.effectivePolicy) ? report.effectivePolicy : {};
+  const scope = Array.isArray(policy.scopes) && isObject(policy.scopes[0]) ? policy.scopes[0] : {};
+  const effective = (field) =>
+    isObject(scope[field]) && typeof scope[field].effective === 'string' ? scope[field].effective : null;
+  const result = {
+    security: effective('security'),
+    ask: effective('ask'),
+    askFallback: effective('askFallback'),
+  };
+  if (!result.security || !result.ask) {
+    throw new Error('openclaw exec-policy show did not report an effective security/ask policy');
+  }
+  process.stdout.write(JSON.stringify(result));
 }
 
+// Safer and Full access map exactly onto OpenClaw's built-in presets:
+// cautious = allowlist / on-miss / deny, yolo = full / off / full.
 function execModeWrite(mode) {
-  if (mode !== 'safer' && mode !== 'full') {
+  let preset;
+  if (mode === 'safer') {
+    preset = 'cautious';
+  } else if (mode === 'full') {
+    preset = 'yolo';
+  } else {
     throw new Error('exec-mode-write requires safer or full');
   }
-
-  const next = executionModeConfig(mode);
-  const approvals = readJson(EXEC_APPROVALS_PATH);
-  const config = readJson(OPENCLAW_CONFIG_PATH);
-
-  approvals.version = 1;
-  approvals.defaults = Object.assign({}, isObject(approvals.defaults) ? approvals.defaults : {}, next.approvalsDefaults);
-  config.tools = isObject(config.tools) ? config.tools : {};
-  config.tools.exec = Object.assign({}, isObject(config.tools.exec) ? config.tools.exec : {}, next.toolsExec);
-
-  writeJson(EXEC_APPROVALS_PATH, approvals, true);
-  writeJson(OPENCLAW_CONFIG_PATH, config, true);
+  runOpenclaw(['exec-policy', 'preset', preset, '--json']);
 }
 
 function ollamaConfigWrite(model) {
@@ -220,23 +225,29 @@ function ollamaConfigWrite(model) {
   config.agents.defaults = isObject(config.agents.defaults) ? config.agents.defaults : {};
   config.agents.defaults.model = isObject(config.agents.defaults.model) ? config.agents.defaults.model : {};
   config.agents.defaults.model.primary = 'ollama/' + selectedModel;
-  config.agents.defaults.timeoutSeconds = 300;
-  // Enable local-model-lean unconditionally for the Ollama path, unless the
-  // user has already set it explicitly (including to `false`). The Ollama
-  // path is by definition the constrained-hardware path, and lean mode's
-  // substantive benefit — routing tool exposure through toolSearch instead
-  // of listing the full catalogue in the system prompt — materially shrinks
-  // the ~20k-token prompt-eval cost that trips OpenClaw's 120s idle
-  // watchdog on slow local models. This must be a presence check, not a
-  // truthiness check: an explicit `false` counts as present and must be
-  // preserved across re-applies, or a deliberate opt-out would silently
-  // flip back to `true` every time a model is re-applied. No env override —
-  // the presence check is the escape hatch.
+  config.agents.defaults.timeoutSeconds = OLLAMA_AGENT_TIMEOUT_SECONDS;
+  // Enable local-model-lean for the Ollama path unless the user has already
+  // set it explicitly (including to `false`). It trims optional tools such as
+  // browser, automations and message from local runs. It is a small prompt
+  // saving on top of the tool policy below, not the fix for slow first turns:
+  // those were the keepalive cut (#246) and the tool surface (#247). This must
+  // be a presence check, not a truthiness check: an explicit `false` counts as
+  // present and must be preserved across re-applies.
   config.agents.defaults.experimental = isObject(config.agents.defaults.experimental) ?
     config.agents.defaults.experimental : {};
   if (!Object.prototype.hasOwnProperty.call(config.agents.defaults.experimental, 'localModelLean')) {
     config.agents.defaults.experimental.localModelLean = true;
   }
+  // Local routes default to Tool Search, which hides exec/read/write behind
+  // tool_search/tool_call; cloud routes already use direct tools, so turning it
+  // off only changes local runs. byProvider scopes the trimmed set to Ollama.
+  config.tools = isObject(config.tools) ? config.tools : {};
+  config.tools.toolSearch = false;
+  config.tools.byProvider = isObject(config.tools.byProvider) ? config.tools.byProvider : {};
+  config.tools.byProvider.ollama = {
+    profile: OLLAMA_TOOL_POLICY.profile,
+    deny: OLLAMA_TOOL_POLICY.deny.slice(),
+  };
   config.models = isObject(config.models) ? config.models : {};
   config.models.providers = isObject(config.models.providers) ? config.models.providers : {};
   // `reasoning` must track `thinking`: OpenClaw's native Ollama adapter
@@ -251,8 +262,8 @@ function ollamaConfigWrite(model) {
   const params = { thinking, num_ctx: numCtx };
   config.models.providers.ollama = {
     api: 'ollama',
-    apiKey: 'ollama-local',
-    baseUrl: 'http://host.docker.internal:11434',
+    apiKey: OLLAMA_API_KEY,
+    baseUrl: OLLAMA_RELAY_URL,
     models: [
       {
         id: selectedModel,
@@ -278,74 +289,78 @@ function ollamaConfigWrite(model) {
   writeJson(OPENCLAW_CONFIG_PATH, config, true);
 }
 
-// Enumerate agent ids under the agents base. Always includes `main` as a floor.
-// Other entries count as agents only if they are directories containing an
-// `agent/` subdir, so stray files/dirs are skipped. Missing/unreadable base
-// degrades to just `main`.
-function listAgentIds(base) {
+// Agent ids as OpenClaw reports them. `main` is always included so a fresh
+// install, or a CLI that cannot list agents yet, still gets a working default.
+function listAgentIds() {
   const ids = new Set([MAIN_AGENT_ID]);
-  const root = resolvedPath(base);
-  let entries;
+  let agents;
   try {
-    entries = fs.readdirSync(root, { withFileTypes: true });
+    agents = parseJsonOutput(runOpenclaw(['agents', 'list', '--json']), 'openclaw agents list');
   } catch (error) {
+    process.stderr.write('could not list agents, configuring main only: ' + error.message + '\n');
     return Array.from(ids);
   }
-  for (const entry of entries) {
-    if (!entry.isDirectory() || !isSafePathSegment(entry.name)) {
-      continue;
-    }
-    if (fs.existsSync(safeJoin(root, entry.name, 'agent'))) {
-      ids.add(entry.name);
+  if (Array.isArray(agents)) {
+    for (const agent of agents) {
+      if (isObject(agent) && typeof agent.id === 'string' && /^[A-Za-z0-9_-]+$/.test(agent.id)) {
+        ids.add(agent.id);
+      }
     }
   }
   return Array.from(ids);
 }
 
-// Merge the ollama:manual profile into an agent's auth-profiles.json without
-// clobbering other profiles. Idempotent. A malformed existing file is fatal for
-// `main` (strong signal for the primary agent) but recoverable for others.
-function mergeOllamaProfile(file, strict) {
-  const resolvedFile = authProfilesPath(file);
-  let data;
+// Register the local Ollama key through OpenClaw's own auth store (SQLite in
+// 2026.9.3). The resulting profile id is `ollama:manual`, matching the
+// auth.profiles/auth.order entries ollama-config-write puts in openclaw.json.
+function ollamaAuthWrite() {
+  for (const id of listAgentIds()) {
+    runOpenclaw(['models', 'auth', 'paste-api-key', '--provider', 'ollama', '--agent', id], OLLAMA_API_KEY + '\n');
+  }
+}
+
+// Preload a model into host Ollama (POST /api/generate with no prompt and a
+// keep_alive is Ollama's documented preload). The UI used to run curl through
+// the Docker Desktop SDK, which re-splits arguments and mangled the JSON body
+// (#241); running here keeps the argv free of spaces and quotes.
+//
+// Error wording is load-bearing for the UI's probe classifier: a timeout says
+// "timed out" (a slow cold load is a warning), while an HTTP failure says
+// "returned error" so Ollama's own "timed out waiting for llama runner" text
+// in the body is still reported as a broken load (OLM-006).
+async function ollamaWarmup(model, timeoutArg, baseUrl = OLLAMA_RELAY_URL) {
+  const selectedModel = String(model || '').trim();
+  if (!selectedModel) {
+    throw new Error('ollama-warmup requires a model');
+  }
+  const parsedTimeout = Number.parseInt(String(timeoutArg || ''), 10);
+  const timeoutSeconds = Number.isFinite(parsedTimeout) && parsedTimeout > 0 ?
+    parsedTimeout : OLLAMA_WARMUP_TIMEOUT_SECONDS_DEFAULT;
+  const url = baseUrl + '/api/generate';
+
+  let response;
   try {
-    data = readJson(resolvedFile);
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: selectedModel, keep_alive: '30m' }),
+      signal: AbortSignal.timeout(timeoutSeconds * 1000),
+    });
   } catch (error) {
-    if (strict) {
-      throw error;
+    if (error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+      throw new Error('ollama-warmup timed out after ' + timeoutSeconds + 's loading ' + selectedModel);
     }
-    process.stderr.write('skipping malformed auth-profiles.json at ' + resolvedFile + ': ' +
-      (error && error.message ? error.message : String(error)) + '\n');
-    data = {};
+    const cause = error && error.cause && error.cause.message ? error.cause.message : (error && error.message) || String(error);
+    throw new Error('ollama-warmup could not reach Ollama at ' + url + ': ' + cause);
   }
-  if (!isObject(data)) {
-    data = {};
+  if (!response.ok) {
+    const body = (await response.text().catch(() => '')).trim().slice(0, 300);
+    throw new Error('ollama-warmup: Ollama returned error HTTP ' + response.status + (body ? ': ' + body : ''));
   }
-  if (typeof data.version !== 'number') {
-    data.version = 1;
-  }
-  if (!isObject(data.profiles)) {
-    data.profiles = {};
-  }
-  data.profiles['ollama:manual'] = Object.assign({}, OLLAMA_AUTH_PROFILE);
-  writeJson(resolvedFile, data, false);
+  await response.text().catch(() => '');
 }
 
-function ollamaAuthProfilesWrite() {
-  if (OPENCLAW_AUTH_PROFILES_OVERRIDE) {
-    mergeOllamaProfile(OPENCLAW_AUTH_PROFILES_OVERRIDE, true);
-    return;
-  }
-  for (const id of listAgentIds(OPENCLAW_AGENTS_DIR)) {
-    const file = safeJoin(OPENCLAW_AGENTS_DIR, id, 'agent', 'auth-profiles.json');
-    mergeOllamaProfile(file, id === MAIN_AGENT_ID);
-  }
-}
-
-const command = process.argv[2];
-const args = process.argv.slice(3);
-
-try {
+async function main(command, args) {
   if (command === 'gateway-token') {
     gatewayToken();
   } else if (command === 'exec-mode-read') {
@@ -354,12 +369,22 @@ try {
     execModeWrite(args[0]);
   } else if (command === 'ollama-config-write') {
     ollamaConfigWrite(args[0]);
-  } else if (command === 'ollama-auth-profiles-write') {
-    ollamaAuthProfilesWrite();
+  } else if (command === 'ollama-auth-write') {
+    ollamaAuthWrite();
+  } else if (command === 'ollama-warmup') {
+    await ollamaWarmup(args[0], args[1]);
   } else {
     throw new Error('Unknown command: ' + command);
   }
-} catch (error) {
-  process.stderr.write((error && error.message ? error.message : String(error)) + '\n');
-  process.exit(1);
 }
+
+if (require.main === module) {
+  main(process.argv[2], process.argv.slice(3)).catch((error) => {
+    process.stderr.write((error && error.message ? error.message : String(error)) + '\n');
+    process.exit(1);
+  });
+}
+
+// Exported for the helper's own tests, which exercise the warmup against a
+// local stub server instead of the relay.
+module.exports = { ollamaWarmup };

@@ -23,36 +23,26 @@ type CommandRunner = (cmd: string, args: string[]) => Promise<CommandResult>;
 // timeout here must not read as "Ollama is broken" (see isProbeTimeout).
 const MODEL_PROBE_TIMEOUT_SECONDS = 20;
 
-// Curl reports a timed-out request in more than one way depending on version
-// and platform (exit code 28, "Operation timed out", a bare "timed out", or --
-// once formatUnknownError falls back to JSON.stringify on a plain rejection
-// object like `{ code: 28 }` -- the `"code":28` JSON form). Match all of them
-// case-insensitively and defensively: a cold load that trips the 20s bound is
-// not a broken Ollama, and misclassifying an unfamiliar timeout message as a
-// hard failure would incorrectly demote severity.
+// The probe runs the runtime helper's `ollama-warmup`, which reports its own
+// timeout as "ollama-warmup timed out after <n>s ..." and exits non-zero on an
+// HTTP error with "... returned error HTTP <status>: <body>". A cold load that
+// trips the 20s bound is not a broken Ollama, so a timeout must not demote
+// severity; the older curl forms (exit code 28, "Operation timed out", the
+// `"code":28` JSON form formatUnknownError can fall back to) still match
+// defensively.
 //
-// The probe is built with `curl -fsS`: `-f` makes curl fail on a server error
-// and discard the response body, so a genuine Ollama failure reaches this
-// function only as something like "curl: (22) The requested URL returned
-// error: 500" -- never containing a timeout token. That is the only reason the
-// loose 'timeout'/'timed out' substring match below is safe today.
-//
-// If `-f` is ever dropped, this function is NOT the protection. Without `-f`
-// curl exits 0 on an HTTP 500, so the probe promise resolves and this is never
-// called -- Ollama's runner-crash string ("timed out waiting for llama runner
-// to start", precisely the fault OLM-006 exists to catch) would become a
-// silent pass, not a swallowed timeout. Protecting that case means inspecting
-// the response body for an `error` field, not extending the match below.
-//
-// The `looksLikeHttpResponse` guard is still worth keeping: it is cheap and it
-// pins the assumption above so a future reader sees it.
+// An HTTP failure's body can itself contain timeout words -- Ollama's
+// runner-crash text is "timed out waiting for llama runner to start", precisely
+// the fault OLM-006 exists to catch. That is why the helper words HTTP failures
+// with "returned error", and why `looksLikeHttpResponse` is checked first: it
+// keeps that case an error instead of a swallowed timeout.
 function isProbeTimeout(message: string): boolean {
   const lower = message.toLowerCase();
   // Note: the `"code":28` pattern below only fires when formatUnknownError
   // fell through to JSON.stringify -- it returns the FIRST non-empty of
   // message/stderr/stdout/error, so `{ message: 'command failed', code: 28 }`
   // formats to "command failed" and never reaches the structured match.
-  // The realistic path is covered: `curl -S` writes "curl: (28) ..." to stderr.
+  // The realistic path is covered: the helper writes "ollama-warmup timed out ..." to stderr.
   // Reading the exit code properly would mean widening CommandRunner.
   const looksLikeHttpResponse = /\(22\)/.test(lower) || lower.includes('returned error');
   if (looksLikeHttpResponse) {

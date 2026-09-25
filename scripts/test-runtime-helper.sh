@@ -5,8 +5,6 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
 config_path="${tmp_dir}/openclaw.json"
-approvals_path="${tmp_dir}/exec-approvals.json"
-auth_profiles_path="${tmp_dir}/auth-profiles.json"
 
 cat >"$config_path" <<'JSON'
 {
@@ -17,49 +15,132 @@ cat >"$config_path" <<'JSON'
     }
   },
   "tools": {
-    "exec": {
-      "security": "full",
-      "ask": "off"
+    "byProvider": {
+      "anthropic": { "profile": "minimal" }
     }
   }
 }
 JSON
 
-cat >"$approvals_path" <<'JSON'
-{
-  "version": 1,
-  "socket": {
-    "path": "/home/node/.openclaw/exec-approvals.sock",
-    "token": "preserve-socket-token"
-  },
-  "defaults": {
-    "security": "full",
-    "ask": "off",
-    "askFallback": "full"
-  }
-}
-JSON
+# Fake OpenClaw CLI: records argv and stdin, prints canned output captured from
+# OpenClaw 2026.9.3. Writes that OpenClaw owns the storage format of must go
+# through this CLI, never through files (#242, #245).
+fake_bin="${tmp_dir}/bin"
+calls_log="${tmp_dir}/openclaw.calls"
+stdin_log="${tmp_dir}/openclaw.stdin"
+mkdir -p "$fake_bin"
+cat >"${fake_bin}/openclaw" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" >>"$FAKE_OPENCLAW_CALLS"
+if [ -n "${FAKE_OPENCLAW_FAIL:-}" ]; then
+  echo "simulated failure for: $*" >&2
+  exit 3
+fi
+case "$*" in
+  "exec-policy show --json")
+    echo "[config] warnings: plugins.entries.codex: plugin disabled but config is present"
+    cat "$FAKE_EXEC_POLICY"
+    ;;
+  "exec-policy preset "*)
+    echo '{"ok":true}'
+    ;;
+  "agents list --json")
+    echo '[{"id":"main","isDefault":true},{"id":"heartbeat"},{"id":"../escape"}]'
+    ;;
+  "models auth paste-api-key "*)
+    printf '%s|' "$*" >>"$FAKE_OPENCLAW_STDIN"
+    cat >>"$FAKE_OPENCLAW_STDIN"
+    ;;
+  *)
+    echo "unexpected openclaw call: $*" >&2
+    exit 2
+    ;;
+esac
+SH
+chmod +x "${fake_bin}/openclaw"
+# The helper resolves `openclaw` from PATH, so the fake shadows any real install.
+PATH="${fake_bin}:${PATH}"
+export PATH
 
-helper_env="OPENCLAW_CONFIG_PATH=${config_path} EXEC_APPROVALS_PATH=${approvals_path} OPENCLAW_AUTH_PROFILES_PATH=${auth_profiles_path}"
+exec_policy_path="${tmp_dir}/exec-policy.json"
+write_exec_policy() {
+  cat >"$exec_policy_path" <<JSON
+{"configPath":"/home/node/.openclaw/openclaw.json","approvalsExists":false,"effectivePolicy":{"scopes":[{"scopeLabel":"tools.exec","agentId":"main","security":{"requested":"$1","effective":"$1"},"ask":{"requested":"$2","effective":"$2"},"askFallback":{"effective":"$3"}}]}}
+JSON
+}
+
+helper_env="OPENCLAW_CONFIG_PATH=${config_path} FAKE_OPENCLAW_CALLS=${calls_log} FAKE_OPENCLAW_STDIN=${stdin_log} FAKE_EXEC_POLICY=${exec_policy_path}"
 
 token="$(env $helper_env node runtime/openclaw-extension-helper.js gateway-token)"
 [ "$token" = "test-token" ]
 
+# --- exec mode (#245) ---
+# Unconfigured OpenClaw enforces full/off; the helper must report that, parsing
+# past the diagnostic line OpenClaw prints ahead of the JSON.
+write_exec_policy full off deny
 mode_json="$(env $helper_env node runtime/openclaw-extension-helper.js exec-mode-read)"
-printf '%s' "$mode_json" | grep -F '"security":"full"' >/dev/null
-printf '%s' "$mode_json" | grep -F 'preserve-socket-token' >/dev/null && {
-  echo "exec-mode-read must not expose socket tokens" >&2
+[ "$mode_json" = '{"security":"full","ask":"off","askFallback":"deny"}' ] || {
+  echo "exec-mode-read must report the effective policy, got: $mode_json" >&2
   exit 1
 }
 
+write_exec_policy allowlist on-miss deny
+mode_json="$(env $helper_env node runtime/openclaw-extension-helper.js exec-mode-read)"
+[ "$mode_json" = '{"security":"allowlist","ask":"on-miss","askFallback":"deny"}' ]
+
+printf '{"effectivePolicy":{"scopes":[]}}\n' >"$exec_policy_path"
+if env $helper_env node runtime/openclaw-extension-helper.js exec-mode-read 2>"${tmp_dir}/mode-read.err"; then
+  echo "exec-mode-read must fail when OpenClaw reports no policy scope" >&2
+  exit 1
+fi
+grep -F 'did not report an effective security/ask policy' "${tmp_dir}/mode-read.err" >/dev/null
+
+: >"$calls_log"
 env $helper_env node runtime/openclaw-extension-helper.js exec-mode-write safer
-grep -F '"security": "allowlist"' "$config_path" >/dev/null
-grep -F '"askFallback": "deny"' "$approvals_path" >/dev/null
-grep -F 'preserve-socket-token' "$approvals_path" >/dev/null
+env $helper_env node runtime/openclaw-extension-helper.js exec-mode-write full
+[ "$(cat "$calls_log")" = "exec-policy preset cautious --json
+exec-policy preset yolo --json" ] || {
+  echo "exec-mode-write must map safer/full to the cautious/yolo presets, got: $(cat "$calls_log")" >&2
+  exit 1
+}
+if env $helper_env node runtime/openclaw-extension-helper.js exec-mode-write reckless 2>/dev/null; then
+  echo "exec-mode-write must reject unknown modes" >&2
+  exit 1
+fi
+[ ! -e "${tmp_dir}/exec-approvals.json" ]
+if grep -F '"exec"' "$config_path" >/dev/null; then
+  echo "exec-mode-write must not write tools.exec into openclaw.json directly" >&2
+  exit 1
+fi
+
+if env $helper_env FAKE_OPENCLAW_FAIL=1 node runtime/openclaw-extension-helper.js exec-mode-write safer 2>"${tmp_dir}/mode-write.err"; then
+  echo "exec-mode-write must fail when the OpenClaw CLI fails" >&2
+  exit 1
+fi
+grep -F 'openclaw exec-policy preset cautious exited 3' "${tmp_dir}/mode-write.err" >/dev/null
 
 env $helper_env node runtime/openclaw-extension-helper.js ollama-config-write qwen3.5:latest
 grep -F '"primary": "ollama/qwen3.5:latest"' "$config_path" >/dev/null
 grep -F '"ollama:manual"' "$config_path" >/dev/null
+
+# Local-model runtime settings (#246, #247). Assert on parsed JSON, not grep,
+# so key placement is checked too.
+node -e '
+const c = require(process.argv[1]);
+const fail = (m) => { console.error(m); process.exit(1); };
+if (c.models.providers.ollama.baseUrl !== "http://127.0.0.1:11434") fail("baseUrl must be the in-container relay (#246)");
+if (c.tools.toolSearch !== false) fail("tools.toolSearch must be false for local models (#247)");
+const p = c.tools.byProvider.ollama;
+if (!p || p.profile !== "coding") fail("tools.byProvider.ollama.profile must be coding");
+for (const t of ["group:sessions", "web_search", "x_search", "view_image", "code_execution", "image_generate"]) {
+  if (!p.deny.includes(t)) fail("tools.byProvider.ollama.deny must include " + t);
+}
+for (const t of ["exec", "read", "write", "group:fs", "group:runtime"]) {
+  if (p.deny.includes(t)) fail("the Ollama tool policy must not deny " + t);
+}
+if (!c.tools.byProvider.anthropic || c.tools.byProvider.anthropic.profile !== "minimal") fail("other byProvider entries must be preserved");
+if (c.agents.defaults.timeoutSeconds !== 900) fail("agents.defaults.timeoutSeconds must be 900");
+' "$config_path"
 # With OPENCLAW_OLLAMA_NUM_CTX unset, num_ctx must be written at the 24576
 # default. Omitting it lets Ollama apply a small fixed default (measured 4096),
 # which cannot carry an agent turn -- see #213.
@@ -190,59 +271,125 @@ grep -F '"num_ctx": 24576' "$lean_false_path" >/dev/null || {
   exit 1
 }
 
-env $helper_env node runtime/openclaw-extension-helper.js ollama-auth-profiles-write
-grep -F '"key": "ollama-local"' "$auth_profiles_path" >/dev/null
-
-if env "OPENCLAW_AUTH_PROFILES_PATH=${tmp_dir}/wrong-name.json" \
-  node runtime/openclaw-extension-helper.js ollama-auth-profiles-write 2>"${tmp_dir}/invalid-path.err"; then
-  echo "ollama-auth-profiles-write must reject invalid auth profile filenames" >&2
+# --- Ollama auth through OpenClaw's auth store (#242) ---
+# Every agent OpenClaw lists gets the key via `models auth paste-api-key` on
+# stdin; unsafe ids are skipped and no auth-profiles.json is written.
+: >"$calls_log"
+: >"$stdin_log"
+env $helper_env node runtime/openclaw-extension-helper.js ollama-auth-write
+grep -F 'models auth paste-api-key --provider ollama --agent main' "$calls_log" >/dev/null
+grep -F 'models auth paste-api-key --provider ollama --agent heartbeat' "$calls_log" >/dev/null
+if grep -F 'escape' "$calls_log" >/dev/null; then
+  echo "ollama-auth-write must skip agent ids that are not plain identifiers" >&2
   exit 1
 fi
-grep -F 'auth profile path must end with auth-profiles.json' "${tmp_dir}/invalid-path.err" >/dev/null
-
-# --- Ollama auth profile propagation across all agents ---
-# When the single-file override is NOT set, the helper enumerates every agent
-# directory under OPENCLAW_AGENTS_DIR and writes ollama:manual to each.
-
-agents_dir="${tmp_dir}/agents"
-mkdir -p "${agents_dir}/main/agent"
-mkdir -p "${agents_dir}/heartbeat/agent"
-# Pre-existing profile in main must be preserved by the merge.
-cat >"${agents_dir}/main/agent/auth-profiles.json" <<'JSON'
-{
-  "version": 1,
-  "profiles": {
-    "anthropic:default": { "type": "api_key", "provider": "anthropic", "key": "sk-existing" }
-  }
+grep -F -- '--agent main|ollama-local' "$stdin_log" >/dev/null || {
+  echo "ollama-auth-write must pass the key on stdin, not argv" >&2
+  exit 1
 }
-JSON
-# A stray non-agent directory (no agent/ subdir) and a stray file must be skipped.
-mkdir -p "${agents_dir}/not-an-agent"
-: >"${agents_dir}/loose-file"
+if grep -F 'ollama-local' "$calls_log" >/dev/null; then
+  echo "the Ollama key must not appear in argv" >&2
+  exit 1
+fi
+if find "$tmp_dir" -name 'auth-profiles.json' | grep . >/dev/null; then
+  echo "ollama-auth-write must not write the retired auth-profiles.json" >&2
+  exit 1
+fi
 
-agents_env="OPENCLAW_AGENTS_DIR=${agents_dir}"
+# If OpenClaw cannot list agents, main is still configured.
+list_fail_bin="${tmp_dir}/bin-list-fail"
+mkdir -p "$list_fail_bin"
+cat >"${list_fail_bin}/openclaw" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" >>"$FAKE_OPENCLAW_CALLS"
+case "$*" in
+  "agents list --json") echo "agents unavailable" >&2; exit 4 ;;
+  *) cat >/dev/null ;;
+esac
+SH
+chmod +x "${list_fail_bin}/openclaw"
+: >"$calls_log"
+(PATH="${list_fail_bin}:${PATH}"; export PATH; env $helper_env node runtime/openclaw-extension-helper.js ollama-auth-write 2>/dev/null)
+grep -F 'models auth paste-api-key --provider ollama --agent main' "$calls_log" >/dev/null
 
-env $agents_env node runtime/openclaw-extension-helper.js ollama-auth-profiles-write
-# Both agents got the profile.
-grep -F '"ollama:manual"' "${agents_dir}/main/agent/auth-profiles.json" >/dev/null
-grep -F '"ollama:manual"' "${agents_dir}/heartbeat/agent/auth-profiles.json" >/dev/null
-# Existing profile preserved (merge, not clobber).
-grep -F '"anthropic:default"' "${agents_dir}/main/agent/auth-profiles.json" >/dev/null
-# Stray entries skipped.
-[ ! -e "${agents_dir}/not-an-agent/agent/auth-profiles.json" ]
-[ ! -d "${agents_dir}/loose-file/agent" ]
+if env $helper_env FAKE_OPENCLAW_FAIL=1 node runtime/openclaw-extension-helper.js ollama-auth-write 2>/dev/null; then
+  echo "ollama-auth-write must fail when OpenClaw rejects the key" >&2
+  exit 1
+fi
 
-# Idempotent: a second run leaves files byte-identical.
-main_before="$(cat "${agents_dir}/main/agent/auth-profiles.json")"
-env $agents_env node runtime/openclaw-extension-helper.js ollama-auth-profiles-write
-main_after="$(cat "${agents_dir}/main/agent/auth-profiles.json")"
-[ "$main_before" = "$main_after" ]
-# Single ollama:manual key (no duplication).
-[ "$(grep -c -F '"ollama:manual"' "${agents_dir}/main/agent/auth-profiles.json")" = "1" ]
+# --- ollama-warmup (#241) ---
+# A local stub server stands in for Ollama: 200 on success, an Ollama-style
+# 500 whose body itself says "timed out" (must still read as a broken load),
+# and a slow response that trips the helper's own timeout.
+server_port_file="${tmp_dir}/server.port"
+server_body_file="${tmp_dir}/server.body"
+node -e '
+const http = require("http");
+const fs = require("fs");
+const server = http.createServer((req, res) => {
+  let body = "";
+  req.on("data", (chunk) => { body += chunk; });
+  req.on("end", () => {
+    const parsed = JSON.parse(body || "{}");
+    fs.writeFileSync(process.argv[2], body);
+    if (parsed.model === "broken:model") {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "timed out waiting for llama runner to start" }));
+    } else if (parsed.model === "slow:model") {
+      setTimeout(() => { res.writeHead(200); res.end("{}"); }, 3000);
+    } else {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end("{\"done\":true}");
+    }
+  });
+});
+server.listen(0, "127.0.0.1", () => fs.writeFileSync(process.argv[1], String(server.address().port)));
+setTimeout(() => process.exit(0), 20000);
+' "$server_port_file" "$server_body_file" &
+server_pid=$!
+trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true; rm -rf "$tmp_dir"' EXIT
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  [ -s "$server_port_file" ] && break
+  sleep 0.2
+done
+warmup_base="http://127.0.0.1:$(cat "$server_port_file")"
+# The CLI always targets the relay, so call the exported function with the stub's URL.
+warmup() {
+  node -e '
+const { ollamaWarmup } = require("./runtime/openclaw-extension-helper.js");
+ollamaWarmup(process.argv[1], process.argv[2], process.argv[3]).then(
+  () => process.exit(0),
+  (error) => { process.stderr.write(error.message + "\n"); process.exit(1); },
+);
+' "$1" "$2" "$warmup_base"
+}
 
-# Missing agents dir still writes main and exits 0.
-missing_dir="${tmp_dir}/no-agents-here"
-env "OPENCLAW_AGENTS_DIR=${missing_dir}" node runtime/openclaw-extension-helper.js ollama-auth-profiles-write
-grep -F '"ollama:manual"' "${missing_dir}/main/agent/auth-profiles.json" >/dev/null
+warmup qwen3:8b 5
+node -e '
+const body = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+if (body.model !== "qwen3:8b" || body.keep_alive !== "30m") { console.error("unexpected warmup body: " + JSON.stringify(body)); process.exit(1); }
+' "$server_body_file"
+
+if warmup broken:model 5 2>"${tmp_dir}/warmup-500.err"; then
+  echo "ollama-warmup must fail on an HTTP error" >&2
+  exit 1
+fi
+grep -F 'returned error HTTP 500' "${tmp_dir}/warmup-500.err" >/dev/null
+
+if warmup slow:model 1 2>"${tmp_dir}/warmup-timeout.err"; then
+  echo "ollama-warmup must fail when the timeout elapses" >&2
+  exit 1
+fi
+grep -F 'ollama-warmup timed out after 1s loading slow:model' "${tmp_dir}/warmup-timeout.err" >/dev/null
+if grep -F 'returned error' "${tmp_dir}/warmup-timeout.err" >/dev/null; then
+  echo "a warmup timeout must not be worded like an HTTP error" >&2
+  exit 1
+fi
+
+if node runtime/openclaw-extension-helper.js ollama-warmup 2>"${tmp_dir}/warmup-missing.err"; then
+  echo "ollama-warmup must require a model" >&2
+  exit 1
+fi
+grep -F 'ollama-warmup requires a model' "${tmp_dir}/warmup-missing.err" >/dev/null
 
 echo "runtime helper checks passed"

@@ -20,10 +20,29 @@ at fault before acting on it.
 
 ### `LLM request failed: network connection error.`
 
-**Not a network fault.** This is a turn timeout surfaced with a misleading label
-(see issue #219). The connection is usually fine.
+This label covers two different faults. Check which one it is before acting.
 
-Confirm by reading the gateway log — the real reason is there:
+**1. A ~70-second network cut (#246).** If Ollama's log shows the request ending in a
+500 after 1m10s–1m14s, the connection really was dropped:
+
+```bash
+grep '"/api/chat"' ~/.ollama/logs/server.log | tail -5
+```
+
+Node's TCP keepalive probes through `host.docker.internal` go unanswered by Docker
+Desktop's forwarder, so the kernel fails the socket (`ETIMEDOUT`) once a request has
+waited ~70s for its first byte. Cold loads and long prompts hit it; short requests never
+do. That is why a quick reachability check passes, and why curl (which probes every 60s)
+works while OpenClaw does not. Current versions route Ollama through an in-container
+relay. Confirm it is in use, and re-apply the model in Local Model Setup if not:
+
+```bash
+docker exec openclaw-docker-extension-service openclaw config get models.providers.ollama.baseUrl
+# expect http://127.0.0.1:11434
+```
+
+**2. A turn timeout with a misleading label (#219).** Read the gateway log. The real
+reason is there:
 
 ```bash
 docker exec openclaw-docker-extension-service \
@@ -31,10 +50,11 @@ docker exec openclaw-docker-extension-service \
 ```
 
 `reason=timeout` with a large `durationMs` means the turn ran out of time. Prove the
-network is healthy rather than assuming:
+relay path is reachable rather than assuming. This only proves reachability: a fast
+request cannot show the ~70s cut in cause 1.
 
 ```bash
-docker exec openclaw-docker-extension-service node -e "fetch('http://host.docker.internal:11434/api/tags').then(r=>r.json()).then(d=>console.log('reachable, models:',d.models.length)).catch(e=>console.log('FAIL',e.message))"
+docker exec openclaw-docker-extension-service node -e "fetch('http://127.0.0.1:11434/api/tags').then(r=>r.json()).then(d=>console.log('reachable, models:',d.models.length)).catch(e=>console.log('FAIL',e.message))"
 ```
 
 Most common trigger: the **first turn after a reboot**, when the page cache is cold. Warm
@@ -77,7 +97,22 @@ Two contributing causes, usually together:
    Anything at or near 4096 is too small. See #213.
 
 2. **The prompt did not name a tool.** Small models need to be told which tool to use.
-   "List the files" is not enough; "Use the bash tool to run: ls \<path\>" is.
+   "List the files" is not enough; "Use the exec tool to run: ls \<path\>" is. (The shell
+   tool is named `exec` in OpenClaw 2026.9.x.)
+
+### The model says it will run a command, but nothing runs
+
+Symptom: the reply describes the command, or the turn times out after the model has
+called `tool_call` over and over with the command's arguments.
+
+OpenClaw's Tool Search hides tools behind `tool_search` → `tool_describe` → `tool_call`
+for local models, and an 8B model cannot drive that indirection (#247). The extension
+turns Tool Search off for local models; confirm it is off:
+
+```bash
+docker exec openclaw-docker-extension-service openclaw config get tools.toolSearch
+# expect false; if not, re-apply the model in Local Model Setup
+```
 
 ### `dir_list failed: no paired nodes available; file-transfer tools require a paired node`
 
@@ -85,8 +120,8 @@ The model chose `dir_list` — a **remote, node-paired file-transfer tool** — 
 the local filesystem tools. Nothing is misconfigured; the model picked wrong from a
 catalogue of similarly-named tools.
 
-Local tools are `bash` / `exec`, `read`, `write`, `edit`, `glob`, `grep`. Name the one you
-want in the prompt.
+Local tools are `exec`, `read`, `write`, `edit`, and `apply_patch`. Name the one you want
+in the prompt.
 
 ### `SESSION_WORK_START_CHANGED` / `Session ... changed while starting work`
 

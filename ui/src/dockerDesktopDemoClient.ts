@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2025-2026 John Cowhig Jr.
+import { isOllamaWarmupArgs } from './ollamaSetup';
+
 type DemoExecResult = {
   stdout: string;
   stderr: string;
@@ -108,20 +110,24 @@ export function createDemoDDClient(search = ''): DemoDockerDesktopClient {
       return { stdout: JSON.stringify(tagsPayload()), stderr: '' };
     }
 
-    if (
-      command === 'exec' &&
-      probeFixture !== 'ok' &&
-      args.some((arg) => arg.endsWith('/api/generate'))
-    ) {
+    if (command === 'exec' && probeFixture !== 'ok' && isOllamaWarmupArgs(args)) {
       // Docker Desktop's real `exec` rejects with a plain object (read via
       // formatUnknownError), never an Error -- match that here so demo mode
       // cannot hide the same divergence that previously masked a Critical
-      // defect.
+      // defect. Messages mirror the runtime helper's `ollama-warmup` wording.
       if (probeFixture === 'fail') {
-        throw { stderr: 'curl: (22) The requested URL returned error: 500' };
+        throw {
+          stderr:
+            'ollama-warmup: Ollama returned error HTTP 500: {"error":"timed out waiting for llama runner to start"}',
+        };
       }
 
-      throw { stderr: 'curl: (28) Operation timed out after 20001 milliseconds' };
+      throw { stderr: 'ollama-warmup timed out after 20s loading qwen3.5:latest' };
+    }
+
+    if (command === 'exec' && args.includes('exec-mode-read')) {
+      // OpenClaw's default policy when nothing is configured.
+      return { stdout: '{"security":"full","ask":"off","askFallback":"deny"}', stderr: '' };
     }
 
     if (command === 'exec' && args.includes('agents.defaults.model.primary')) {

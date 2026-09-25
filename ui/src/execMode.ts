@@ -2,112 +2,44 @@
 // Copyright 2025-2026 John Cowhig Jr.
 export type ExecutionMode = 'safer' | 'full';
 
-export type JsonObject = Record<string, unknown>;
-
-type ExecutionModeConfig = {
-  approvalsDefaults: JsonObject;
-  toolsExec: JsonObject;
+// Effective exec policy as reported by `exec-mode-read`, which asks OpenClaw
+// (`openclaw exec-policy show`) rather than reading files: OpenClaw 2026.9.3
+// keeps approvals in SQLite, and with nothing configured it enforces
+// security=full / ask=off, so file-based detection misreported every fresh
+// install as Safer (#245).
+export type EffectiveExecPolicy = {
+  security: string;
+  ask: string;
+  askFallback: string | null;
 };
 
-export function buildExecutionModeConfig(mode: ExecutionMode): ExecutionModeConfig {
-  if (mode === 'full') {
-    return {
-      approvalsDefaults: {
-        security: 'full',
-        ask: 'off',
-        askFallback: 'full',
-        autoAllowSkills: false,
-      },
-      toolsExec: {
-        host: 'gateway',
-        security: 'full',
-        ask: 'off',
-      },
-    };
-  }
+// OpenClaw's own default when nothing is configured; also the honest
+// assumption to display before the policy has been read.
+export const DEFAULT_EXECUTION_MODE: ExecutionMode = 'full';
 
-  return {
-    approvalsDefaults: {
-      security: 'allowlist',
-      ask: 'on-miss',
-      askFallback: 'deny',
-      autoAllowSkills: false,
-    },
-    toolsExec: {
-      host: 'gateway',
-      security: 'allowlist',
-      ask: 'on-miss',
-    },
-  };
+export function modeFromEffectivePolicy(policy: EffectiveExecPolicy): ExecutionMode {
+  return policy.security === 'full' && policy.ask === 'off' ? 'full' : 'safer';
 }
 
-function isJsonObject(value: unknown): value is JsonObject {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-export function mergeExecApprovals(existing: JsonObject, mode: ExecutionMode): JsonObject {
-  const next = buildExecutionModeConfig(mode);
-  const existingDefaults = isJsonObject(existing.defaults) ? existing.defaults : {};
-
-  return {
-    version: 1,
-    ...existing,
-    defaults: {
-      ...existingDefaults,
-      ...next.approvalsDefaults,
-    },
-  };
-}
-
-export function mergeOpenClawExecConfig(existing: JsonObject, mode: ExecutionMode): JsonObject {
-  const next = buildExecutionModeConfig(mode);
-  const existingTools = isJsonObject(existing.tools) ? existing.tools : {};
-  const existingExec = isJsonObject(existingTools.exec) ? existingTools.exec : {};
-
-  return {
-    ...existing,
-    tools: {
-      ...existingTools,
-      exec: {
-        ...existingExec,
-        ...next.toolsExec,
-      },
-    },
-  };
-}
-
-export function detectExecutionMode(approvals: JsonObject, openclawConfig: JsonObject): ExecutionMode {
-  const defaults = isJsonObject(approvals.defaults) ? approvals.defaults : {};
-  const tools = isJsonObject(openclawConfig.tools) ? openclawConfig.tools : {};
-  const exec = isJsonObject(tools.exec) ? tools.exec : {};
-  const approvalsFull =
-    defaults.security === 'full' &&
-    defaults.ask === 'off' &&
-    defaults.askFallback === 'full';
-  const configFull = exec.security === 'full' && exec.ask === 'off';
-
-  return approvalsFull && configFull ? 'full' : 'safer';
-}
-
-export function parseExecModeReadOutput(stdout: string): {
-  approvals: JsonObject;
-  config: JsonObject;
-  mode: ExecutionMode;
-} {
-  if (!stdout.trim()) {
-    return { approvals: {}, config: {}, mode: 'safer' };
-  }
-
+// Returns null when the helper output is not a readable policy, so callers
+// report "could not read" instead of claiming a mode.
+export function parseExecModeReadOutput(stdout: string): ExecutionMode | null {
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(stdout) as { approvals?: unknown; config?: unknown };
-    const approvals = isJsonObject(parsed.approvals) ? parsed.approvals : {};
-    const config = isJsonObject(parsed.config) ? parsed.config : {};
-    return {
-      approvals,
-      config,
-      mode: detectExecutionMode(approvals, config),
-    };
+    parsed = JSON.parse(stdout.trim());
   } catch {
-    return { approvals: {}, config: {}, mode: 'safer' };
+    return null;
   }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null;
+  }
+  const { security, ask, askFallback } = parsed as Record<string, unknown>;
+  if (typeof security !== 'string' || typeof ask !== 'string') {
+    return null;
+  }
+  return modeFromEffectivePolicy({
+    security,
+    ask,
+    askFallback: typeof askFallback === 'string' ? askFallback : null,
+  });
 }
