@@ -58,6 +58,9 @@ case "$*" in
 esac
 SH
 chmod +x "${fake_bin}/openclaw"
+# The helper resolves `openclaw` from PATH, so the fake shadows any real install.
+PATH="${fake_bin}:${PATH}"
+export PATH
 
 exec_policy_path="${tmp_dir}/exec-policy.json"
 write_exec_policy() {
@@ -66,7 +69,7 @@ write_exec_policy() {
 JSON
 }
 
-helper_env="OPENCLAW_CONFIG_PATH=${config_path} OPENCLAW_BIN=${fake_bin}/openclaw FAKE_OPENCLAW_CALLS=${calls_log} FAKE_OPENCLAW_STDIN=${stdin_log} FAKE_EXEC_POLICY=${exec_policy_path}"
+helper_env="OPENCLAW_CONFIG_PATH=${config_path} FAKE_OPENCLAW_CALLS=${calls_log} FAKE_OPENCLAW_STDIN=${stdin_log} FAKE_EXEC_POLICY=${exec_policy_path}"
 
 token="$(env $helper_env node runtime/openclaw-extension-helper.js gateway-token)"
 [ "$token" = "test-token" ]
@@ -306,7 +309,7 @@ esac
 SH
 chmod +x "${list_fail_bin}/openclaw"
 : >"$calls_log"
-env $helper_env OPENCLAW_BIN="${list_fail_bin}/openclaw" node runtime/openclaw-extension-helper.js ollama-auth-write 2>/dev/null
+(PATH="${list_fail_bin}:${PATH}"; export PATH; env $helper_env node runtime/openclaw-extension-helper.js ollama-auth-write 2>/dev/null)
 grep -F 'models auth paste-api-key --provider ollama --agent main' "$calls_log" >/dev/null
 
 if env $helper_env FAKE_OPENCLAW_FAIL=1 node runtime/openclaw-extension-helper.js ollama-auth-write 2>/dev/null; then
@@ -349,21 +352,31 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
   [ -s "$server_port_file" ] && break
   sleep 0.2
 done
-warmup_env="OLLAMA_WARMUP_URL=http://127.0.0.1:$(cat "$server_port_file")"
+warmup_base="http://127.0.0.1:$(cat "$server_port_file")"
+# The CLI always targets the relay, so call the exported function with the stub's URL.
+warmup() {
+  node -e '
+const { ollamaWarmup } = require("./runtime/openclaw-extension-helper.js");
+ollamaWarmup(process.argv[1], process.argv[2], process.argv[3]).then(
+  () => process.exit(0),
+  (error) => { process.stderr.write(error.message + "\n"); process.exit(1); },
+);
+' "$1" "$2" "$warmup_base"
+}
 
-env $warmup_env node runtime/openclaw-extension-helper.js ollama-warmup qwen3:8b 5
+warmup qwen3:8b 5
 node -e '
 const body = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
 if (body.model !== "qwen3:8b" || body.keep_alive !== "30m") { console.error("unexpected warmup body: " + JSON.stringify(body)); process.exit(1); }
 ' "$server_body_file"
 
-if env $warmup_env node runtime/openclaw-extension-helper.js ollama-warmup broken:model 5 2>"${tmp_dir}/warmup-500.err"; then
+if warmup broken:model 5 2>"${tmp_dir}/warmup-500.err"; then
   echo "ollama-warmup must fail on an HTTP error" >&2
   exit 1
 fi
 grep -F 'returned error HTTP 500' "${tmp_dir}/warmup-500.err" >/dev/null
 
-if env $warmup_env node runtime/openclaw-extension-helper.js ollama-warmup slow:model 1 2>"${tmp_dir}/warmup-timeout.err"; then
+if warmup slow:model 1 2>"${tmp_dir}/warmup-timeout.err"; then
   echo "ollama-warmup must fail when the timeout elapses" >&2
   exit 1
 fi
@@ -373,9 +386,10 @@ if grep -F 'returned error' "${tmp_dir}/warmup-timeout.err" >/dev/null; then
   exit 1
 fi
 
-if env $warmup_env node runtime/openclaw-extension-helper.js ollama-warmup "" 2>/dev/null; then
+if node runtime/openclaw-extension-helper.js ollama-warmup 2>"${tmp_dir}/warmup-missing.err"; then
   echo "ollama-warmup must require a model" >&2
   exit 1
 fi
+grep -F 'ollama-warmup requires a model' "${tmp_dir}/warmup-missing.err" >/dev/null
 
 echo "runtime helper checks passed"

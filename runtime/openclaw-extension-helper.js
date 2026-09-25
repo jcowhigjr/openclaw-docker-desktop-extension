@@ -10,8 +10,9 @@ const OPENCLAW_CONFIG_PATH = process.env.OPENCLAW_CONFIG_PATH || '/home/node/.op
 // OpenClaw CLI used for every write that OpenClaw owns the storage format of.
 // OpenClaw 2026.9.3 moved auth profiles and exec approvals into SQLite and
 // refuses the JSON files this helper used to write (#242, #245), so those
-// writes go through its documented CLI instead of files. Overridable for tests.
-const OPENCLAW_BIN = process.env.OPENCLAW_BIN || 'openclaw';
+// writes go through its documented CLI instead of files. Resolved from PATH;
+// tests put a fake `openclaw` first on PATH rather than overriding the binary.
+const OPENCLAW_BIN = 'openclaw';
 const MAIN_AGENT_ID = 'main';
 const OLLAMA_API_KEY = 'ollama-local';
 // In-container loopback relay to host Ollama, started by openclaw-bridge.sh.
@@ -49,10 +50,6 @@ const OLLAMA_TOOL_POLICY = {
 // model call alone, so a multi-step tool task does not fit in 300s.
 const OLLAMA_AGENT_TIMEOUT_SECONDS = 900;
 const OLLAMA_WARMUP_TIMEOUT_SECONDS_DEFAULT = 120;
-const EXEC_MODE_PRESETS = {
-  safer: 'cautious',
-  full: 'yolo',
-};
 
 function resolvedPath(value) {
   return path.resolve(String(value || ''));
@@ -206,8 +203,12 @@ function execModeRead() {
 // Safer and Full access map exactly onto OpenClaw's built-in presets:
 // cautious = allowlist / on-miss / deny, yolo = full / off / full.
 function execModeWrite(mode) {
-  const preset = EXEC_MODE_PRESETS[mode];
-  if (!preset) {
+  let preset;
+  if (mode === 'safer') {
+    preset = 'cautious';
+  } else if (mode === 'full') {
+    preset = 'yolo';
+  } else {
     throw new Error('exec-mode-write requires safer or full');
   }
   runOpenclaw(['exec-policy', 'preset', preset, '--json']);
@@ -327,7 +328,7 @@ function ollamaAuthWrite() {
 // "timed out" (a slow cold load is a warning), while an HTTP failure says
 // "returned error" so Ollama's own "timed out waiting for llama runner" text
 // in the body is still reported as a broken load (OLM-006).
-async function ollamaWarmup(model, timeoutArg) {
+async function ollamaWarmup(model, timeoutArg, baseUrl = OLLAMA_RELAY_URL) {
   const selectedModel = String(model || '').trim();
   if (!selectedModel) {
     throw new Error('ollama-warmup requires a model');
@@ -335,7 +336,7 @@ async function ollamaWarmup(model, timeoutArg) {
   const parsedTimeout = Number.parseInt(String(timeoutArg || ''), 10);
   const timeoutSeconds = Number.isFinite(parsedTimeout) && parsedTimeout > 0 ?
     parsedTimeout : OLLAMA_WARMUP_TIMEOUT_SECONDS_DEFAULT;
-  const url = (process.env.OLLAMA_WARMUP_URL || OLLAMA_RELAY_URL) + '/api/generate';
+  const url = baseUrl + '/api/generate';
 
   let response;
   try {
@@ -377,7 +378,13 @@ async function main(command, args) {
   }
 }
 
-main(process.argv[2], process.argv.slice(3)).catch((error) => {
-  process.stderr.write((error && error.message ? error.message : String(error)) + '\n');
-  process.exit(1);
-});
+if (require.main === module) {
+  main(process.argv[2], process.argv.slice(3)).catch((error) => {
+    process.stderr.write((error && error.message ? error.message : String(error)) + '\n');
+    process.exit(1);
+  });
+}
+
+// Exported for the helper's own tests, which exercise the warmup against a
+// local stub server instead of the relay.
+module.exports = { ollamaWarmup };
