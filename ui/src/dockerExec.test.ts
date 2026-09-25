@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { buildRuntimeHelperArgs } from './dockerExec';
 import { buildOllamaTagsFetchArgs, buildOllamaWarmupArgs } from './ollamaSetup';
 import { buildDockerPsPortCheckArgs } from './requirementChecks';
-import { buildRuntimeRunArgs } from './runtimeContainer';
+import { buildRuntimeRunArgs, buildServiceStopArgs } from './runtimeContainer';
 
 // ddClient.docker.cli.exec joins its argv and re-splits it shell-style: an
 // element containing whitespace is split, and quotes are stripped. That turned
@@ -24,6 +24,7 @@ const argvByBuilder: Record<string, string[]> = {
   'ollama load probe': buildOllamaWarmupArgs('hf.co/org/model:Q4_K_M', 20),
   'ollama tags fetch': buildOllamaTagsFetchArgs(),
   'docker ps port check': buildDockerPsPortCheckArgs(),
+  'service stop': buildServiceStopArgs('0123456789ab'),
   'runtime run': buildRuntimeRunArgs({
     containerName: 'openclaw-docker-extension-service',
     image: 'ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:0.6.0',

@@ -57,6 +57,13 @@ if ! docker run --rm --entrypoint /bin/sh -e HOME=/tmp/parity-home "$image" -c '
   openclaw config get models.providers.ollama.baseUrl 2>/dev/null | grep -q "http://127.0.0.1:11434"
   openclaw config get tools.byProvider.ollama.profile 2>/dev/null | grep -q coding
 
+  # An install left on the pre-relay URL is moved onto the relay at start, and
+  # the result still loads in the real schema (#249 upgrades).
+  openclaw config set models.providers.ollama.baseUrl "\"http://host.docker.internal:11434\"" --strict-json >/dev/null 2>&1
+  node "$helper" ollama-config-refresh | grep -q "updated extension-managed Ollama settings"
+  openclaw config get models.providers.ollama.baseUrl 2>/dev/null | grep -q "http://127.0.0.1:11434"
+  node "$helper" ollama-config-refresh | grep -q "already current"
+
   # Auth goes through the real auth store; no legacy JSON may appear (#242).
   node "$helper" ollama-auth-write
   openclaw models auth list --agent main 2>/dev/null | grep -q "ollama:manual"

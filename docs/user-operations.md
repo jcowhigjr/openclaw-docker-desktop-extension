@@ -1,97 +1,47 @@
 # User operations (non-obvious Docker Desktop controls)
 
 These controls look ordinary in Docker Desktop but are easy to misread.
-Follow this page when a local OpenClaw install is already healthy and you need
-to keep it that way, or when **Share** appears to do nothing.
-
-Related product issues: image-setting persistence and the downgrade banner are
-tracked under
-[#220](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/220).
-Broader UX follow-up (banner copy, Share, local-tag rewrite) is tracked under
-[#225](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/225).
 
 ---
 
-## 1. OpenClaw Image vs the running container
+## 1. How OpenClaw updates
 
-**Settings → OpenClaw Image** is the image used the next time the extension
-**creates** a container (`Start` when none exists, or **Update and Restart**).
-It is **not** a live readout of the image your healthy container is already
-using.
+Each extension release pins the OpenClaw runtime image it was built and tested
+with. **Settings → OpenClaw Runtime** shows that image read-only. There is no
+separate runtime update control and no way to point the extension at another
+runtime image
+([#249](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/249)).
 
-It is normal for a maintainer or recovery install to show something like:
+![Settings card showing the read-only OpenClaw Runtime field](assets/openclaw-extension-settings.png)
 
-| Surface | Example |
-| --- | --- |
-| Running container (Docker) | `openclaw-docker-extension-runtime:dev` (newer OpenClaw) |
-| Settings → OpenClaw Image | `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:0.3.6` |
+To update OpenClaw, update the extension. The next time the extension opens (or
+when you click **Start**), it finds the service running the previous release's
+image and recreates it from the new one:
 
-Those can differ. Treat Settings as “what recreate would use,” not “what is
-running now.”
+1. The old service container is removed. The `openclaw-docker-extension-home`
+   volume, which holds your config, sessions, and workspace, is kept.
+2. A new container starts from the pinned image. Before the gateway starts, the
+   runtime runs `openclaw doctor --fix --non-interactive`, which applies
+   OpenClaw's own migrations to the kept volume.
 
-### Do not click **Update and Restart** in that situation
+Plain **Restart** restarts the existing container in place.
 
-**Update and Restart**:
+If the service was killed rather than stopped (a Docker Desktop crash, or
+`docker rm -f` by hand), the next start can fail with
+`Another Gateway owner lease is still active for this state directory`. The
+killed gateway never released its lease on the data volume, and it expires on
+its own within 5 minutes. Wait, then click **Start** again. The extension itself
+always stops the service before removing or recreating it, so this only follows
+an outside kill.
 
-1. Removes the existing OpenClaw service container.
-2. Starts a new one from **whatever is in Settings → OpenClaw Image**.
+Before trying a release you are unsure about, snapshot the volume:
 
-If Settings still points at an older GHCR tag while the running container is a
-newer local image, the button is a **downgrade**, not an upgrade.
-
-The blue banner that says a “new” runtime image is available for the configured
-GHCR ref is **misleading** when the running image is already newer. The
-extension compares “running container id” to “id of the configured tag after
-`docker pull`.” Different does **not** mean newer.
-
-Plain **Restart** only restarts the existing container and keeps its current
-image. Prefer that for normal bounce.
-
-### Why saving `:dev` often fails
-
-On load, the extension rewrites some stored image names back to the built-in
-default GHCR image. In particular, saving:
-
-- `openclaw-docker-extension-runtime:dev`
-- `ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest`
-
-…is not durable across reload. That is intentional migration code in the UI,
-not only Docker Desktop storage flakiness.
-
-### Durable local pin (verified workaround)
-
-When the healthy runtime is a local `…:dev` image and Settings still show an
-old GHCR pin:
-
-1. Tag a stable local name (does not touch the running container):
-
-   ```bash
-   docker tag openclaw-docker-extension-runtime:dev openclaw-docker-extension-runtime:working
-   ```
-
-2. In the extension: **Settings → OpenClaw Image** → set:
-
-   `openclaw-docker-extension-runtime:working`
-
-3. Click **Save Settings**.
-
-4. **Do not** click **Update and Restart**.
-
-5. Reload the extension UI and confirm:
-
-   - the field still shows `…:working`
-   - the blue GHCR update banner is gone
-
-Non-`ghcr.io/` image names skip the extension’s pull-based update check, so the
-downgrade banner should clear once the setting sticks.
-
-**Do not** try to “protect” a good image by retagging it onto the GHCR
-`…:0.3.6` name. The update-check path runs `docker pull` on configured
-`ghcr.io/…` refs and **overwrites** that local retag with the registry image.
-
-If the field flips back to GHCR even with `:working`, keep avoiding **Update
-and Restart**, keep a volume snapshot if you have one, and treat that as the
-persistence bug in #220.
+```bash
+docker stop openclaw-docker-extension-service
+docker run --rm -v openclaw-docker-extension-home:/home/node:ro -v "$HOME/openclaw-backups:/b" \
+  --entrypoint sh ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:<tag> \
+  -c 'tar -czf /b/openclaw-home-$(date +%Y%m%d-%H%M%S).tar.gz -C /home/node .'
+```
 
 ---
 
@@ -117,7 +67,7 @@ could not generate url to share: sharing extensions that are not hosted in Docke
 | Layer | Verdict |
 | --- | --- |
 | Docker Desktop platform | **Working as designed today:** share URLs require a **Docker Hub**–hosted extension image. See Docker’s [Share your extension](https://docs.docker.com/extensions/extensions-sdk/extensions/share/) docs. |
-| This project’s UX | **Still a product problem:** we install and document **GHCR** paths, Desktop still shows **Share**, and there is no in-product explanation. Users reasonably conclude the extension is broken. |
+| This project’s UX | **Still a product problem:** we install and document **GHCR** paths, Desktop still shows **Share**, and there is no in-product explanation. Users reasonably conclude the extension is broken. Tracked under [#225](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/225). |
 
 **What to do instead of Share**
 
@@ -128,14 +78,13 @@ Uninstall from the same Manage menu is separate and still works for removing the
 
 ---
 
-## 3. Quick “keep my working install” checklist
+## 3. Two installs of the same extension
 
-- [ ] Confirm the service container image with `docker ps` (expect local `…:dev` or `…:working` when recovering).
-- [ ] Set Settings → OpenClaw Image to a **non-GHCR** local tag that is not rewritten on load (`…:working`).
-- [ ] **Save Settings**; reload; confirm the value stuck.
-- [ ] Never use **Update and Restart** to “apply” a safer Settings value while a newer local runtime is already running.
-- [ ] Ignore **Share** on GHCR/unpublished installs; use README install URLs instead.
-- [ ] Snapshot the OpenClaw volume before any intentional recreate or upgrade experiment.
+Installing a second tag of the extension (for example a local `:dev` build next
+to a release) shows two **Shellharbor** tabs that manage the same service
+container. `docker extension uninstall <image>:<tag>` does not reliably remove the
+tag you name when two tags of the same image are installed. Remove the unwanted
+one from **Extensions → Manage** in Docker Desktop instead.
 
 ---
 

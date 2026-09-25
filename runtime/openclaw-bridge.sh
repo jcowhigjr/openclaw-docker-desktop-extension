@@ -15,6 +15,12 @@ chmod 700 "$tmp_dir"
 openclaw doctor --fix --non-interactive --generate-gateway-token >/tmp/openclaw-doctor.log 2>&1 ||
   echo "openclaw doctor exited $?" >>/tmp/openclaw-doctor.log
 
+# Keep extension-managed Ollama settings current after an extension update
+# (relay URL, local tool policy, run budget). A no-op unless the default model is
+# an extension-managed Ollama model; a custom Ollama URL is left alone (#249).
+node /usr/local/bin/openclaw-extension-helper.js ollama-config-refresh >>/tmp/openclaw-doctor.log 2>&1 ||
+  echo "ollama-config-refresh exited $?" >>/tmp/openclaw-doctor.log
+
 docker-entrypoint.sh node openclaw.mjs gateway --allow-unconfigured >/tmp/openclaw.log 2>&1 &
 openclaw_pid=$!
 
