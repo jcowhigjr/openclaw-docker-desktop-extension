@@ -49,7 +49,7 @@ import {
   parseExecModeReadOutput,
   type ExecutionMode,
 } from './execMode';
-import { buildRuntimeRunArgs, needsRuntimeRecreate } from './runtimeContainer';
+import { buildRuntimeRunArgs, buildServiceStopArgs, needsRuntimeRecreate } from './runtimeContainer';
 import { getGatewayTokenHelperText, type TokenStatus } from './tokenStatus';
 import {
   buildDockerPsPortCheckArgs,
@@ -535,7 +535,8 @@ export function App() {
           step('runtime_mismatch', 'ok', { attrs: { running: existing.image ?? '', pinned: RUNTIME_IMAGE } });
           appendDebug(`recreating OpenClaw service: created from ${existing.image}, this extension runs ${RUNTIME_IMAGE}`);
           setStatusText('Updating OpenClaw to the version bundled with this extension...');
-          await ddClient.docker.cli.exec('rm', ['-f', existing.id]);
+          await ddClient.docker.cli.exec('stop', buildServiceStopArgs(existing.id));
+          await ddClient.docker.cli.exec('rm', [existing.id]);
           existing = null;
         }
         if (existing) {
@@ -661,7 +662,8 @@ export function App() {
     try {
       const container = await findContainer();
       if (container) {
-        await ddClient.docker.cli.exec('rm', ['-f', container.id]);
+        await ddClient.docker.cli.exec('stop', buildServiceStopArgs(container.id));
+        await ddClient.docker.cli.exec('rm', [container.id]);
       }
       setToken('');
       setTokenStatus('unknown');

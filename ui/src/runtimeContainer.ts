@@ -49,3 +49,14 @@ export function needsRuntimeRecreate(containerImage: string | undefined, pinnedI
   const current = containerImage?.trim();
   return Boolean(current) && current !== pinnedImage.trim();
 }
+
+// Seconds Docker waits after SIGTERM before killing the service. The runtime
+// entrypoint forwards SIGTERM so the gateway can release its owner lease on the
+// state volume. A killed gateway (`docker rm -f`) leaves that lease held, and a
+// new container on the same volume then refuses to start until it expires
+// (300s). Always stop the service before removing it.
+const SERVICE_STOP_TIMEOUT_SECONDS = 20;
+
+export function buildServiceStopArgs(containerId: string): string[] {
+  return ['-t', String(SERVICE_STOP_TIMEOUT_SECONDS), containerId];
+}

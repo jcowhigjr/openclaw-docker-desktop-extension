@@ -2,7 +2,7 @@
 // Copyright 2025-2026 John Cowhig Jr.
 import { describe, expect, it } from 'vitest';
 
-import { buildRuntimeRunArgs, needsRuntimeRecreate } from './runtimeContainer';
+import { buildRuntimeRunArgs, buildServiceStopArgs, needsRuntimeRecreate } from './runtimeContainer';
 
 describe('runtime container launch args', () => {
   it('keeps the OpenClaw service localhost-bound and applies runtime hardening', () => {
@@ -64,5 +64,13 @@ describe('pinned runtime recreate decision', () => {
   it('leaves a service alone when Docker does not report its image', () => {
     expect(needsRuntimeRecreate(undefined, pinned)).toBe(false);
     expect(needsRuntimeRecreate('  ', pinned)).toBe(false);
+  });
+});
+
+describe('service stop args', () => {
+  it('stops gracefully with a timeout long enough for the gateway to release its lease', () => {
+    const args = buildServiceStopArgs('abc123');
+    expect(args).toEqual(['-t', '20', 'abc123']);
+    expect(args).not.toContain('-f');
   });
 });

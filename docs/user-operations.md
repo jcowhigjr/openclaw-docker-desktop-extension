@@ -24,6 +24,14 @@ image and recreates it from the new one:
 
 Plain **Restart** restarts the existing container in place.
 
+If the service was killed rather than stopped (a Docker Desktop crash, or
+`docker rm -f` by hand), the next start can fail with
+`Another Gateway owner lease is still active for this state directory`. The
+killed gateway never released its lease on the data volume, and it expires on
+its own within 5 minutes. Wait, then click **Start** again. The extension itself
+always stops the service before removing or recreating it, so this only follows
+an outside kill.
+
 Before trying a release you are unsure about, snapshot the volume:
 
 ```bash
