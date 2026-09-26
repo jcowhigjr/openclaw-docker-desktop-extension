@@ -21,6 +21,8 @@ const OLLAMA_API_KEY = 'ollama-local';
 // (cold load, long prefill) dies with ETIMEDOUT. On loopback the kernel answers
 // the probes and socat's outbound leg carries no keepalive (#246).
 const OLLAMA_RELAY_URL = 'http://127.0.0.1:11434';
+// Provider URLs this extension has written. Anything else was set by the user.
+const EXTENSION_OLLAMA_URLS = [OLLAMA_RELAY_URL, 'http://host.docker.internal:11434'];
 // Tools OpenClaw exposes to Ollama models. Direct schemas (no Tool Search) are
 // required: an 8B model cannot drive tool_search -> tool_call and loops on the
 // wrapper instead (#247). The trimmed "coding" set keeps the prompt near 10K
@@ -214,17 +216,14 @@ function execModeWrite(mode) {
   runOpenclaw(['exec-policy', 'preset', preset, '--json']);
 }
 
-function ollamaConfigWrite(model) {
-  const selectedModel = String(model || '').trim();
-  if (!selectedModel) {
-    throw new Error('ollama-config-write requires a model');
-  }
-
-  const config = readJson(OPENCLAW_CONFIG_PATH);
+// Settings the extension owns for its local Ollama path, independent of which
+// model is selected. Applied on Apply (ollama-config-write) and re-asserted on
+// every runtime start (ollama-config-refresh), so an install upgraded from an
+// older release picks up fixes like the relay without a manual re-apply. The
+// Apply button cannot re-apply the model that is already configured.
+function applyOllamaRuntimeSettings(config) {
   config.agents = isObject(config.agents) ? config.agents : {};
   config.agents.defaults = isObject(config.agents.defaults) ? config.agents.defaults : {};
-  config.agents.defaults.model = isObject(config.agents.defaults.model) ? config.agents.defaults.model : {};
-  config.agents.defaults.model.primary = 'ollama/' + selectedModel;
   config.agents.defaults.timeoutSeconds = OLLAMA_AGENT_TIMEOUT_SECONDS;
   // Enable local-model-lean for the Ollama path unless the user has already
   // set it explicitly (including to `false`). It trims optional tools such as
@@ -248,6 +247,18 @@ function ollamaConfigWrite(model) {
     profile: OLLAMA_TOOL_POLICY.profile,
     deny: OLLAMA_TOOL_POLICY.deny.slice(),
   };
+}
+
+function ollamaConfigWrite(model) {
+  const selectedModel = String(model || '').trim();
+  if (!selectedModel) {
+    throw new Error('ollama-config-write requires a model');
+  }
+
+  const config = readJson(OPENCLAW_CONFIG_PATH);
+  applyOllamaRuntimeSettings(config);
+  config.agents.defaults.model = isObject(config.agents.defaults.model) ? config.agents.defaults.model : {};
+  config.agents.defaults.model.primary = 'ollama/' + selectedModel;
   config.models = isObject(config.models) ? config.models : {};
   config.models.providers = isObject(config.models.providers) ? config.models.providers : {};
   // `reasoning` must track `thinking`: OpenClaw's native Ollama adapter
@@ -287,6 +298,41 @@ function ollamaConfigWrite(model) {
   config.auth.order.ollama = ['ollama:manual'];
 
   writeJson(OPENCLAW_CONFIG_PATH, config, true);
+}
+
+// Run by the runtime entrypoint on every start. When OpenClaw's default model
+// is an extension-managed Ollama model, re-assert the extension's runtime
+// settings and point the provider at the relay. The user's model entry
+// (num_ctx, thinking) is kept as is, and a provider aimed anywhere other than
+// host Ollama (a remote or custom URL) is left alone. Writes only on change.
+function ollamaConfigRefresh() {
+  const config = readJson(OPENCLAW_CONFIG_PATH);
+  const defaults = isObject(config.agents) && isObject(config.agents.defaults) ? config.agents.defaults : {};
+  const primary = isObject(defaults.model) ? defaults.model.primary : undefined;
+  if (typeof primary !== 'string' || !primary.startsWith('ollama/')) {
+    process.stdout.write('ollama-config-refresh: default model is not an Ollama model; nothing to do\n');
+    return;
+  }
+  const providers = isObject(config.models) && isObject(config.models.providers) ? config.models.providers : {};
+  const provider = isObject(providers.ollama) ? providers.ollama : null;
+  if (!provider) {
+    process.stdout.write('ollama-config-refresh: no Ollama provider configured; nothing to do\n');
+    return;
+  }
+  if (provider.baseUrl !== undefined && !EXTENSION_OLLAMA_URLS.includes(provider.baseUrl)) {
+    process.stdout.write('ollama-config-refresh: Ollama provider uses a custom URL; leaving it alone\n');
+    return;
+  }
+
+  const before = JSON.stringify(config);
+  applyOllamaRuntimeSettings(config);
+  provider.baseUrl = OLLAMA_RELAY_URL;
+  if (JSON.stringify(config) === before) {
+    process.stdout.write('ollama-config-refresh: already current\n');
+    return;
+  }
+  writeJson(OPENCLAW_CONFIG_PATH, config, true);
+  process.stdout.write('ollama-config-refresh: updated extension-managed Ollama settings\n');
 }
 
 // Agent ids as OpenClaw reports them. `main` is always included so a fresh
@@ -369,6 +415,8 @@ async function main(command, args) {
     execModeWrite(args[0]);
   } else if (command === 'ollama-config-write') {
     ollamaConfigWrite(args[0]);
+  } else if (command === 'ollama-config-refresh') {
+    ollamaConfigRefresh();
   } else if (command === 'ollama-auth-write') {
     ollamaAuthWrite();
   } else if (command === 'ollama-warmup') {

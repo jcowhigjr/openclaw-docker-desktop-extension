@@ -271,6 +271,67 @@ grep -F '"num_ctx": 24576' "$lean_false_path" >/dev/null || {
   exit 1
 }
 
+# --- ollama-config-refresh on every start (#249 upgrades) ---
+# An install configured by an older release keeps its model entry but gains the
+# extension-managed runtime settings; user params are preserved.
+legacy_path="${tmp_dir}/openclaw-legacy.json"
+cat >"$legacy_path" <<'JSON'
+{
+  "agents": { "defaults": { "model": { "primary": "ollama/qwen3:8b" }, "timeoutSeconds": 300 } },
+  "models": { "providers": { "ollama": {
+    "api": "ollama", "apiKey": "ollama-local", "baseUrl": "http://host.docker.internal:11434",
+    "models": [ { "id": "qwen3:8b", "name": "qwen3:8b", "reasoning": true, "contextTokens": 8192,
+                  "params": { "thinking": true, "num_ctx": 8192 } } ]
+  } } },
+  "tools": { "byProvider": { "anthropic": { "profile": "minimal" } } }
+}
+JSON
+refresh_out="$(env "OPENCLAW_CONFIG_PATH=${legacy_path}" node runtime/openclaw-extension-helper.js ollama-config-refresh)"
+printf '%s' "$refresh_out" | grep -F 'updated extension-managed Ollama settings' >/dev/null
+node -e '
+const c = require(process.argv[1]);
+const fail = (m) => { console.error(m); process.exit(1); };
+const p = c.models.providers.ollama;
+if (p.baseUrl !== "http://127.0.0.1:11434") fail("refresh must move the provider to the relay");
+if (c.tools.toolSearch !== false || !c.tools.byProvider.ollama) fail("refresh must apply the local tool policy");
+if (c.tools.byProvider.anthropic.profile !== "minimal") fail("refresh must keep other byProvider entries");
+if (c.agents.defaults.timeoutSeconds !== 900) fail("refresh must raise the run budget");
+if (c.agents.defaults.experimental.localModelLean !== true) fail("refresh must fill in localModelLean");
+const m = p.models[0];
+if (m.params.num_ctx !== 8192 || m.contextTokens !== 8192 || m.params.thinking !== true) fail("refresh must keep the user model params");
+if (c.agents.defaults.model.primary !== "ollama/qwen3:8b") fail("refresh must keep the default model");
+' "$legacy_path"
+[ -f "${legacy_path}.bak" ]
+
+# A second start changes nothing and does not rewrite the file.
+before_refresh="$(cat "$legacy_path")"
+rm -f "${legacy_path}.bak"
+refresh_out="$(env "OPENCLAW_CONFIG_PATH=${legacy_path}" node runtime/openclaw-extension-helper.js ollama-config-refresh)"
+printf '%s' "$refresh_out" | grep -F 'already current' >/dev/null
+[ "$before_refresh" = "$(cat "$legacy_path")" ]
+[ ! -e "${legacy_path}.bak" ]
+
+# A provider the user pointed elsewhere is left alone.
+custom_path="${tmp_dir}/openclaw-custom-url.json"
+cat >"$custom_path" <<'JSON'
+{
+  "agents": { "defaults": { "model": { "primary": "ollama/llama3" } } },
+  "models": { "providers": { "ollama": { "baseUrl": "http://192.168.1.50:11434", "models": [] } } }
+}
+JSON
+custom_before="$(cat "$custom_path")"
+env "OPENCLAW_CONFIG_PATH=${custom_path}" node runtime/openclaw-extension-helper.js ollama-config-refresh | grep -F 'custom URL' >/dev/null
+[ "$custom_before" = "$(cat "$custom_path")" ]
+
+# A non-Ollama default, or no config at all, is a no-op.
+cloud_path="${tmp_dir}/openclaw-cloud.json"
+printf '{"agents":{"defaults":{"model":{"primary":"anthropic/claude"}}}}\n' >"$cloud_path"
+cloud_before="$(cat "$cloud_path")"
+env "OPENCLAW_CONFIG_PATH=${cloud_path}" node runtime/openclaw-extension-helper.js ollama-config-refresh | grep -F 'not an Ollama model' >/dev/null
+[ "$cloud_before" = "$(cat "$cloud_path")" ]
+env "OPENCLAW_CONFIG_PATH=${tmp_dir}/does-not-exist.json" node runtime/openclaw-extension-helper.js ollama-config-refresh >/dev/null
+[ ! -e "${tmp_dir}/does-not-exist.json" ]
+
 # --- Ollama auth through OpenClaw's auth store (#242) ---
 # Every agent OpenClaw lists gets the key via `models auth paste-api-key` on
 # stdin; unsafe ids are skipped and no auth-profiles.json is written.
