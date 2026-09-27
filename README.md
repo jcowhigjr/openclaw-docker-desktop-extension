@@ -4,13 +4,13 @@
 
 - **One-click run** — start, stop, restart, and open the Control UI from a GUI.
 - **Isolated by default** — read-only root filesystem, all capabilities dropped, `no-new-privileges`, bound to `127.0.0.1` only.
-- **Managed lifecycle** — persistent state, runtime update checks, and guided host-Ollama setup for offline local models.
+- **Managed lifecycle** — persistent state, a runtime that updates with the extension, and guided host-Ollama setup for offline local models.
 
 *Community packaging. Not an official Docker or OpenClaw extension.*
 
 ## 60-second quick start
 
-This repo packages OpenClaw as a Docker Desktop extension for macOS. It builds two local images, installs the extension into Docker Desktop, and gives you start/stop/update controls plus a guided local Ollama setup flow.
+This repo packages OpenClaw as a Docker Desktop extension for macOS. It builds two local images, installs the extension into Docker Desktop, and gives you start/stop/restart controls plus a guided local Ollama setup flow.
 
 Project landing page: <https://jcowhigjr.github.io/openclaw-docker-desktop-extension/>
 
@@ -43,7 +43,7 @@ If Docker Desktop blocks local extensions, enable local or non-Marketplace exten
 
 If anything fails or a chat appears to hang, run the two-minute [preflight checklist](docs/preflight-checklist.md) before debugging. Docker and Ollama are separate apps that update themselves and do not start at login; the checklist proves each one is not just running but actually able to do work.
 
-If the extension is already **running** and healthy but Settings, **Update and Restart**, or Manage → **Share** look wrong or dangerous, read [user operations](docs/user-operations.md) before clicking those controls. In particular: **Update and Restart** recreates from the Settings image (it can downgrade a newer local runtime), and **Share** fails for GHCR/unpublished installs because Docker Desktop only shares Docker Hub–hosted extension images.
+If Manage → **Share** fails, read [user operations](docs/user-operations.md): Docker Desktop only shares Docker Hub–hosted extension images, so GHCR and unpublished installs cannot be shared.
 
 ## Fast command guide
 
@@ -96,25 +96,20 @@ The release workflow also publishes the extension image to Docker Hub for Docker
 
 Docker's automated Marketplace submission validates the greatest semver tag on Docker Hub, so the non-`v` semver tag, for example `0.3.4`, must be public before submission.
 
-Release builds of the extension UI default the runtime image field to the matching GHCR runtime tag. Local development still defaults to `openclaw-docker-extension-runtime:dev`.
+Release builds of the extension pin the runtime to the matching GHCR runtime tag. Local development builds pin `openclaw-docker-extension-runtime:dev`.
 
 The publish workflow also promotes both images onto floating channel tags on real tag pushes:
 
 - `stable` for normal release tags such as `v0.2.0`
 - `beta` for prerelease tags such as `v0.2.0-rc.1`
 
-That gives end users a one-line extension install path and gives the extension a predictable GHCR runtime channel for update checks without changing the pinned version-tag install path.
+That gives end users a one-line extension install path.
 
-When the runtime image points at a published GHCR channel tag such as `stable` or `beta`, the extension can check for a newer runtime image on open and again before launch.
+Each extension release pins the runtime image it was built with. There is no separate runtime update control: installing a newer extension is how OpenClaw updates. When the extension opens (or on Start) and finds the service running an older image, it recreates the service from the pinned image and keeps the data volume. The runtime runs `openclaw doctor --fix` before the gateway starts, so OpenClaw's own migrations apply on the way up.
 
 The standalone runtime publish workflow also refreshes `ghcr.io/jcowhigjr/openclaw-docker-desktop-extension-runtime:latest` on a daily schedule and can still be run manually with `workflow_dispatch`. It also publishes the older `ghcr.io/jcowhigjr/openclaw-docker-extension-runtime:latest` alias for existing local installs. That scheduled rebuild is how the wrapper picks up new `ghcr.io/openclaw/openclaw:latest` content when this repo has no file changes, so upstream OpenClaw updates become available after the next scheduled runtime rebuild and GHCR push, not instantly at the moment upstream publishes them.
 
-The current MVP update policies are:
-
-- `Check only`: show an update banner and let the user trigger the update manually
-- `Auto-update before launch`: pull the newer runtime image and recreate the service container before `Start`
-
-The update flow preserves the named Docker volume and saved settings. A "what's new" surface is still out of scope for MVP.
+A "what's new" surface after an update is still out of scope for MVP.
 
 Maintainer preflight for a newly published tag:
 
@@ -294,7 +289,7 @@ Current constraints:
 - Starts the service container with a read-only root filesystem, `tmpfs` at `/tmp`, `--cap-drop=ALL`, `--security-opt no-new-privileges`, and `--ulimit nofile=1024:1024`
 - Exposes Docker Desktop UI controls for start, stop, restart, and open-in-browser actions
 - Performs automated vulnerability scanning (Trivy) during the GHCR publish workflow
-- Can check published GHCR channel images for runtime updates and optionally apply them before launch
+- Pins its runtime image per release and recreates the service onto it after an extension update, keeping the data volume
 - Surfaces runtime diagnostics in a debug panel inside the extension
 
 ## Default runtime
@@ -335,25 +330,27 @@ Expected flow:
 5. If a host model is already available, use the one-click apply action to set it as the OpenClaw default. If no model is ready, use the provided `ollama pull <model>` guidance, then re-detect.
 6. Restart OpenClaw through the extension if prompted after applying the local model. After the model is already downloaded, core chat can continue without hosted-provider network access.
 
+Expect the first reply in a new chat to take about 1–2 minutes on a laptop, because the model reads its instructions and tool definitions first. Later replies in the same chat take seconds. Measured on an M4 MacBook Air (24 GB) with `qwen3:8b`: about 1.5 minutes for a first reply that runs a command, 10–25 seconds after that. The shell tool is called `exec`; small models do best when a prompt names the tool, for example "Use the exec tool to run: ls".
+
 Validated local path on macOS:
 
 - host Ollama responds on `127.0.0.1:11434`
-- the OpenClaw service container can reach Ollama at `host.docker.internal:11434`
-- OpenClaw can be configured to use an `ollama/<model>` default
-- a direct container-to-host Ollama generation request succeeds after the model is downloaded
+- the OpenClaw service container reaches Ollama through an in-container relay at `127.0.0.1:11434`, forwarded to `host.docker.internal:11434`. The relay exists because Docker Desktop drops Node connections that wait ~70s for a first byte ([#246](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/246)).
+- OpenClaw is configured to use an `ollama/<model>` default with a tool set sized for local models ([#247](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/247))
+- a tool-using first chat (run a shell command, file verified on disk) completes on a fresh volume
 
 Model guidance should stay conservative. Prefer an already installed small or mid-sized model that responds quickly on the user's Mac before suggesting larger models. A bundled local inference runtime remains out of scope until the host-Ollama path has enough real user validation to justify the packaging, performance, and platform cost.
 
 ## Execution mode
 
-OpenClaw exec approval settings can be cached by the running gateway. If the approvals file changes on disk but the gateway is not restarted, webchat command behavior may still reflect the older in-memory policy.
+OpenClaw exec approval settings can be cached by the running gateway. If the policy changes but the gateway is not restarted, webchat command behavior may still reflect the older in-memory policy.
 
 The extension exposes an `Execution Mode` control to make that restart requirement explicit:
 
 - `Safer`: configures gateway exec to use allowlisted commands and approval prompts, with denied fallback when no approval UI is reachable.
 - `Full access`: configures gateway exec to run without approval prompts inside the OpenClaw service container.
 
-Changing the mode writes both `/home/node/.openclaw/openclaw.json` and `/home/node/.openclaw/exec-approvals.json`, then restarts OpenClaw automatically so the new policy is loaded. `Full access` is opt-in because it reduces command approval protections.
+A fresh install runs in `Full access`, because that is OpenClaw's own default, and the extension shows it honestly. Choosing a mode applies OpenClaw's built-in preset (`openclaw exec-policy preset cautious` for Safer, `yolo` for Full access), then restarts OpenClaw so the new policy is loaded. The mode shown is read back from `openclaw exec-policy show`, so it always reflects what OpenClaw actually enforces.
 
 ## Installed Control UI on macOS
 
@@ -401,7 +398,7 @@ Safe extension-level diagnostics are limited to project-specific state: containe
 - If `Open Control UI` reports that localhost is not reachable, start or restart OpenClaw before retrying.
 - The runtime can spend a short warm-up period in `starting` even after the host health check is already passing.
 - Provider auth beyond the Ollama setup flow should be managed through OpenClaw's own auth/onboarding paths or `/home/node/.openclaw/.env`.
-- The update banner only applies to published GHCR channel images. Pinned release tags stay fixed, and local dev images are not auto-updated by the extension.
+- The runtime only changes when the extension is updated; there is no way to run a different runtime image from the extension UI.
 - The extension does not yet show release notes or "what's new" content after an update.
 
 ## Roadmap path

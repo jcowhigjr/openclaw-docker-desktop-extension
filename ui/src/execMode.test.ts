@@ -2,139 +2,39 @@
 // Copyright 2025-2026 John Cowhig Jr.
 import { describe, expect, it } from 'vitest';
 
-import {
-  buildExecutionModeConfig,
-  detectExecutionMode,
-  mergeExecApprovals,
-  mergeOpenClawExecConfig,
-  parseExecModeReadOutput,
-} from './execMode';
+import { DEFAULT_EXECUTION_MODE, modeFromEffectivePolicy, parseExecModeReadOutput } from './execMode';
 
-describe('execution mode config', () => {
-  it('builds safer mode with allowlist prompts and deny fallback', () => {
-    expect(buildExecutionModeConfig('safer')).toEqual({
-      approvalsDefaults: {
-        security: 'allowlist',
-        ask: 'on-miss',
-        askFallback: 'deny',
-        autoAllowSkills: false,
-      },
-      toolsExec: {
-        host: 'gateway',
-        security: 'allowlist',
-        ask: 'on-miss',
-      },
-    });
+// Helper outputs below are the effective policies OpenClaw 2026.9.3 reports
+// for: nothing configured, `exec-policy preset cautious`, `exec-policy preset yolo`.
+const UNCONFIGURED = '{"security":"full","ask":"off","askFallback":"deny"}';
+const CAUTIOUS = '{"security":"allowlist","ask":"on-miss","askFallback":"deny"}';
+const YOLO = '{"security":"full","ask":"off","askFallback":"full"}';
+
+describe('execution mode detection', () => {
+  it('reports a fresh install as Full access, matching what OpenClaw enforces', () => {
+    expect(parseExecModeReadOutput(UNCONFIGURED)).toBe('full');
   });
 
-  it('builds full access mode with prompts off and full fallback', () => {
-    expect(buildExecutionModeConfig('full')).toEqual({
-      approvalsDefaults: {
-        security: 'full',
-        ask: 'off',
-        askFallback: 'full',
-        autoAllowSkills: false,
-      },
-      toolsExec: {
-        host: 'gateway',
-        security: 'full',
-        ask: 'off',
-      },
-    });
+  it('maps the cautious preset to Safer and the yolo preset to Full access', () => {
+    expect(parseExecModeReadOutput(CAUTIOUS)).toBe('safer');
+    expect(parseExecModeReadOutput(YOLO)).toBe('full');
   });
 
-  it('merges approvals without losing socket or allowlist state', () => {
-    const merged = mergeExecApprovals(
-      {
-        version: 1,
-        socket: {
-          path: '/home/node/.openclaw/exec-approvals.sock',
-          token: 'preserved',
-        },
-        defaults: {
-          security: 'full',
-          ask: 'off',
-          askFallback: 'full',
-        },
-        agents: {
-          main: {
-            allowlist: [
-              {
-                id: 'entry-1',
-                pattern: '/usr/bin/ls',
-              },
-            ],
-          },
-        },
-      },
-      'safer',
-    );
-
-    expect(merged.socket).toEqual({
-      path: '/home/node/.openclaw/exec-approvals.sock',
-      token: 'preserved',
-    });
-    expect(merged.agents).toEqual({
-      main: {
-        allowlist: [
-          {
-            id: 'entry-1',
-            pattern: '/usr/bin/ls',
-          },
-        ],
-      },
-    });
-    expect(merged.defaults).toEqual({
-      security: 'allowlist',
-      ask: 'on-miss',
-      askFallback: 'deny',
-      autoAllowSkills: false,
-    });
+  it('treats any policy stricter than full/off as Safer', () => {
+    expect(modeFromEffectivePolicy({ security: 'full', ask: 'always', askFallback: 'deny' })).toBe('safer');
+    expect(modeFromEffectivePolicy({ security: 'deny', ask: 'off', askFallback: 'deny' })).toBe('safer');
   });
 
-  it('merges OpenClaw tools.exec without clobbering unrelated config', () => {
-    const merged = mergeOpenClawExecConfig(
-      {
-        gateway: { auth: { token: 'keep' } },
-        tools: {
-          other: true,
-          exec: {
-            strictInlineEval: true,
-          },
-        },
-      },
-      'full',
-    );
-
-    expect(merged.gateway).toEqual({ auth: { token: 'keep' } });
-    expect(merged.tools).toEqual({
-      other: true,
-      exec: {
-        strictInlineEval: true,
-        host: 'gateway',
-        security: 'full',
-        ask: 'off',
-      },
-    });
+  it('refuses to claim a mode when the policy cannot be read', () => {
+    expect(parseExecModeReadOutput('')).toBeNull();
+    expect(parseExecModeReadOutput('not-json')).toBeNull();
+    expect(parseExecModeReadOutput('[]')).toBeNull();
+    expect(parseExecModeReadOutput('{"security":"full"}')).toBeNull();
+    // The pre-2026.9.3 helper output shape must not be misread as a policy.
+    expect(parseExecModeReadOutput('{"approvals":{"defaults":{}},"config":{"tools":{"exec":{}}}}')).toBeNull();
   });
 
-  it('detects full only when both config layers are full access', () => {
-    expect(
-      detectExecutionMode(
-        { defaults: { security: 'full', ask: 'off', askFallback: 'full' } },
-        { tools: { exec: { security: 'full', ask: 'off' } } },
-      ),
-    ).toBe('full');
-    expect(
-      detectExecutionMode(
-        { defaults: { security: 'full', ask: 'off', askFallback: 'full' } },
-        { tools: { exec: { security: 'allowlist', ask: 'on-miss' } } },
-      ),
-    ).toBe('safer');
-  });
-
-  it('treats empty or invalid helper output as safer mode', () => {
-    expect(parseExecModeReadOutput('')).toEqual({ approvals: {}, config: {}, mode: 'safer' });
-    expect(parseExecModeReadOutput('not-json')).toEqual({ approvals: {}, config: {}, mode: 'safer' });
+  it('assumes OpenClaw\'s default before the policy is read', () => {
+    expect(DEFAULT_EXECUTION_MODE).toBe('full');
   });
 });

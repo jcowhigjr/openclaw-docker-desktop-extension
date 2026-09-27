@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2025-2026 John Cowhig Jr.
+import { buildRuntimeHelperArgs } from './dockerExec';
+
 export type OllamaModel = {
   name: string;
   size?: number;
@@ -69,11 +71,16 @@ export function buildOllamaTagsFetchArgs(): string[] {
   ];
 }
 
-// Build Docker SDK-safe argv that preloads a model into host Ollama. A POST to
-// /api/generate with no prompt and a keep_alive triggers Ollama's documented
-// model-preload: it loads the model into memory and returns immediately. Firing
-// this after a restart means the user's first real message does not pay the
-// cold-load cost (which otherwise shows up as an "LLM request timed out").
+// Build `docker exec` argv that preloads a model into host Ollama through the
+// runtime helper (Ollama's documented preload: POST /api/generate with no
+// prompt and a keep_alive). Firing this after a restart means the user's first
+// real message does not also pay the cold-load cost.
+//
+// The request runs inside the helper, not as a curl argv, because the Docker
+// Desktop SDK re-splits exec arguments shell-style: a header containing a space
+// and a quoted JSON body were mangled into a request Ollama rejected, which
+// broke the load probe (false OLM-006) and silently broke this warmup (#241).
+// Every element here is free of whitespace and quotes.
 // Returns [] for a blank model so callers can skip the warmup safely.
 // `timeoutSeconds` defaults to the existing 120s restart-time warmup budget;
 // callers with a tighter budget (e.g. a detect-time load probe) can override it.
@@ -83,20 +90,13 @@ export function buildOllamaWarmupArgs(model: string, timeoutSeconds = 120): stri
     return [];
   }
 
-  const body = JSON.stringify({ model: trimmed, keep_alive: '30m' });
-  return [
-    'curl',
-    '-fsS',
-    '--max-time',
-    String(timeoutSeconds),
-    '-X',
-    'POST',
-    '-H',
-    'Content-Type: application/json',
-    '-d',
-    body,
-    `${DEFAULT_OLLAMA_BASE_URL}/api/generate`,
-  ];
+  return buildRuntimeHelperArgs('ollama-warmup', [trimmed, String(timeoutSeconds)]);
+}
+
+// True for argv produced by buildOllamaWarmupArgs (the restart warmup and the
+// detect-time load probe share it).
+export function isOllamaWarmupArgs(args: string[]): boolean {
+  return args.includes('ollama-warmup');
 }
 
 // Auto-select the smallest installed model, since local disk space and model

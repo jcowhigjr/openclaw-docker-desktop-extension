@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.0](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/compare/v0.5.0...v0.6.0) (2026-09-26)
+
+
+### Features
+
+* pin the runtime to the extension release; remove image picker and Update and Restart ([#251](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/251)) ([3e6298a](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/commit/3e6298a406a5d14f885a6cd396e6e2cfdaaf3107)), closes [#249](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/249)
+
+
+### Bug Fixes
+
+* fresh install works end to end on current OpenClaw (auth bootstrap, Ollama relay, local tool set, honest exec mode) ([#250](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/250)) ([24ee0cc](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/commit/24ee0cc1df039cd629cb73416f6ac654327fc03a))
+* stop the update banner and Settings from misrepresenting the running image ([#234](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/234)) ([676a90b](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/commit/676a90bff264be64750086a6fd007653e4189f3c))
+
 ## [0.5.0](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/compare/v0.4.0...v0.5.0) (2026-09-10)
 
 
