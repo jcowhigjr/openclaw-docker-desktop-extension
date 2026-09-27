@@ -177,17 +177,28 @@ persistence after restarting Docker Desktop. Capture the extension and Control U
 states. If a UI message is dropped, record a UI failure; CLI success is separate
 diagnostic evidence. For any tool action, verify its result on disk.
 
+On a fresh volume, the chat check must be a real agent turn **after** applying
+a model in Local Model Setup. That is the step
+[#242](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/242)
+broke in `v0.5.0` while readiness still passed.
+
+Since `v0.6.0` (#251) the runtime image is pinned per extension release and there
+is no separate runtime update control. Installing a newer extension is the runtime
+upgrade: on open or **Start**, the extension recreates the service from the pinned
+image and keeps the data volume. The matrix below therefore exercises the extension
+package update as the upgrade trigger.
+
 Use synthetic application data for upgrade failure injection. The intended
 release behavior must pass each case; record failures without converting manual
 repair into an automatic-recovery claim.
 
 | Scenario | Acceptance evidence |
 | --- | --- |
-| Normal supported runtime upgrade | Target version boots; settings, test data and chat survive |
-| Replacement image cannot be pulled | Existing working service remains usable; actionable error |
-| Replacement starts but never becomes healthy | Error is visible; documented recovery restores service and test data |
-| Migration changes state before failing | Previous image plus pre-migration volume restore service and test data |
-| Extension package update | Test independently from runtime upgrade; record both package/runtime identities and repeat UI smoke |
+| Extension update to a release with a newer pinned runtime | Target version boots; settings, test data and chat survive; record old/new package and runtime digests |
+| Pinned runtime image cannot be pulled | Existing working service remains usable; actionable error |
+| Recreated service starts but never becomes healthy | Error is visible; documented recovery restores service and test data |
+| Migration (`openclaw doctor --fix`) changes state before failing | Previous extension release plus pre-migration volume restore service and test data |
+| Extension downgrade to an older release | Record whether the older pinned runtime boots on the newer volume; do not claim support without evidence |
 
 Issue #215 remains open until a supported recovery path works end to end. This
 document and the synthetic POC do not close it. Sanitize screenshots and scoped
