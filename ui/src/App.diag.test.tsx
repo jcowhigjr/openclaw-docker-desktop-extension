@@ -15,7 +15,7 @@ function runnerMock(responses: {
   return vi.fn(async (_cmd: string, args: string[]) => {
     const target = args.some((arg) => arg.includes('/api/tags'))
       ? responses.tags
-      : args.some((arg) => arg.includes('/api/generate'))
+      : args.includes('ollama-warmup')
         ? (responses.probe ?? { stdout: '{}' })
         : responses.config;
     if (target instanceof Error) {

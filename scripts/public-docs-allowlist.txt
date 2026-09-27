@@ -3,6 +3,7 @@
 docs/.nojekyll
 docs/assets/openclaw-extension-dashboard.png
 docs/assets/openclaw-extension-first-run-fork.png
+docs/assets/openclaw-extension-settings.png
 docs/exploratory/2026-05-15-marketplace-smoke/control-ui-healthz.txt
 docs/exploratory/2026-05-15-marketplace-smoke/control-ui.png
 docs/exploratory/2026-05-15-marketplace-smoke/docker-extension-ls.txt
