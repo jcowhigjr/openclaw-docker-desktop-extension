@@ -167,6 +167,7 @@ export function App() {
   const [requirementsStatus, setRequirementsStatus] = useState('');
   const [requirementsSeverity, setRequirementsSeverity] = useState<AlertColor>('info');
   const [ollamaModels, setOllamaModels] = useState<OllamaModel[]>([]);
+  const [ollamaModelsDetected, setOllamaModelsDetected] = useState(false);
   const [selectedOllamaModel, setSelectedOllamaModel] = useState('');
   const [configuredOllamaModel, setConfiguredOllamaModel] = useState('');
   const [ollamaChecking, setOllamaChecking] = useState(false);
@@ -204,6 +205,7 @@ export function App() {
       providerChoice: config.providerChoice,
       configuredOllamaModel,
       ollamaModels,
+      ollamaModelsDetected,
     });
   const chatGated = isChatGated(config.providerChoice, configuredOllamaModel);
   const chatGateWarning = chatGateMessage(config.providerChoice, configuredOllamaModel);
@@ -578,7 +580,7 @@ export function App() {
           step('verify_created', 'ok');
         }
 
-        setMessage('OpenClaw setup started. The first launch can take a minute while socat is installed.');
+        setMessage('Starting OpenClaw. This usually takes under a minute.');
         await runAndPoll(step);
       });
     } catch (err) {
@@ -722,12 +724,14 @@ export function App() {
     setError('');
     setOllamaStatus('');
     setOllamaAlertSeverity('info');
+    let detectionAttempted = false;
     try {
       const container = await findContainer();
       if (!container || container.state !== 'running') {
         throw new Error('Start OpenClaw before detecting local Ollama models.');
       }
 
+      detectionAttempted = true;
       const output = await runDetect({
         run: async (cmd, args) => (await ddClient.docker.cli.exec(cmd, args)) as CliExecResult,
         containerId: container.id,
@@ -748,6 +752,11 @@ export function App() {
       setOllamaAlertSeverity('error');
       setOllamaStatus(`Could not reach host Ollama from OpenClaw: ${text}`);
     } finally {
+      // Only a detection that actually queried host Ollama settles the
+      // first-run card; a service that is not running yet leaves it checking.
+      if (detectionAttempted) {
+        setOllamaModelsDetected(true);
+      }
       setOllamaChecking(false);
     }
   }, [ddClient, findContainer, phase, selectedOllamaModel]);
@@ -1030,6 +1039,12 @@ export function App() {
                   >
                     Host Ollama has {ollamaModels.length} model{ollamaModels.length === 1 ? '' : 's'}.
                     Use {recommendedOllamaModel} as the OpenClaw default.
+                  </Alert>
+                )}
+
+                {onboardingPhase === 'free-checking' && (
+                  <Alert severity="info" icon={<CircularProgress size={20} />}>
+                    Looking for models in host Ollama. This runs as soon as OpenClaw is running.
                   </Alert>
                 )}
 
