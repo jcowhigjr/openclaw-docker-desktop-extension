@@ -22,7 +22,7 @@ Marketplace listing copy is drafted in [marketplace-listing.md](marketplace-list
 
 Use this path for a 5-10 minute functional review on macOS with Docker Desktop.
 
-Docker's automated Marketplace validation passed on `v0.5.0` on 2026-09-21
+Docker's automated Marketplace validation last passed on `v0.5.0` on 2026-09-21
 (`docker/extensions-submissions#253`: `validation/succeeded`, bot confirmation
 "the extension ... is valid"). **Separately, Docker has told us directly that
 Marketplace publication of new extensions is currently paused platform-wide,
@@ -32,24 +32,25 @@ repo-side blocker, but there is also no path to publication right now
 regardless of anything this repo does. Until Docker publishes, this review
 path uses the GHCR stable channel.
 
-Current validated release/install tag: `v0.5.0`. **Note:** the `stable`
-channel install today is `v0.5.0` as tagged 2026-09-10; it does not include
-any fix merged to `main` after that date (see #234 as one example) until a
-new release tag is cut. Do not assume `main`'s latest state is what a
-reviewer installing today actually gets.
+Current release/install tag: `v0.6.0` (2026-09-26). GHCR `stable` resolves to
+`v0.6.0` for both the extension and runtime images (checked 2026-09-27 with
+`scripts/verify-release-channel.sh`). `v0.6.0` includes #234, the fresh-install
+fix (#250), and the pinned runtime (#251). It has not been resubmitted to
+Docker's Marketplace validation; the last validated tag is `v0.5.0`. Do not
+assume `main`'s latest state is what a reviewer installing today actually gets.
 
 Latest committed manual stable-channel smoke packet: `v0.3.4` at
 `docs/exploratory/2026-05-22-stable-channel-smoke/`. A fresh CLI/registry-only
 pass for `v0.5.0` exists at `docs/exploratory/2026-09-22-stable-channel-smoke/`,
 but it explicitly did not perform the manual UI click-through — see that
-packet's own report for what it does and does not cover. Two releases
-(`v0.4.0`, `v0.5.0`) have now shipped via release-please automation without a
-fresh manual UI pass.
+packet's own report for what it does and does not cover. Three releases
+(`v0.4.0`, `v0.5.0`, `v0.6.0`) have now shipped via release-please automation
+without a fresh manual UI pass. `v0.6.0` has no smoke packet yet.
 
 If you want a timestamped evidence packet before starting, run:
 
 ```bash
-make create-smoke-report RELEASE_CHANNEL=stable RELEASE_TAG=v0.5.0
+make create-smoke-report RELEASE_CHANNEL=stable RELEASE_TAG=v0.6.0
 ```
 
 That scaffolds a report under `docs/exploratory/` with the preflight commands,
@@ -86,7 +87,7 @@ Maintainer release-channel validation:
 
 ```bash
 make verify-channel-install RELEASE_CHANNEL=stable
-make verify-channel-install RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=v0.5.0
+make verify-channel-install RELEASE_CHANNEL=stable EXPECTED_RELEASE_TAG=v0.6.0
 ```
 
 Use `DRY_RUN=1` when you want to validate command construction without mutating Docker Desktop.
@@ -116,36 +117,35 @@ Use `DRY_RUN=1` when you want to validate command construction without mutating 
 - No host folder can be mounted into the runtime container. The agent can only act on
   files inside the extension's own Docker volume, not on anything else on the user's Mac
   ([#216](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/216)).
-- Recreating the service container (`Update and Restart`, or `Remove Container` + `Start`)
-  has no safe-recreate path: it removes the running container before pulling or checking
-  the replacement, with no health check and no automatic rollback if the new container
-  fails to boot. The false-positive trigger for this (a pinned/local image reporting
-  "update available") is fixed as of 2026-09-22
-  ([#234](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/234)), but
-  the underlying recreate-without-a-net risk is not
-  ([#215](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/215),
-  confirmed bricking a real install once already).
-- A locally-scoped `OpenClaw Image` Settings value (e.g. a maintainer's own build) can
-  still silently revert on reload in some paths; the two known genuinely-obsolete refs
-  migrate without a UI notice
-  ([#220](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/220),
-  partially fixed).
+- Since `v0.6.0` the runtime is pinned per extension release
+  ([#251](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/pull/251)): the
+  `OpenClaw Image` setting and `Update and Restart` are gone, and installing a newer
+  extension recreates the service automatically on the next open or `Start`, keeping the
+  data volume. The recreate still stops and removes the old container before creating the
+  replacement, with no pull-first, no health gate and no automatic rollback. Recovery is
+  manual: a volume snapshot plus the previous extension release
+  ([docs/user-operations.md](user-operations.md)). The path was demonstrated once on a
+  restored real pre-`v0.6.0` volume, but
+  [#215](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/215)
+  stays open until a supported recovery path works end to end.
 
 ## Remaining Roadmap
 
 Open issues at submission time:
 
-- [#86](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/86): Docker Marketplace submission gate. Docker's automated validation passed on `v0.5.0`
+- [#86](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/86): Docker Marketplace submission gate. Docker's automated validation last passed on `v0.5.0`
   (2026-09-21), no known repo-side blocker remaining — but Docker has separately said
   Marketplace publication of new extensions is paused platform-wide with no timeline.
   Validation passing does not mean publication is close.
 - [#215](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/215)/[#216](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/216): the two
-  material gaps above — no safe container recreate, no host mount. Worth reading before
+  material gaps above — no guarded recreate or automatic rollback, no host mount. Worth reading before
   relying on this for anything beyond a trial.
 - [#217](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/217)-[#221](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/221),
   [#225](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/225): smaller
   follow-ups from the same review pass (misleading timeout error, pre-push hook audit,
   upgrade runbook, demo video, broader UX audit of the image/update/share surface).
+  #220 and the image/update parts of #225 describe controls #251 removed; they need
+  re-triage rather than a fix.
 - [#65](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/65): long-term security, hardening, supply-chain, and network migration epic.
 - [#156](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/156): large-prompt Ollama chats can hit OpenClaw's 120s LLM idle-timeout watchdog.
 - [#157](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/157)-[#160](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/160): post-MVP local-model performance and supportability proposals.
