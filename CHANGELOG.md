@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/compare/v0.6.0...v0.6.1) (2026-09-29)
+
+
+### Bug Fixes
+
+* **ui:** show a checking state instead of the install-Ollama warning while OpenClaw starts ([#254](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/254)) ([3e207b6](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/commit/3e207b63241941e3695182e7bb167839e1afafc6)), closes [#253](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/issues/253)
+
 ## [0.6.0](https://github.com/jcowhigjr/openclaw-docker-desktop-extension/compare/v0.5.0...v0.6.0) (2026-09-26)
 
 
