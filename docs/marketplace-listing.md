@@ -55,6 +55,13 @@ docker extension install ghcr.io/jcowhigjr/openclaw-docker-desktop-extension:sta
 - Some OpenClaw skills may require tool dependencies that are not bundled in the runtime image yet.
 - The extension does not perform automatic host posture scanning.
 - The wrapper improves local isolation and cleanup, but it is not a hardened sandbox.
+- Updating the extension also updates OpenClaw: the runtime container is recreated from
+  the new release's image, keeping your data volume. There is no safeguard yet: the old
+  container is removed before the replacement is known to boot, and there is no automatic
+  rollback. Snapshot the data volume before updating if you rely on the install; see the
+  project repository's user operations guide and open issues for current status.
+- The extension only sees files inside its own Docker volume. It cannot read, write, or
+  otherwise act on any other folder on the host Mac.
 
 ## Support and Resources
 

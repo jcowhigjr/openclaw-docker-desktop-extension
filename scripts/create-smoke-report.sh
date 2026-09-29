@@ -112,7 +112,31 @@ set -eu
 # Capture smoke-test CLI artifacts into this packet directory.
 # Keep gathering evidence even when one command fails.
 report_dir="\$(CDPATH= cd -- "\$(dirname "\$0")" && pwd)"
-repo_root="${repo_root}"
+# BEGIN REPO_ROOT RESOLUTION -- scripts/test-create-smoke-report.sh extracts
+# this exact block by these markers to test it in isolation, without
+# exercising any real docker/make/network call. Keep the markers and keep
+# this block self-contained (report_dir must already be set before it, and
+# it must not read anything except REPO_ROOT and report_dir) if you edit it.
+#
+# Derived at run time, not baked in here: the generator's own resolved path
+# on the maintainer's machine must never be interpolated into a committed,
+# publicly-readable script. This regressed once already (2026-09-22) and
+# leaked an absolute workstation path into a public packet.
+#
+# Bind git discovery to this script's own location (report_dir), not the
+# caller's CWD -- a bare "git rev-parse --show-toplevel" resolves relative to
+# CWD and regressed a second time (2026-09-22): it failed outside any git
+# checkout and silently picked an unrelated repository when run from inside
+# one. REPO_ROOT is the explicit override for a packet copied somewhere that
+# is not a git checkout at all.
+if [ -n "\${REPO_ROOT:-}" ]; then
+  repo_root="\$REPO_ROOT"
+elif ! repo_root="\$(git -C "\$report_dir" rev-parse --show-toplevel 2>/dev/null)"; then
+  echo "capture-artifacts.sh: could not determine the repo root from this script's own location (\$report_dir)." >&2
+  echo "Set REPO_ROOT explicitly, e.g.: REPO_ROOT=/path/to/repo \$0" >&2
+  exit 1
+fi
+# END REPO_ROOT RESOLUTION
 release_channel="${release_channel}"
 release_tag="${release_tag}"
 
@@ -142,13 +166,20 @@ capture_environment() {
 
   {
     printf 'captured_at=%s\n' "\$(date -u +%FT%TZ)"
-    printf 'repo_root=%s\n' "\$repo_root"
+    # Never print the real absolute path: these packets are committed to a
+    # public repo. redacted, not the real \$repo_root value, on purpose.
+    printf 'repo_root=<redacted>\n'
     printf 'release_channel=%s\n' "\$release_channel"
     printf 'release_tag=%s\n' "\${release_tag:-}"
     printf '\n[sw_vers]\n'
     sw_vers
     printf '\n[uname]\n'
-    uname -a
+    # uname -a's second field is the machine hostname -- redact it the same
+    # way repo_root is redacted above; a public packet should not carry it.
+    # Use the full hostname, not -s: uname embeds it with any local-network
+    # domain suffix (e.g. "mac.lan"), and matching only the short form left
+    # that suffix exposed.
+    uname -a | sed "s/\$(hostname)/<hostname>/"
     printf '\n[docker version]\n'
     docker version
   } >"\$output_file" 2>&1 || {

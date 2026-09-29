@@ -1,0 +1,3 @@
+ID                                     PROVIDER            VERSION             UI                  VM                  HOST
+
+(4 unrelated third-party extension row(s) omitted from this public packet; jcowhigjr/openclaw-docker-desktop-extension rows shown: 0)
