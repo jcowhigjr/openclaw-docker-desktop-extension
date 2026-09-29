@@ -36,6 +36,7 @@ describe('firstRunOnboarding', () => {
         providerChoice: 'unset',
         configuredOllamaModel: '',
         ollamaModels: [],
+        ollamaModelsDetected: true,
       }),
     ).toBe('fork');
   });
@@ -46,6 +47,7 @@ describe('firstRunOnboarding', () => {
         providerChoice: 'unset',
         configuredOllamaModel: '',
         ollamaModels: [{ name: 'gemma4:latest' }],
+        ollamaModelsDetected: true,
       }),
     ).toBe('free-ready');
   });
@@ -56,16 +58,40 @@ describe('firstRunOnboarding', () => {
         providerChoice: 'ollama',
         configuredOllamaModel: '',
         ollamaModels: [{ name: 'gemma4:latest' }],
+        ollamaModelsDetected: true,
       }),
     ).toBe('free-ready');
   });
 
-  it('returns free-needs-model when ollama is chosen and no models are detected', () => {
+  it('returns free-checking when ollama is chosen before any model detection has completed', () => {
     expect(
       deriveOnboardingPhase({
         providerChoice: 'ollama',
         configuredOllamaModel: '',
         ollamaModels: [],
+        ollamaModelsDetected: false,
+      }),
+    ).toBe('free-checking');
+  });
+
+  it('keeps the fork visible while the provider is unset and detection has not completed', () => {
+    expect(
+      deriveOnboardingPhase({
+        providerChoice: 'unset',
+        configuredOllamaModel: '',
+        ollamaModels: [],
+        ollamaModelsDetected: false,
+      }),
+    ).toBe('fork');
+  });
+
+  it('returns free-needs-model when ollama is chosen and a completed detection found no models', () => {
+    expect(
+      deriveOnboardingPhase({
+        providerChoice: 'ollama',
+        configuredOllamaModel: '',
+        ollamaModels: [],
+        ollamaModelsDetected: true,
       }),
     ).toBe('free-needs-model');
   });
@@ -76,6 +102,7 @@ describe('firstRunOnboarding', () => {
         providerChoice: 'unset',
         configuredOllamaModel: 'gemma4:latest',
         ollamaModels: [],
+        ollamaModelsDetected: true,
       }),
     ).toBe('resolved');
   });
@@ -86,6 +113,7 @@ describe('firstRunOnboarding', () => {
         providerChoice: 'anthropic',
         configuredOllamaModel: '',
         ollamaModels: [],
+        ollamaModelsDetected: true,
       }),
     ).toBe('resolved');
   });
@@ -118,6 +146,7 @@ describe('firstRunOnboarding', () => {
 
   it('maps the demo onboarding flag to a forced phase for screenshots', () => {
     expect(parseDemoOnboardingPhase('?demo=1&onboarding=fork')).toBe('fork');
+    expect(parseDemoOnboardingPhase('?demo=1&onboarding=free-checking')).toBe('free-checking');
     expect(parseDemoOnboardingPhase('?demo=1&onboarding=free-needs-model')).toBe('free-needs-model');
     expect(parseDemoOnboardingPhase('?demo=1&onboarding=free-ready')).toBe('free-ready');
     expect(parseDemoOnboardingPhase('?demo=1&onboarding=resolved')).toBe('resolved');

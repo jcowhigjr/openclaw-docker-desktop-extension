@@ -4,12 +4,23 @@ import type { OllamaModel } from './ollamaSetup';
 
 export type ProviderChoice = 'unset' | 'ollama' | 'anthropic';
 
-export type FirstRunOnboardingPhase = 'fork' | 'free-needs-model' | 'free-ready' | 'resolved';
+export type FirstRunOnboardingPhase =
+  | 'fork'
+  | 'free-checking'
+  | 'free-needs-model'
+  | 'free-ready'
+  | 'resolved';
 
 export type FirstRunOnboardingInput = {
   providerChoice: ProviderChoice;
   configuredOllamaModel: string;
   ollamaModels: OllamaModel[];
+  /**
+   * True once a host Ollama model detection has completed, whether it found
+   * models, found none, or could not reach Ollama. Detection runs through the
+   * service container, so it cannot complete while OpenClaw is starting.
+   */
+  ollamaModelsDetected: boolean;
 };
 
 export function parseProviderChoice(value: unknown): ProviderChoice {
@@ -18,6 +29,7 @@ export function parseProviderChoice(value: unknown): ProviderChoice {
 
 const DEMO_ONBOARDING_PHASES: readonly FirstRunOnboardingPhase[] = [
   'fork',
+  'free-checking',
   'free-needs-model',
   'free-ready',
   'resolved',
@@ -59,7 +71,13 @@ export function deriveOnboardingPhase(input: FirstRunOnboardingInput): FirstRunO
       return 'resolved';
     }
 
-    return input.ollamaModels.length > 0 ? 'free-ready' : 'free-needs-model';
+    if (input.ollamaModels.length > 0) {
+      return 'free-ready';
+    }
+
+    // An empty list before the first detection means "not checked yet", not
+    // "no models on the host".
+    return input.ollamaModelsDetected ? 'free-needs-model' : 'free-checking';
   }
 
   return input.ollamaModels.length > 0 ? 'free-ready' : 'fork';

@@ -136,6 +136,19 @@ docker exec openclaw-docker-extension-service openclaw agent \
 
 ## Ollama looks healthy but nothing works
 
+### The first-run card says "Looking for models in host Ollama"
+
+The extension asks host Ollama for its models from inside the OpenClaw service, so the
+check can only run once the service is `RUNNING`. Until then, the "Choose how OpenClaw
+should chat" card shows a neutral checking state:
+
+![First-run card checking host Ollama for models while OpenClaw starts](assets/openclaw-extension-first-run-checking.png)
+
+It switches to `Use <model>` a few seconds after the service is ready. The
+"Install and start Ollama" warning appears only after a check has finished and either
+found no models or could not reach Ollama. If you see that warning while Ollama is running
+with models pulled, click `Re-detect`.
+
 ### `/api/tags` returns models, but every load fails
 
 **A successful `/api/tags` proves almost nothing.** It reads model metadata from disk. It
