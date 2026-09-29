@@ -21,6 +21,9 @@ Marketplace listing copy is drafted in [marketplace-listing.md](marketplace-list
 ## Reviewer Smoke Test
 
 Use this path for a 5-10 minute functional review on macOS with Docker Desktop.
+Before testing on a machine with existing OpenClaw data, follow the
+[release test setup and recovery rehearsal](release-test-setup.md). A browser
+profile alone does not isolate the extension's container or persistent volume.
 The extension is not listed in the Docker Extensions Marketplace yet, so this
 review path uses the GHCR stable channel.
 
